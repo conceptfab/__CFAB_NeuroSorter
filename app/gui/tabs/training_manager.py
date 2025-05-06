@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
 )
 
 from app.core.workers.batch_training_thread import BatchTrainingThread
+from app.core.workers.single_training_thread import SingleTrainingThread
 from app.gui.tab_interface import TabInterface
 from app.gui.widgets.training_visualization import TrainingVisualization
 from app.utils.config import DEFAULT_TRAINING_PARAMS
@@ -201,7 +202,7 @@ class TrainingManager(QWidget, TabInterface):
 
                     # Przycisk uruchomienia
                     run_btn = QPushButton("Uruchom")
-                    run_btn.setFixedWidth(80)
+                    run_btn.setFixedWidth(100)
                     run_btn.setFixedHeight(20)
                     run_btn.clicked.connect(
                         lambda checked, file=task_file: self._run_task_from_queue(file)
@@ -1318,6 +1319,10 @@ class TrainingManager(QWidget, TabInterface):
         self.parent.task_progress_bar.setValue(0)  # Zresetuj pasek postępu
         self.parent.stop_task_btn.setEnabled(True)  # Aktywuj przycisk zatrzymania
 
+        # Wyczyść dane wizualizacji
+        if hasattr(self, "training_visualization") and self.training_visualization:
+            self.training_visualization.clear_data()
+
     def _training_task_progress(self, task_name, progress, details):
         """Obsługa postępu zadania treningowego."""
         try:
@@ -1376,6 +1381,10 @@ class TrainingManager(QWidget, TabInterface):
     def _training_task_completed(self, task_name, result):
         """Obsługuje zakończenie zadania treningowego."""
         try:
+            self.parent.logger.info(
+                f"Rozpoczynam obsługę zakończenia zadania: {task_name}"
+            )
+
             # Odśwież zakładkę modeli
             self.parent.model_manager_tab.refresh()
 
@@ -1396,13 +1405,18 @@ class TrainingManager(QWidget, TabInterface):
             self.parent.task_progress_details.setText("")
             self.parent.stop_task_btn.setEnabled(False)
 
-            # Wyczyść dane wizualizacji
-            # self.training_visualization.clear_data() # <--- TYMCZASOWO ZAKOMENTOWANE
-
             # Zmień status zadania na 'Zakończony'
+            self.parent.logger.info(
+                f"Zmieniam status zadania {task_name} na 'Zakończony'"
+            )
             self._set_task_status(task_name, "Zakończony")
+            self.parent.logger.info(f"Status zadania {task_name} został zmieniony")
 
         except Exception as e:
+            self.parent.logger.error(
+                f"Błąd podczas obsługi zakończenia zadania: {str(e)}"
+            )
+            self.parent.logger.error(f"TRACEBACK: {traceback.format_exc()}")
             QMessageBox.critical(
                 self,
                 "Błąd",
@@ -1606,16 +1620,17 @@ class TrainingManager(QWidget, TabInterface):
                 )
                 return
 
+            # Wyczyść dane wizualizacji przed rozpoczęciem nowego zadania
+            if hasattr(self, "training_visualization") and self.training_visualization:
+                self.training_visualization.clear_data()
+
             # Utwórz nowy wątek z pojedynczym zadaniem
-            self.training_thread = BatchTrainingThread([task_file])
+            self.training_thread = SingleTrainingThread(task_file)
 
             # Podłącz sygnały
             self.training_thread.task_started.connect(self._training_task_started)
             self.training_thread.task_progress.connect(self._training_task_progress)
             self.training_thread.task_completed.connect(self._training_task_completed)
-            self.training_thread.all_tasks_completed.connect(
-                self._all_training_tasks_completed
-            )
             self.training_thread.error.connect(self._training_task_error)
 
             # Uruchom wątek
@@ -1672,16 +1687,39 @@ class TrainingManager(QWidget, TabInterface):
     def _set_task_status(self, task_name, new_status):
         """Zmienia status zadania na nowy i zapisuje do pliku."""
         tasks_dir = os.path.join("data", "tasks")
-        task_file = os.path.join(tasks_dir, f"{task_name}")
+        task_file = os.path.join(tasks_dir, f"{task_name}.json")
+
+        self.parent.logger.info(
+            f"Próba zmiany statusu zadania {task_name} na {new_status}"
+        )
+        self.parent.logger.info(f"Ścieżka do pliku zadania: {task_file}")
+
         if os.path.exists(task_file):
             try:
+                self.parent.logger.info(
+                    f"Wczytywanie danych zadania z pliku: {task_file}"
+                )
                 with open(task_file, "r", encoding="utf-8") as f:
                     task_data = json.load(f)
+                self.parent.logger.info(
+                    f"Aktualny status zadania: {task_data.get('status')}"
+                )
+
                 task_data["status"] = new_status
+                self.parent.logger.info(f"Nowy status zadania: {new_status}")
+
+                self.parent.logger.info(
+                    f"Zapisywanie zaktualizowanych danych do pliku: {task_file}"
+                )
                 with open(task_file, "w", encoding="utf-8") as f:
                     json.dump(task_data, f, indent=4, ensure_ascii=False)
+                self.parent.logger.info("Pomyślnie zaktualizowano status zadania")
+
             except Exception as e:
-                self.parent.logger.error(f"Błąd przy zmianie statusu zadania: {e}")
+                self.parent.logger.error(f"Błąd przy zmianie statusu zadania: {str(e)}")
+                self.parent.logger.error(f"TRACEBACK: {traceback.format_exc()}")
+        else:
+            self.parent.logger.error(f"Plik zadania nie istnieje: {task_file}")
 
     def _stop_current_task(self):
         """Bezwzględnie zatrzymuje aktualnie wykonywane zadanie treningu."""
@@ -1738,4 +1776,77 @@ class TrainingManager(QWidget, TabInterface):
             self.parent.logger.error(f"Błąd podczas otwierania pliku: {str(e)}")
             QMessageBox.critical(
                 self, "Błąd", f"Nie udało się otworzyć pliku w edytorze: {str(e)}"
+            )
+
+    def _run_batch_training(self):
+        """Uruchamia wsadowy trening wszystkich zadań w kolejce."""
+        try:
+            # Sprawdź, czy wątek treningowy już działa
+            if (
+                hasattr(self, "training_thread")
+                and self.training_thread is not None
+                and self.training_thread.isRunning()
+            ):
+                QMessageBox.warning(
+                    self,
+                    "Trening w toku",
+                    "Inny proces treningu jest już aktywny. "
+                    "Poczekaj na jego zakończenie lub zatrzymaj go.",
+                )
+                return
+
+            # Wyczyść dane wizualizacji przed rozpoczęciem wsadowego treningu
+            if hasattr(self, "training_visualization") and self.training_visualization:
+                self.training_visualization.clear_data()
+
+            # Pobierz listę zadań do wykonania
+            tasks_dir = os.path.join("data", "tasks")
+            task_files = sorted(glob.glob(os.path.join(tasks_dir, "*.json")))
+
+            if not task_files:
+                QMessageBox.information(
+                    self, "Kolejka pusta", "Brak zadań w kolejce do uruchomienia."
+                )
+                return
+
+            self.parent.logger.info(
+                f"Znaleziono {len(task_files)} zadań w kolejce. Uruchamianie..."
+            )
+
+            try:
+                # Utwórz nowy wątek z listą zadań
+                self.training_thread = BatchTrainingThread(task_files)
+
+                # Podłącz sygnały
+                self.training_thread.task_started.connect(self._training_task_started)
+                self.training_thread.task_progress.connect(self._training_task_progress)
+                self.training_thread.task_completed.connect(
+                    self._training_task_completed
+                )
+                self.training_thread.all_tasks_completed.connect(
+                    self._all_training_tasks_completed
+                )
+                self.training_thread.error.connect(self._training_task_error)
+
+                # Uruchom wątek
+                self.training_thread.start()
+
+                # Zaktualizuj UI
+                self.parent.current_task_info.setText(
+                    "Rozpoczynanie przetwarzania kolejki..."
+                )
+                self.parent.logger.info("Uruchomiono przetwarzanie kolejki zadań.")
+
+            except Exception as e:
+                QMessageBox.critical(
+                    self, "Błąd", f"Nie udało się uruchomić kolejki zadań: {str(e)}"
+                )
+                self.parent.logger.error(f"Błąd podczas uruchamiania kolejki: {str(e)}")
+
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Błąd", f"Nie udało się uruchomić wsadowego treningu: {str(e)}"
+            )
+            self.parent.logger.error(
+                f"Błąd podczas uruchamiania wsadowego treningu: {str(e)}"
             )

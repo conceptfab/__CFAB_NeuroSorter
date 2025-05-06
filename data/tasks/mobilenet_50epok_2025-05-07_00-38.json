@@ -1,11 +1,11 @@
 {
-    "name": "efficientnet_50epok_2025-05-07_00-16.json",
+    "name": "mobilenet_50epok_2025-05-07_00-38.json",
     "type": "Trening",
-    "status": "Nowy",
+    "status": "Zakończony",
     "priority": 0,
-    "created_at": "2025-05-07 00:16:26",
+    "created_at": "2025-05-07 00:38:01",
     "config": {
-        "model_arch": "efficientnet",
+        "model_arch": "mobilenet",
         "data_dir": "C:/_cloud/___X___/__dane_treningowe",
         "val_dir": "C:/_cloud/___X___/__dane_walidacyjne",
         "epochs": 50,
@@ -22,5 +22,11 @@
             "basic": true,
             "advanced": false
         }
-    }
+    },
+    "training_time": 44.79,
+    "training_time_str": "0:00:44",
+    "train_accuracy": 0.9571428571428572,
+    "train_loss": 0.20280525460839272,
+    "validation_accuracy": 0.72,
+    "validation_loss": 1.3189506530761719
 }
