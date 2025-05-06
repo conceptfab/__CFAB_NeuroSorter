@@ -369,36 +369,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-## Planowane usprawnienia
-
-1. Poprawki sortowania:
-
-   - Implementacja Material Design (w trakcie)
-   - Poprawa widoku katalogu treningowego
-   - Optymalizacja procesu sortowania
-   - Ulepszona obsługa mapowania kategorii
-
-2. Poprawki UI:
-
-   - Optymalizacja układu interfejsu
-   - Poprawa tłumaczeń
-   - Uproszczenie struktury katalogów raportów
-   - Dodanie ekranu powitalnego (splash screen)
-
-3. Nowe funkcjonalności:
-
-   - Narzędzia do przygotowywania danych treningowych i walidacyjnych
-   - Ulepszony system zarządzania modelami
-   - Rozszerzone opcje raportowania
-   - Integracja z systemami kontroli wersji modeli
-   - Weryfikacja mapowania kategorii po treningu
-   - Automatyczne przypisywanie klas do modeli
-
-4. Optymalizacje:
-   - Poprawa wydajności treningu
-   - Automatyczna weryfikacja kategorii
-   - Lepsze zarządzanie metadanymi modeli
-
 ## Aktualny stan projektu
 
 - Wersja: 0.3 alpha
