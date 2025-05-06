@@ -19,8 +19,7 @@ from PyQt6.QtWidgets import (  # QDialogButtonBox, # Usunięto nieużywany impor
     QWidget,
 )
 
-from app.gui.tab_interface import TabInterface
-
+# Usunięto nieużywany import TabInterface
 # Poniższy import jest problematyczny - wymaga sprawdzenia struktury projektu
 from app.utils.settings_utils import validate_settings
 
@@ -224,7 +223,9 @@ class SettingsManager(QDialog):
         model_group_layout.addRow("", self.use_gpu_checkbox)
 
         # Automatyczne ładowanie ostatniego modelu
-        self.auto_load_last_model_checkbox = QCheckBox("Automatycznie ładuj ostatnio używany model przy starcie")
+        self.auto_load_last_model_checkbox = QCheckBox(
+            "Automatycznie ładuj ostatnio używany model przy starcie"
+        )
         model_group_layout.addRow("", self.auto_load_last_model_checkbox)
 
         model_layout.addRow(model_group)
@@ -342,6 +343,29 @@ class SettingsManager(QDialog):
 
         layout.addWidget(appearance_group)
 
+        # Grupa kolorów wykresu treningu
+        chart_colors_group = QGroupBox("Kolory wykresu treningu")
+        chart_colors_layout = QFormLayout(chart_colors_group)
+
+        self.train_loss_color_edit = QLineEdit()
+        chart_colors_layout.addRow("Strata treningowa:", self.train_loss_color_edit)
+
+        self.val_loss_color_edit = QLineEdit()
+        chart_colors_layout.addRow("Strata walidacyjna:", self.val_loss_color_edit)
+
+        self.train_acc_color_edit = QLineEdit()
+        chart_colors_layout.addRow("Dokładność treningowa:", self.train_acc_color_edit)
+
+        self.val_acc_color_edit = QLineEdit()
+        chart_colors_layout.addRow("Dokładność walidacyjna:", self.val_acc_color_edit)
+
+        self.chart_plot_area_background_color_edit = QLineEdit()
+        chart_colors_layout.addRow(
+            "Kolor tła obszaru kreślenia:", self.chart_plot_area_background_color_edit
+        )
+
+        layout.addWidget(chart_colors_group)
+
         # Grupa zachowania
         behavior_group = QGroupBox("Zachowanie")
         behavior_layout = QFormLayout(behavior_group)
@@ -444,102 +468,288 @@ class SettingsManager(QDialog):
     def _load_settings(self):
         """Ładuje ustawienia z pliku."""
         try:
-            # Ustawienia interfejsu
-            self.theme_combo.setCurrentText(self.settings.get("theme", "Ciemny"))
-            self.language_combo.setCurrentText(self.settings.get("language", "Polski"))
-            self.log_level_combo.setCurrentText(
-                self.settings.get("log_level", "INFO")
-            )
-            self.log_file_edit.setText(self.settings.get("log_file", "logs/app.log"))
+            # Ustawienia ogólne (zakładka "Ogólne")
+            if hasattr(self, "data_dir_edit"):
+                self.data_dir_edit.setText(self.settings.get("data_dir", "data"))
+            if hasattr(self, "models_dir_edit"):
+                self.models_dir_edit.setText(
+                    self.settings.get("models_dir", "data/models")
+                )
+            if hasattr(self, "reports_dir_edit"):
+                self.reports_dir_edit.setText(
+                    self.settings.get("reports_dir", "data/reports")
+                )
+            if hasattr(self, "log_level_combo"):
+                self.log_level_combo.setCurrentText(
+                    self.settings.get("log_level", "INFO")
+                )
+            if hasattr(self, "log_file_edit"):
+                self.log_file_edit.setText(self.settings.get("log_file", "app.log"))
 
-            # Ustawienia modelu
-            self.confidence_threshold.setValue(
-                int(self.settings.get("confidence_threshold", 50))
-            )
-            self.use_gpu_checkbox.setChecked(self.settings.get("use_gpu", True))
-            self.batch_size.setValue(self.settings.get("batch_size", 32))
-            self.num_workers.setValue(self.settings.get("num_workers", 4))
-            self.auto_load_last_model_checkbox.setChecked(
-                self.settings.get("auto_load_last_model", True)
-            )
+            # Ustawienia modelu (zakładka "Model")
+            if hasattr(self, "confidence_threshold"):
+                self.confidence_threshold.setValue(
+                    int(self.settings.get("confidence_threshold", 50))
+                )
+            if hasattr(self, "use_gpu_checkbox"):
+                self.use_gpu_checkbox.setChecked(self.settings.get("use_gpu", True))
+            if hasattr(
+                self, "batch_size"
+            ):  # Uwaga: to batch_size dla klasyfikacji/modelu
+                self.batch_size.setValue(self.settings.get("batch_size", 32))
+            if hasattr(self, "num_workers"):
+                self.num_workers.setValue(self.settings.get("num_workers", 4))
+            if hasattr(self, "auto_load_last_model_checkbox"):
+                self.auto_load_last_model_checkbox.setChecked(
+                    self.settings.get("auto_load_last_model", True)
+                )
 
-            # Ustawienia treningu
-            self.learning_rate_combo.setCurrentText(
-                str(self.settings.get("learning_rate", 0.001))
-            )
-            self.epochs_spin.setValue(int(self.settings.get("epochs", 10)))
-            self.train_batch_size_spin.setValue(self.settings.get("batch_size", 32))
-            self.optimizer_combo.setCurrentText(
-                self.settings.get("optimizer", "Adam")
-            )
-            self.use_augmentation_checkbox.setChecked(
-                self.settings.get("use_augmentation", True)
-            )
-            self.rotation_spin.setValue(self.settings.get("rotation_angle", 15))
-            self.brightness_spin.setValue(self.settings.get("brightness_change", 20))
+            # Ustawienia treningu (zakładka "Trening")
+            if hasattr(self, "epochs_spin"):
+                self.epochs_spin.setValue(int(self.settings.get("epochs", 10)))
+            if hasattr(
+                self, "train_batch_size_spin"
+            ):  # Dedykowany batch_size dla treningu
+                self.train_batch_size_spin.setValue(
+                    self.settings.get("train_batch_size", 32)
+                )
+            if hasattr(self, "learning_rate_combo"):
+                self.learning_rate_combo.setCurrentText(
+                    str(self.settings.get("learning_rate", 0.001))
+                )
+            if hasattr(self, "optimizer_combo"):
+                self.optimizer_combo.setCurrentText(
+                    self.settings.get("optimizer", "Adam")
+                )
+            # Ustawienia augmentacji
+            augmentation_settings = self.settings.get("augmentation_settings", {})
+            if hasattr(self, "use_augmentation_checkbox"):
+                self.use_augmentation_checkbox.setChecked(
+                    augmentation_settings.get("use_augmentation", True)
+                )
+            if hasattr(self, "rotation_spin"):
+                self.rotation_spin.setValue(
+                    augmentation_settings.get("rotation_angle", 15)
+                )
+            if hasattr(self, "brightness_spin"):
+                self.brightness_spin.setValue(
+                    augmentation_settings.get("brightness_change", 20)
+                )
 
-            # Ustawienia systemowe
-            self.memory_limit_spin.setValue(self.settings.get("memory_limit", 4096))
-            self.threads_spin.setValue(self.settings.get("threads", 4))
-            self.backup_enabled_checkbox.setChecked(
-                self.settings.get("backup_enabled", False)
-            )
-            self.backup_dir_edit.setText(self.settings.get("backup_dir", "data/backup"))
-            self.backup_interval_spin.setValue(self.settings.get("backup_interval", 24))
+            # Ustawienia interfejsu (zakładka "Interfejs")
+            if hasattr(self, "theme_combo"):
+                self.theme_combo.setCurrentText(self.settings.get("theme", "Ciemny"))
+            if hasattr(self, "language_combo"):
+                self.language_combo.setCurrentText(
+                    self.settings.get("language", "Polski")
+                )
+            if hasattr(self, "font_size_spin"):
+                self.font_size_spin.setValue(self.settings.get("font_size", 11))
+            # Kolory wykresu
+            if hasattr(self, "train_loss_color_edit"):
+                self.train_loss_color_edit.setText(
+                    self.settings.get("chart_train_loss_color", "b")
+                )
+            if hasattr(self, "val_loss_color_edit"):
+                self.val_loss_color_edit.setText(
+                    self.settings.get("chart_val_loss_color", "r")
+                )
+            if hasattr(self, "train_acc_color_edit"):
+                self.train_acc_color_edit.setText(
+                    self.settings.get("chart_train_acc_color", "g")
+                )
+            if hasattr(self, "val_acc_color_edit"):
+                self.val_acc_color_edit.setText(
+                    self.settings.get("chart_val_acc_color", "m")
+                )
+            if hasattr(self, "chart_plot_area_background_color_edit"):
+                self.chart_plot_area_background_color_edit.setText(
+                    self.settings.get("chart_plot_area_background_color", "w")
+                )
+            # Ustawienia zachowania
+            if hasattr(self, "autosave_checkbox"):
+                self.autosave_checkbox.setChecked(self.settings.get("autosave", True))
+            if hasattr(self, "confirm_exit_checkbox"):
+                self.confirm_exit_checkbox.setChecked(
+                    self.settings.get("confirm_exit", True)
+                )
+            if hasattr(self, "notifications_checkbox"):
+                self.notifications_checkbox.setChecked(
+                    self.settings.get("notifications", True)
+                )
+
+            # Ustawienia systemowe (zakładka "System")
+            if hasattr(self, "memory_limit_spin"):
+                self.memory_limit_spin.setValue(self.settings.get("memory_limit", 4096))
+            if hasattr(self, "threads_spin"):
+                self.threads_spin.setValue(self.settings.get("threads", 4))
+            if hasattr(self, "backup_enabled_checkbox"):
+                self.backup_enabled_checkbox.setChecked(
+                    self.settings.get("backup_enabled", False)
+                )
+            if hasattr(self, "backup_dir_edit"):
+                self.backup_dir_edit.setText(
+                    self.settings.get("backup_dir", "data/backup")
+                )
+            if hasattr(self, "backup_interval_spin"):
+                self.backup_interval_spin.setValue(
+                    self.settings.get("backup_interval", 24)
+                )
 
         except Exception as e:
-            self.parent.logger.error(f"Błąd ładowania ustawień: {str(e)}")
+            # Logowanie błędu powinno być obsługiwane przez self.parent.logger, jeśli dostępne
+            if self.parent and hasattr(self.parent, "logger"):
+                self.parent.logger.error(
+                    f"Błąd ładowania ustawień w SettingsManager: {str(e)}"
+                )
+            else:
+                print(
+                    f"Błąd ładowania ustawień w SettingsManager: {str(e)}"
+                )  # Fallback
             QMessageBox.critical(
                 self, "Błąd", f"Nie udało się załadować ustawień:\n{str(e)}"
             )
 
     def _save_settings(self):
-        """Zapisuje ustawienia do pliku."""
+        """Zbiera ustawienia z UI i aktualizuje self.settings oraz self.parent.settings."""
         try:
-            settings = {
-                # Ustawienia interfejsu
-                "theme": self.theme_combo.currentText(),
-                "language": self.language_combo.currentText(),
-                "log_level": self.log_level_combo.currentText(),
-                "log_file": self.log_file_edit.text(),
-                # Ustawienia modelu
-                "confidence_threshold": self.confidence_threshold.value(),
-                "use_gpu": self.use_gpu_checkbox.isChecked(),
-                "batch_size": self.batch_size.value(),
-                "num_workers": self.num_workers.value(),
-                "auto_load_last_model": self.auto_load_last_model_checkbox.isChecked(),
-                # Ustawienia treningu
-                "learning_rate": float(self.learning_rate_combo.currentText()),
-                "epochs": self.epochs_spin.value(),
-                "batch_size": self.train_batch_size_spin.value(),
-                "optimizer": self.optimizer_combo.currentText(),
-                "use_augmentation": self.use_augmentation_checkbox.isChecked(),
-                "rotation_angle": self.rotation_spin.value(),
-                "brightness_change": self.brightness_spin.value(),
-                # Ustawienia systemowe
-                "memory_limit": self.memory_limit_spin.value(),
-                "threads": self.threads_spin.value(),
-                "backup_enabled": self.backup_enabled_checkbox.isChecked(),
-                "backup_dir": self.backup_dir_edit.text(),
-                "backup_interval": self.backup_interval_spin.value(),
-            }
+            current_settings = {}
 
-            # Zapisz ustawienia
-            with open(self.settings_file, "w") as f:
-                json.dump(settings, f, indent=4)
+            # Ustawienia ogólne
+            if hasattr(self, "data_dir_edit"):
+                current_settings["data_dir"] = self.data_dir_edit.text()
+            if hasattr(self, "models_dir_edit"):
+                current_settings["models_dir"] = self.models_dir_edit.text()
+            if hasattr(self, "reports_dir_edit"):
+                current_settings["reports_dir"] = self.reports_dir_edit.text()
+            if hasattr(self, "log_level_combo"):
+                current_settings["log_level"] = self.log_level_combo.currentText()
+            if hasattr(self, "log_file_edit"):
+                current_settings["log_file"] = self.log_file_edit.text()
 
-            # Zaktualizuj ustawienia w głównym oknie
-            self.parent.settings.update(settings)
-            self.parent._save_settings()
+            # Ustawienia modelu
+            if hasattr(self, "confidence_threshold"):
+                current_settings["confidence_threshold"] = (
+                    self.confidence_threshold.value()
+                )
+            if hasattr(self, "use_gpu_checkbox"):
+                current_settings["use_gpu"] = self.use_gpu_checkbox.isChecked()
+            if hasattr(self, "batch_size"):
+                current_settings["batch_size"] = self.batch_size.value()
+            if hasattr(self, "num_workers"):
+                current_settings["num_workers"] = self.num_workers.value()
+            if hasattr(self, "auto_load_last_model_checkbox"):
+                current_settings["auto_load_last_model"] = (
+                    self.auto_load_last_model_checkbox.isChecked()
+                )
+
+            # Ustawienia treningu
+            if hasattr(self, "epochs_spin"):
+                current_settings["epochs"] = self.epochs_spin.value()
+            if hasattr(self, "train_batch_size_spin"):
+                current_settings["train_batch_size"] = (
+                    self.train_batch_size_spin.value()
+                )
+            if hasattr(self, "learning_rate_combo"):
+                current_settings["learning_rate"] = float(
+                    self.learning_rate_combo.currentText()
+                )
+            if hasattr(self, "optimizer_combo"):
+                current_settings["optimizer"] = self.optimizer_combo.currentText()
+            # Ustawienia augmentacji
+            augmentation_settings = {}
+            if hasattr(self, "use_augmentation_checkbox"):
+                augmentation_settings["use_augmentation"] = (
+                    self.use_augmentation_checkbox.isChecked()
+                )
+            if hasattr(self, "rotation_spin"):
+                augmentation_settings["rotation_angle"] = self.rotation_spin.value()
+            if hasattr(self, "brightness_spin"):
+                augmentation_settings["brightness_change"] = (
+                    self.brightness_spin.value()
+                )
+            if (
+                augmentation_settings
+            ):  # Zapisz tylko jeśli są jakieś ustawienia augmentacji
+                current_settings["augmentation_settings"] = augmentation_settings
+
+            # Ustawienia interfejsu
+            if hasattr(self, "theme_combo"):
+                current_settings["theme"] = self.theme_combo.currentText()
+            if hasattr(self, "language_combo"):
+                current_settings["language"] = self.language_combo.currentText()
+            if hasattr(self, "font_size_spin"):
+                current_settings["font_size"] = self.font_size_spin.value()
+            # Kolory wykresu
+            if hasattr(self, "train_loss_color_edit"):
+                current_settings["chart_train_loss_color"] = (
+                    self.train_loss_color_edit.text()
+                )
+            if hasattr(self, "val_loss_color_edit"):
+                current_settings["chart_val_loss_color"] = (
+                    self.val_loss_color_edit.text()
+                )
+            if hasattr(self, "train_acc_color_edit"):
+                current_settings["chart_train_acc_color"] = (
+                    self.train_acc_color_edit.text()
+                )
+            if hasattr(self, "val_acc_color_edit"):
+                current_settings["chart_val_acc_color"] = self.val_acc_color_edit.text()
+            if hasattr(self, "chart_plot_area_background_color_edit"):
+                current_settings["chart_plot_area_background_color"] = (
+                    self.chart_plot_area_background_color_edit.text()
+                )
+            # Ustawienia zachowania
+            if hasattr(self, "autosave_checkbox"):
+                current_settings["autosave"] = self.autosave_checkbox.isChecked()
+            if hasattr(self, "confirm_exit_checkbox"):
+                current_settings["confirm_exit"] = (
+                    self.confirm_exit_checkbox.isChecked()
+                )
+            if hasattr(self, "notifications_checkbox"):
+                current_settings["notifications"] = (
+                    self.notifications_checkbox.isChecked()
+                )
+
+            # Ustawienia systemowe
+            if hasattr(self, "memory_limit_spin"):
+                current_settings["memory_limit"] = self.memory_limit_spin.value()
+            if hasattr(self, "threads_spin"):
+                current_settings["threads"] = self.threads_spin.value()
+            if hasattr(self, "backup_enabled_checkbox"):
+                current_settings["backup_enabled"] = (
+                    self.backup_enabled_checkbox.isChecked()
+                )
+            if hasattr(self, "backup_dir_edit"):
+                current_settings["backup_dir"] = self.backup_dir_edit.text()
+            if hasattr(self, "backup_interval_spin"):
+                current_settings["backup_interval"] = self.backup_interval_spin.value()
+
+            # Zaktualizuj słownik self.settings oraz self.parent.settings
+            self.settings.update(current_settings)
+            if self.parent and hasattr(self.parent, "settings"):
+                self.parent.settings.update(
+                    self.settings
+                )  # Przekaż zaktualizowane ustawienia do rodzica
+
+            # Usunięto bezpośredni zapis do pliku z tej metody.
+            # MainWindow będzie odpowiedzialne za zapis po zaakceptowaniu dialogu.
 
             QMessageBox.information(
-                self, "Sukces", "Ustawienia zostały zapisane pomyślnie."
+                self,
+                "Sukces",
+                "Ustawienia zostały przygotowane do zapisu. Kliknij OK, aby zapisać.",
             )
 
         except Exception as e:
-            self.parent.logger.error(f"Błąd zapisywania ustawień: {str(e)}")
+            if self.parent and hasattr(self.parent, "logger"):
+                self.parent.logger.error(
+                    f"Błąd przygotowywania ustawień do zapisu: {str(e)}"
+                )
+            else:
+                print(f"Błąd przygotowywania ustawień do zapisu: {str(e)}")  # Fallback
             QMessageBox.critical(
-                self, "Błąd", f"Nie udało się zapisać ustawień:\n{str(e)}"
+                self, "Błąd", f"Nie udało się przygotować ustawień do zapisu:\n{str(e)}"
             )
 
     def _reset_settings(self):

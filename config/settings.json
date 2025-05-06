@@ -44,5 +44,10 @@
   "threads": 4,
   "backup_enabled": false,
   "backup_dir": "data/backup",
-  "backup_interval": 24
+  "backup_interval": 24,
+  "chart_train_loss_color": "b",
+  "chart_val_loss_color": "r",
+  "chart_train_acc_color": "g",
+  "chart_val_acc_color": "m",
+  "chart_plot_area_background_color": "r"
 }

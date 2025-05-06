@@ -143,6 +143,12 @@ def load_default_settings():
         "backup_enabled": False,
         "backup_dir": "data/backup",
         "backup_interval": 24,
+        # Ustawienia kolorów wykresu
+        "chart_train_loss_color": "b",
+        "chart_val_loss_color": "r",
+        "chart_train_acc_color": "g",
+        "chart_val_acc_color": "m",
+        "chart_plot_area_background_color": "w",
     }
 
 

@@ -4,7 +4,7 @@ import json
 import os
 
 import torch
-from PyQt6.QtCore import QObject, Qt
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -107,13 +108,32 @@ class TrainingManager(QWidget, TabInterface):
 
         self._create_add_task_panel(layout)
 
-        # Panel wizualizacji treningu
-        self.training_visualization = TrainingVisualization()
-        layout.addWidget(self.training_visualization)
+        # === Początek zmian: Dodanie QTabWidget ===
+        self.tabs = QTabWidget()
 
-        # Panel kolejki zadań treningowych (skalowalny)
-        queue_panel = self._create_queue_panel_widget()
-        layout.addWidget(queue_panel, 1)  # <- skalowalny na wysokość
+        # Zakładka 1: Kolejka zadań treningowych
+        queue_panel_widget = self._create_queue_panel_widget()
+        self.tabs.addTab(queue_panel_widget, "Kolejka zadań treningowych")
+
+        # Zakładka 2: Wizualizacja treningu
+        self.training_visualization = TrainingVisualization(
+            parent=self, settings=self.settings
+        )
+        self.tabs.addTab(self.training_visualization, "Wizualizacja treningu")
+
+        layout.addWidget(
+            self.tabs, 1
+        )  # Dodajemy QTabWidget do głównego layoutu, rozciągalny
+        # === Koniec zmian: Dodanie QTabWidget ===
+
+        # Stara implementacja (przed QTabWidget) - zakomentowana lub usunięta
+        # # Panel wizualizacji treningu
+        # self.training_visualization = TrainingVisualization()
+        # layout.addWidget(self.training_visualization)
+        #
+        # # Panel kolejki zadań treningowych (skalowalny)
+        # queue_panel = self._create_queue_panel_widget()
+        # layout.addWidget(queue_panel, 1)  # <- skalowalny na wysokość
 
     def connect_signals(self):
         """Podłącza sygnały do slotów."""
@@ -255,19 +275,18 @@ class TrainingManager(QWidget, TabInterface):
             for col in range(self.tasks_table.columnCount()):
                 width = self.tasks_table.columnWidth(col)
                 if col == 0:  # Kolumna "Nazwa"
-                    new_width = int(width * 1.15)  # Zwiększ o 30%
+                    new_width = int(width * 1.15)
                 elif col == 5:  # Kolumna "Czas treningu"
-                    new_width = int(width * 1.4)  # Zwiększ o 40%
+                    new_width = int(width * 1.4)
                 elif col in [6, 7, 8, 9]:  # Kolumny z wynikami treningu
-                    new_width = int(width * 1)  # Zmniejsz o 30%
+                    new_width = int(width * 1.0)
                 else:
                     new_width = int(width * 1.6)
                 self.tasks_table.setColumnWidth(col, new_width)
-            # Zmniejsz kolumnę 'Akcje' (ostatnia) do 20% jej szerokości
+            # Zmniejsz kolumnę 'Akcje' (ostatnia) do odpowiedniej szerokości
             last_col = self.tasks_table.columnCount() - 1
-            akcje_width = self.tasks_table.columnWidth(last_col)
-            self.tasks_table.setColumnWidth(last_col, int(akcje_width * 0.2))
-            header.setStretchLastSection(True)
+            self.tasks_table.setColumnWidth(last_col, 250)
+            header.setStretchLastSection(False)
 
         except Exception as e:
             self.parent.logger.error(
@@ -283,7 +302,8 @@ class TrainingManager(QWidget, TabInterface):
         # Nagłówek sekcji
         add_task_header = QLabel("DODAJ NOWE ZADANIE TRENINGOWE")
         add_task_header.setStyleSheet(
-            "font-weight: bold; color: #CCCCCC; font-size: 11px; padding-bottom: 4px;"
+            "font-weight: bold; color: #CCCCCC; "
+            "font-size: 11px; padding-bottom: 4px;"
         )
         add_task_layout.addWidget(add_task_header)
 
@@ -341,7 +361,8 @@ class TrainingManager(QWidget, TabInterface):
         # Nagłówek sekcji
         queue_header = QLabel("KOLEJKA ZADAŃ TRENINGOWYCH")
         queue_header.setStyleSheet(
-            "font-weight: bold; color: #CCCCCC; font-size: 11px; padding-bottom: 4px;"
+            "font-weight: bold; color: #CCCCCC; "
+            "font-size: 11px; padding-bottom: 4px;"
         )
         queue_layout.addWidget(queue_header)
 
@@ -560,7 +581,7 @@ class TrainingManager(QWidget, TabInterface):
 
             # 9. Liczba wątków do ładowania danych
             num_workers_spin = QSpinBox()
-            num_workers_spin.setRange(0, 16)
+            num_workers_spin.setRange(0, 32)
 
             # Pobierz zalecaną liczbę workerów z profilu
             if (
@@ -586,9 +607,6 @@ class TrainingManager(QWidget, TabInterface):
             weight_decay_combo.addItems(["1e-3", "1e-4", "1e-5", "1e-6"])
             weight_decay_combo.setCurrentText("1e-4")  # Domyślna wartość
             form_layout.addRow("Współczynnik regularyzacji L2:", weight_decay_combo)
-
-            # Konwersja wartości weight_decay z notacji naukowej na liczbę
-            weight_decay = float(weight_decay_combo.currentText())
 
             # 11. Wartość przycinania gradientów
             gradient_clip_spin = QDoubleSpinBox()
@@ -1302,64 +1320,58 @@ class TrainingManager(QWidget, TabInterface):
 
     def _training_task_progress(self, task_name, progress, details):
         """Obsługa postępu zadania treningowego."""
-        epoch = details.get("epoch", 0)
-        total_epochs = details.get("total_epochs", 0)
-        loss = details.get("train_loss", 0.0)
-        accuracy = details.get("train_acc", 0.0)
-        val_loss = details.get("val_loss", None)
-        val_acc = details.get("val_acc", None)
-
-        # Debug - sprawdź wartości przed przekazaniem do wizualizacji
-        print(f"\nDEBUG Training Progress:")
-        print(f"Task: {task_name}")
-        print(f"Progress: {progress}%")
-        print(f"Epoka: {epoch}/{total_epochs}")
-        print(f"Strata treningowa: {loss}")
-        print(f"Dokładność treningowa: {accuracy}")
-        print(f"Strata walidacyjna: {val_loss}")
-        print(f"Dokładność walidacyjna: {val_acc}")
-
-        # Upewnij się, że wartości są liczbami
         try:
-            loss = float(loss) if loss is not None else 0.0
-            accuracy = float(accuracy) if accuracy is not None else 0.0
-            val_loss = float(val_loss) if val_loss is not None else None
-            val_acc = float(val_acc) if val_acc is not None else None
-        except (ValueError, TypeError) as e:
-            print(f"BŁĄD konwersji wartości: {e}")
-            self.parent.logger.error(
-                f"Błąd konwersji wartości w _training_task_progress: {e}"
-            )
-            return
+            # Pobierz dane z details i upewnij się, że mają prawidłowe wartości
+            epoch = int(details.get("epoch", 0))
+            total_epochs = int(details.get("total_epochs", 1))
 
-        # Aktualizuj wizualizację
-        if hasattr(self, "training_visualization"):
-            print("\nDEBUG: Przekazuję dane do wizualizacji:")
-            print(f"Epoka: {epoch}")
-            print(f"Strata: {loss}")
-            print(f"Dokładność: {accuracy}")
-            print(f"Strata walidacyjna: {val_loss}")
-            print(f"Dokładność walidacyjna: {val_acc}")
+            # Zabezpieczenie przed dzieleniem przez zero
+            if total_epochs <= 0:
+                total_epochs = 1
 
-            # Upewnij się, że wartości są sensowne
-            if loss > 0 and 0 <= accuracy <= 1:
-                self.training_visualization.update_data(
-                    epoch, loss, accuracy, val_loss, val_acc
+            # Pobierz i weryfikuj wartości loss i accuracy
+            train_loss = details.get("train_loss")
+            train_acc = details.get("train_acc")
+            val_loss = details.get("val_loss")
+            val_acc = details.get("val_acc")
+
+            # Aktualizacja paska postępu
+            percentage = min(100, max(0, int((epoch / total_epochs) * 100)))
+            self.parent.task_progress_bar.setValue(percentage)
+
+            # Aktualizacja opisu postępu
+            if epoch > 0:
+                loss_text = f"{train_loss:.4f}" if train_loss is not None else "N/A"
+                acc_text = f"{train_acc:.2%}" if train_acc is not None else "N/A"
+                details_text = (
+                    f"Epoka {epoch}/{total_epochs} | Strata: {loss_text}, "
+                    f"Dokładność: {acc_text}"
                 )
-            else:
-                print("BŁĄD: Nieprawidłowe wartości danych treningowych")
-        else:
-            print("BŁĄD: Brak widgetu wizualizacji!")
+                self.parent.task_progress_details.setText(details_text)
+                self.parent.logger.info(details_text)
 
-        # Sprawdź czy wartości są sensowne przed logowaniem:
-        if epoch > 0 and total_epochs > 0:
-            # Logowanie
-            details_text = f"Epoka {epoch}/{total_epochs} | Strata: {loss:.4f}, Dokładność: {accuracy:.2%}"
-            self.parent.logger.info(details_text)
-            self.parent.task_progress_details.setText(details_text)
+            # Aktualizacja wizualizacji jeśli istnieje
+            if hasattr(self, "training_visualization") and self.training_visualization:
+                # Upewnij się, że epoka jest większa od zera
+                if epoch > 0:
+                    try:
+                        self.training_visualization.update_data(
+                            epoch=epoch,
+                            train_loss=train_loss,
+                            train_acc=train_acc,
+                            val_loss=val_loss,
+                            val_acc=val_acc,
+                        )
+                    except Exception as vis_error:
+                        self.parent.logger.error(
+                            f"Błąd aktualizacji wizualizacji: {vis_error}"
+                        )
 
-        # Aktualizacja UI w głównym oknie
-        self.parent.task_progress_bar.setValue(progress)
+        except Exception as e:
+            import traceback
+
+            self.parent.logger.error(f"Błąd w _training_task_progress: {e}")
+            self.parent.logger.error(traceback.format_exc())
 
     def _training_task_completed(self, task_name, result):
         """Obsługuje zakończenie zadania treningowego."""
@@ -1385,7 +1397,7 @@ class TrainingManager(QWidget, TabInterface):
             self.parent.stop_task_btn.setEnabled(False)
 
             # Wyczyść dane wizualizacji
-            self.training_visualization.clear_data()
+            # self.training_visualization.clear_data() # <--- TYMCZASOWO ZAKOMENTOWANE
 
             # Zmień status zadania na 'Zakończony'
             self._set_task_status(task_name, "Zakończony")
@@ -1411,8 +1423,12 @@ class TrainingManager(QWidget, TabInterface):
         # Aktualizacja UI w głównym oknie
         self.parent.current_task_info.setText("Brak aktywnego zadania")
         self.parent.task_progress_bar.setValue(0)
-        self.parent.task_progress_details.setText("")
-        self.parent.stop_task_btn.setEnabled(False)
+        self.parent.task_progress_details.setText("Oczekiwanie na zadania...")
+
+        # Odśwież kolejkę, aby zaktualizować statusy zadań
+        self._refresh_task_queue()
+
+        # Tutaj można dodać logikę, np. opcję zapisania wykresu
 
     def _training_task_error(self, task_name, error_message):
         """Obsługa błędu zadania treningowego."""

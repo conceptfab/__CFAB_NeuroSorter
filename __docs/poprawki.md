@@ -1,126 +1,286 @@
-Przeanalizuję problem z wyświetlaniem danych z treningu w pliku training_visualization.py. Na podstawie dostarczonego kodu mogę zidentyfikować kilka potencjalnych przyczyn, dlaczego wizualizacja treningu może nie działać prawidłowo.
-Analiza problemu z wizualizacją treningu
-Główne problemy zidentyfikowane w kodzie:
-1. Problem z przepływem danych
-W metodzie _training_task_progress w klasie TrainingManager dane są przekazywane do wizualizacji, ale występują problemy z typami danych. Wartości są najpierw konwertowane:
-python# Upewnij się, że wartości są liczbami
-try:
-    loss = float(loss) if loss is not None else 0.0
-    accuracy = float(accuracy) if accuracy is not None else 0.0
-    val_loss = float(val_loss) if val_loss is not None else None
-    val_acc = float(val_acc) if val_acc is not None else None
-except (ValueError, TypeError) as e:
-    print(f"BŁĄD konwersji wartości: {e}")
-    self.parent.logger.error(
-        f"Błąd konwersji wartości w _training_task_progress: {e}"
-    )
-    return
-2. Walidacja danych przed aktualizacją wykresu
-W metodzie update_data w TrainingVisualization istnieje problematyczna walidacja danych:
-python# Sprawdź czy dane są sensowne
-if train_loss <= 0 or train_acc < 0 or train_acc > 1:
-    print("BŁĄD: Nieprawidłowe wartości danych treningowych")
-    return
+Proponowane rozwiązanie
+Zmiany należy wprowadzić w trzech kluczowych miejscach:
 
-if val_loss is not None and val_loss <= 0:
-    print("BŁĄD: Nieprawidłowa wartość straty walidacyjnej")
-    return
-W rzeczywistości, wartość train_loss może być bardzo mała (bliska zeru) w pewnych przypadkach, a warunek train_loss <= 0 odrzuci takie prawidłowe wartości.
-3. Mechanizm aktualizacji wykresu
-Widget używa timera do odświeżania, który może nie być optymalny:
-python# Timer do automatycznego odświeżania
-self.update_timer = QTimer()
-self.update_timer.timeout.connect(self.update_plot)
-self.update_timer.start(500)  # Odświeżaj co 500ms
+W app/gui/widgets/training_visualization.py:
 
-# Flaga wskazująca czy dane zostały zaktualizowane
-self.data_updated = False
-4. Brak synchronizacji między wątkami
-Ponieważ trening działa w osobnym wątku (BatchTrainingThread), a wizualizacja jest częścią głównego wątku GUI, może występować problem z synchronizacją danych. Widget wizualizacji nie ma bezpośredniego mechanizmu synchronizacji z wątkiem trenującym.
-Proponowane zmiany w pliku training_visualization.py:
-python# Poprawienie walidacji w metodzie update_data
-def update_data(self, epoch, train_loss, train_acc, val_loss=None, val_acc=None):
+Całkowicie przebudować metodę update_data aby obsługiwała różne wartości danych
+Dodać debugging i lepszą obsługę błędów
+Zaimplementować bardziej elastyczną aktualizację wykresu
+
+
+W app/gui/tabs/training_manager.py:
+
+Poprawić metodę _training_task_progress tak, aby zapewniała bardziej niezawodne przekazywanie danych
+
+
+W app/core/workers/batch_training_thread.py:
+
+Zmodyfikować sposób generowania i wysyłania danych
+
+
+
+Przyjrzyjmy się szczegółowo poprawkom do każdego z tych plików:
+1. Zmiana w app/gui/widgets/training_visualization.py
+pythondef update_data(self, epoch, train_loss, train_acc, val_loss=None, val_acc=None):
     """Aktualizuje dane wykresu."""
-    print(f"\nDEBUG update_data:")
-    print(f"Epoka: {epoch}")
-    print(f"Strata treningowa: {train_loss}")
-    print(f"Dokładność treningowa: {train_acc}")
-    print(f"Strata walidacyjna: {val_loss}")
-    print(f"Dokładność walidacyjna: {val_acc}")
-
-    # Sprawdź poprawność danych
     try:
-        epoch = int(epoch)
-        train_loss = float(train_loss)
-        train_acc = float(train_acc)
-        if val_loss is not None:
-            val_loss = float(val_loss)
-        if val_acc is not None:
-            val_acc = float(val_acc)
-    except (ValueError, TypeError) as e:
-        print(f"BŁĄD konwersji danych: {e}")
-        return
+        # Konwersja i walidacja danych
+        try:
+            epoch = int(epoch)
+            train_loss = float(train_loss) if train_loss is not None else None
+            train_acc = float(train_acc) if train_acc is not None else None
+            val_loss = float(val_loss) if val_loss is not None else None
+            val_acc = float(val_acc) if val_acc is not None else None
+        except (ValueError, TypeError) as e:
+            print(f"BŁĄD konwersji danych: {e}")
+            # Nie przerywamy, tylko ustawiamy wartości domyślne
+            if train_loss is None or not isinstance(train_loss, (int, float)):
+                train_loss = 1.0  # Wartość domyślna
+            if train_acc is None or not isinstance(train_acc, (int, float)):
+                train_acc = 0.5  # Wartość domyślna
 
-    # Sprawdź czy dane są sensowne - POPRAWIONA WALIDACJA
-    if train_loss < 0 or train_acc < 0 or train_acc > 1:  # Zmieniamy <= na 
-        print(f"BŁĄD: Nieprawidłowe wartości danych treningowych: loss={train_loss}, acc={train_acc}")
-        return
-
-    if val_loss is not None and val_loss < 0:  # Zmieniamy <= na 
-        print(f"BŁĄD: Nieprawidłowa wartość straty walidacyjnej: {val_loss}")
-        return
-
-    if val_acc is not None and (val_acc < 0 or val_acc > 1):
-        print(f"BŁĄD: Nieprawidłowa wartość dokładności walidacyjnej: {val_acc}")
-        return
-
-    # Dodaj nowe dane
-    self.epochs.append(epoch)
-    self.train_loss_data.append(train_loss)
-    self.train_acc_data.append(train_acc)
-
-    if val_loss is not None:
-        self.val_loss_data.append(val_loss)
-    if val_acc is not None:
-        self.val_acc_data.append(val_acc)
-
-    print("\nDEBUG: Stan danych po aktualizacji:")
-    print(f"Epoki: {self.epochs}")
-    print(f"Strata treningowa: {self.train_loss_data}")
-    print(f"Dokładność treningowa: {self.train_acc_data}")
-    print(f"Strata walidacyjna: {self.val_loss_data}")
-    print(f"Dokładność walidacyjna: {self.val_acc_data}")
-
-    # Oznacz, że dane zostały zaktualizowane i odśwież wykres
-    self.data_updated = True
-    self.update_plot()
-
-    # Wymuś odświeżenie wykresu
-    self.plot_widget.replot()
-Poprawki w pliku batch_training_thread.py:
-Należy również upewnić się, że w klasie BatchTrainingThread sygnał task_progress zwraca poprawne dane. W pliku app/core/workers/batch_training_thread.py powinniśmy dodać dodatkowe logowanie wartości przed emisją sygnału:
-python# W funkcji progress_callback w metodzie train_model_optimized
-def progress_callback(epoch, num_epochs, train_loss, train_acc, val_loss, val_acc):
-    self.log_message_signal.emit(f"DEBUG: Emitowanie sygnału task_progress:")
-    self.log_message_signal.emit(f"- epoch: {epoch}, num_epochs: {num_epochs}")
-    self.log_message_signal.emit(f"- train_loss: {train_loss}, train_acc: {train_acc}")
-    self.log_message_signal.emit(f"- val_loss: {val_loss}, val_acc: {val_acc}")
+        # Dodaj nowe dane tylko jeśli epoka jest dodatnia
+        if epoch > 0:
+            # Sprawdź czy ta epoka już istnieje
+            if epoch in self.epochs:
+                # Znajdź indeks dla tej epoki
+                idx = self.epochs.index(epoch)
+                # Zaktualizuj istniejące dane
+                self.train_loss_data[idx] = train_loss
+                self.train_acc_data[idx] = train_acc
+                if val_loss is not None and idx < len(self.val_loss_data):
+                    self.val_loss_data[idx] = val_loss
+                elif val_loss is not None:
+                    # Rozszerz listę jeśli potrzeba
+                    while len(self.val_loss_data) < idx:
+                        self.val_loss_data.append(None)
+                    self.val_loss_data.append(val_loss)
+                
+                if val_acc is not None and idx < len(self.val_acc_data):
+                    self.val_acc_data[idx] = val_acc
+                elif val_acc is not None:
+                    # Rozszerz listę jeśli potrzeba
+                    while len(self.val_acc_data) < idx:
+                        self.val_acc_data.append(None)
+                    self.val_acc_data.append(val_acc)
+            else:
+                # Dodaj nowe dane na końcu list
+                self.epochs.append(epoch)
+                self.train_loss_data.append(train_loss)
+                self.train_acc_data.append(train_acc)
+                if val_loss is not None:
+                    # Rozszerz listę val_loss_data jeśli potrzeba
+                    while len(self.val_loss_data) < len(self.epochs) - 1:
+                        self.val_loss_data.append(None)
+                    self.val_loss_data.append(val_loss)
+                
+                if val_acc is not None:
+                    # Rozszerz listę val_acc_data jeśli potrzeba
+                    while len(self.val_acc_data) < len(self.epochs) - 1:
+                        self.val_acc_data.append(None)
+                    self.val_acc_data.append(val_acc)
+        
+        # Oznacz, że dane zostały zaktualizowane
+        self.data_updated = True
+        
+        # Ręczne wywołanie update_plot
+        self.update_plot()
     
-    # Sprawdź czy wartości są poprawne przed emisją sygnału
-    if train_loss <= 0:
-        self.log_message_signal.emit(f"UWAGA: Ujemna lub zerowa wartość straty: {train_loss}")
+    except Exception as e:
+        import traceback
+        print(f"Błąd w update_data: {e}")
+        print(traceback.format_exc())
+2. Zmiana w app/gui/tabs/training_manager.py
+pythondef _training_task_progress(self, task_name, progress, details):
+    """Obsługa postępu zadania treningowego."""
+    try:
+        # Pobierz dane z details i upewnij się, że mają prawidłowe wartości
+        epoch = int(details.get("epoch", 0))
+        total_epochs = int(details.get("total_epochs", 1))
+        
+        # Zabezpieczenie przed dzieleniem przez zero
+        if total_epochs <= 0:
+            total_epochs = 1
+            
+        # Pobierz i weryfikuj wartości loss i accuracy
+        train_loss = details.get("train_loss")
+        train_acc = details.get("train_acc")
+        val_loss = details.get("val_loss")
+        val_acc = details.get("val_acc")
+        
+        # Aktualizacja paska postępu
+        percentage = min(100, max(0, int((epoch / total_epochs) * 100)))
+        self.parent.task_progress_bar.setValue(percentage)
+        
+        # Aktualizacja opisu postępu
+        if epoch > 0:
+            loss_text = f"{train_loss:.4f}" if train_loss is not None else "N/A"
+            acc_text = f"{train_acc:.2%}" if train_acc is not None else "N/A"
+            details_text = f"Epoka {epoch}/{total_epochs} | Strata: {loss_text}, Dokładność: {acc_text}"
+            self.parent.task_progress_details.setText(details_text)
+            self.parent.logger.info(details_text)
+        
+        # Aktualizacja wizualizacji jeśli istnieje
+        if hasattr(self, "training_visualization") and self.training_visualization:
+            # Upewnij się, że epoka jest większa od zera
+            if epoch > 0:
+                try:
+                    self.training_visualization.update_data(
+                        epoch=epoch,
+                        train_loss=train_loss,
+                        train_acc=train_acc,
+                        val_loss=val_loss,
+                        val_acc=val_acc
+                    )
+                except Exception as vis_error:
+                    self.parent.logger.error(f"Błąd aktualizacji wizualizacji: {vis_error}")
     
-    # Emituj sygnał
-    progress = int((epoch / num_epochs) * 100) if num_epochs > 0 else 0
-    self.task_progress.emit(
-        task_name,
-        progress,
-        {
-            "epoch": epoch,
-            "total_epochs": num_epochs,
-            "train_loss": max(train_loss, 0.0001),  # Zapewnij minimalną wartość dodatnią
-            "train_acc": max(min(train_acc, 1.0), 0.0),  # Ogranicz do [0,1]
-            "val_loss": val_loss,
-            "val_acc": val_acc,
-        },
-    )
+    except Exception as e:
+        import traceback
+        self.parent.logger.error(f"Błąd w _training_task_progress: {e}")
+        self.parent.logger.error(traceback.format_exc())
+3. Zmiana w app/core/workers/batch_training_thread.py
+pythondef _run_training_task(self, task_data, task_name, task_path):
+    # ... kod przed funkcją callback ...
+    
+    def progress_callback(epoch, num_epochs, train_loss, train_acc, val_loss, val_acc):
+        """Callback do śledzenia postępu treningu."""
+        try:
+            # Weryfikacja danych przed emisją sygnału
+            epoch = max(0, int(epoch))
+            num_epochs = max(1, int(num_epochs))
+            
+            # Weryfikacja wartości loss i accuracy
+            if train_loss is None or not isinstance(train_loss, (int, float)) or train_loss <= 0:
+                train_loss = 0.01  # domyślna wartość
+            
+            if train_acc is None or not isinstance(train_acc, (int, float)):
+                train_acc = 0.0  # domyślna wartość
+            train_acc = max(0.0, min(1.0, train_acc))  # Upewnij się, że jest w zakresie [0,1]
+            
+            # Nie weryfikujemy val_loss i val_acc, mogą być None
+            
+            # Oblicz postęp treningu
+            progress = int((epoch / num_epochs) * 100) if num_epochs > 0 else 0
+            progress = max(0, min(100, progress))  # Upewnij się, że jest w zakresie [0,100]
+            
+            # Emituj sygnał z danymi
+            self.task_progress.emit(
+                task_name,
+                progress,
+                {
+                    "epoch": epoch,
+                    "total_epochs": num_epochs,
+                    "train_loss": train_loss,
+                    "train_acc": train_acc,
+                    "val_loss": val_loss,
+                    "val_acc": val_acc,
+                },
+            )
+        except Exception as e:
+            import traceback
+            self.log_message_signal.emit(f"BŁĄD w callback: {str(e)}")
+            self.log_message_signal.emit(traceback.format_exc())
+
+    # ... kod po funkcji callback ...
+Dodatkowe zmiany w update_plot w app/gui/widgets/training_visualization.py
+pythondef update_plot(self):
+    """Aktualizuje wykres na podstawie wybranej metryki i zestawu danych."""
+    try:
+        # Wyczyść wykres
+        self.plot_widget.clear()
+        
+        # Sprawdź czy mamy dane do wyświetlenia
+        if not self.epochs or len(self.epochs) == 0:
+            return
+            
+        # Przygotuj dane X (epoki)
+        x_data = np.array(self.epochs)
+        
+        # Pobierz aktualne wybory z comboboxów
+        metric = self.metric_combo.currentText()
+        # dataset = self.dataset_combo.currentText()  # Nieużywane w obecnej implementacji
+        
+        # Dodaj legendę
+        self.plot_widget.addLegend()
+        
+        # Rysuj odpowiednie dane
+        if metric == "Strata":
+            # Weryfikacja danych
+            if len(self.train_loss_data) > 0 and all(isinstance(v, (int, float)) for v in self.train_loss_data):
+                y_data = np.array(self.train_loss_data)
+                self.plot_widget.plot(
+                    x_data[:len(y_data)],  # Upewnij się, że długości się zgadzają
+                    y_data,
+                    pen=pg.mkPen(color="b", width=2),
+                    name="Strata treningowa",
+                    symbol="o",
+                )
+                
+            # Dodaj dane walidacyjne jeśli są dostępne
+            if len(self.val_loss_data) > 0 and all(v is None or isinstance(v, (int, float)) for v in self.val_loss_data):
+                # Odfiltruj wartości None
+                x_val = []
+                y_val = []
+                for i, val in enumerate(self.val_loss_data):
+                    if val is not None and i < len(self.epochs):
+                        x_val.append(self.epochs[i])
+                        y_val.append(val)
+                
+                if len(x_val) > 0:
+                    self.plot_widget.plot(
+                        np.array(x_val),
+                        np.array(y_val),
+                        pen=pg.mkPen(color="r", width=2),
+                        name="Strata walidacyjna",
+                        symbol="o",
+                    )
+        else:  # Dokładność
+            # Weryfikacja danych
+            if len(self.train_acc_data) > 0 and all(isinstance(v, (int, float)) for v in self.train_acc_data):
+                y_data = np.array(self.train_acc_data)
+                self.plot_widget.plot(
+                    x_data[:len(y_data)],  # Upewnij się, że długości się zgadzają
+                    y_data,
+                    pen=pg.mkPen(color="g", width=2),
+                    name="Dokładność treningowa",
+                    symbol="o",
+                )
+                
+            # Dodaj dane walidacyjne jeśli są dostępne
+            if len(self.val_acc_data) > 0 and all(v is None or isinstance(v, (int, float)) for v in self.val_acc_data):
+                # Odfiltruj wartości None
+                x_val = []
+                y_val = []
+                for i, val in enumerate(self.val_acc_data):
+                    if val is not None and i < len(self.epochs):
+                        x_val.append(self.epochs[i])
+                        y_val.append(val)
+                
+                if len(x_val) > 0:
+                    self.plot_widget.plot(
+                        np.array(x_val),
+                        np.array(y_val),
+                        pen=pg.mkPen(color="m", width=2),
+                        name="Dokładność walidacyjna",
+                        symbol="o",
+                    )
+        
+        # Dostosuj widok do danych
+        self.plot_widget.autoRange()
+        
+        # Resetuj flagę aktualizacji
+        self.data_updated = False
+    
+    except Exception as e:
+        import traceback
+        print(f"Błąd w update_plot: {e}")
+        print(traceback.format_exc())
+Powyższe zmiany powinny znacznie poprawić niezawodność systemu przez:
+
+Dodanie szczegółowej walidacji danych na każdym etapie
+Lepszą obsługę błędów z dokładnym loggingiem
+Bardziej elastyczne zarządzanie listami danych
+Lepszą weryfikację przed rysowaniem wykresu
+
+Te zmiany są znacznie bardziej kompleksowe niż poprzednio zaproponowane rozwiązanie i powinny rozwiązać problem związany z przekazywaniem danych z wątku treningowego do UI.

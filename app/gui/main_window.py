@@ -69,9 +69,16 @@ class MainWindow(QMainWindow):
         """Inicjalizacja głównego okna aplikacji."""
         super().__init__()
         try:
-            # Inicjalizacja loggera i podłączenie do konsoli UI
+            # Inicjalizacja loggera
             self.logger = Logger()
-            self.logger.info("Inicjalizacja głównego okna aplikacji...")
+            self.logger.info("MainWindow __init__: Start")
+
+            # Inicjalizuj self.settings jako pusty słownik na samym początku
+            self.settings = {}
+            self.logger.info(
+                f"MainWindow __init__: self.settings zainicjalizowane jako: {self.settings}"
+            )
+
             self._setup_console_logging()  # Konfiguracja handlera dla konsoli UI
 
             # Inicjalizacja urządzenia do obliczeń
@@ -81,11 +88,14 @@ class MainWindow(QMainWindow):
             self._settings_cache = {}
             self.hardware_profile = None
             self.current_model = None  # Dodano atrybut dla aktualnego modelu
+            self.current_image_path = None  # Dodano atrybut dla ścieżki obrazu
 
             # Załaduj ustawienia
+            self.logger.info("MainWindow __init__: Przed _load_settings()")
             self._load_settings()
-            self.settings = {}  # Dodano tymczasowy słownik ustawień
-            self.current_image_path = None  # Dodano atrybut dla ścieżki obrazu
+            self.logger.info(
+                f"MainWindow __init__: Po _load_settings(), self.settings = {self.settings}"
+            )
 
             # Zastosuj motyw Material Design
             self._apply_material_theme()
@@ -98,6 +108,9 @@ class MainWindow(QMainWindow):
 
             # Utwórz interfejs
             self._create_menu()
+            self.logger.info(
+                f"MainWindow __init__: Przed _create_central_widget(), self.settings = {self.settings}"
+            )  # Log przed tworzeniem zakładek
             self._create_central_widget()
             self._create_status_bar()
 
@@ -382,34 +395,100 @@ class MainWindow(QMainWindow):
         self.system_info_timer.timeout.connect(self._update_system_info)
         self.system_info_timer.start(5000)  # Aktualizuj co 5 sekund
 
-    def _load_settings(self):
-        """Ładuje ustawienia aplikacji."""
+    def _get_default_settings_dict(self):
+        from app.utils.config import load_default_settings as util_load_defaults
+
+        return util_load_defaults()
+
+    def _load_default_settings(self):
+        """Ładuje domyślne ustawienia aplikacji DO self.settings."""
         try:
-            if os.path.exists("settings.json"):
-                with open("settings.json", "r") as f:
-                    self.settings = json.load(f)
-            else:
-                self.settings = {
-                    "models_dir": "data/models",
-                    "training_dir": "data/training",
-                    "reports_dir": "reports",
-                    "last_model": None,
-                    "hardware_profile": None,
-                }
-                self._save_settings()
+            # from app.utils.config import load_default_settings # Już zaimportowane w _get_default_settings_dict
+            self.settings = self._get_default_settings_dict()
+            self.logger.info(
+                f"MainWindow _load_default_settings: self.settings ustawione na domyślne: {self.settings}"
+            )
+            # Usunięto _save_settings() stąd, będzie wywołane w _load_settings() w razie potrzeby
         except Exception as e:
-            self.logger.error(f"Błąd ładowania ustawień: {str(e)}")
-            self.settings = {
-                "models_dir": "data/models",
-                "training_dir": "data/training",
-                "reports_dir": "reports",
-                "last_model": None,
-                "hardware_profile": None,
-            }
+            self.logger.error(
+                f"Błąd podczas _load_default_settings: {str(e)}. self.settings może być niekompletne."
+            )
+            # W ostateczności, można tu ustawić absolutne minimum, jeśli wszystko inne zawiedzie
+            self.settings = {}  # Powrót do pustego słownika w razie krytycznego błędu
+
+    def _load_settings(self):
+        """Ładuje ustawienia aplikacji, łącząc z domyślnymi i tworząc plik w razie potrzeby."""
+        try:
+            settings_filepath = "settings.json"
+            default_settings = self._get_default_settings_dict()
+
+            if os.path.exists(settings_filepath):
+                try:
+                    with open(settings_filepath, "r", encoding="utf-8") as f:
+                        loaded_settings_from_file = json.load(f)
+                    self.logger.info(
+                        f"MainWindow _load_settings: Wczytano z {settings_filepath}: {loaded_settings_from_file}"
+                    )
+
+                    # Scalanie: zacznij od domyślnych, nadpisz wczytanymi
+                    merged_settings = default_settings.copy()
+                    merged_settings.update(loaded_settings_from_file)
+                    self.settings.update(
+                        merged_settings
+                    )  # Aktualizuj główny self.settings
+                    self.logger.info(
+                        f"MainWindow _load_settings: self.settings po scaleniu: {self.settings}"
+                    )
+
+                    # Sprawdź, czy plik wymaga aktualizacji o nowe domyślne klucze
+                    if len(merged_settings) > len(loaded_settings_from_file):
+                        self.logger.info(
+                            f"Plik {settings_filepath} jest aktualizowany o nowe/brakujące klucze z ustawień domyślnych."
+                        )
+                        self._save_settings()  # Zapisz scalone ustawienia, aby zaktualizować plik
+
+                except json.JSONDecodeError as je:
+                    self.logger.error(
+                        f"Błąd dekodowania JSON z {settings_filepath}: {str(je)}. Plik może być uszkodzony. Ładowanie domyślnych i próba nadpisania."
+                    )
+                    self.settings.update(default_settings)  # Użyj domyślnych
+                    self._save_settings()  # Spróbuj nadpisać uszkodzony plik domyślnymi
+                except Exception as e_file_read:
+                    self.logger.error(
+                        f"Nieoczekiwany błąd podczas czytania {settings_filepath}: {str(e_file_read)}. Ładowanie domyślnych."
+                    )
+                    self.settings.update(default_settings)
+                    # Nie zapisujemy tutaj, aby uniknąć pętli w razie problemów z zapisem
+            else:
+                self.logger.warning(
+                    f"Plik {settings_filepath} nie istnieje. Ładowanie i zapisywanie ustawień domyślnych."
+                )
+                self.settings.update(default_settings)  # Użyj domyślnych
+                self._save_settings()  # Zapisz domyślne, aby utworzyć plik
+
+        except Exception as e_outer:
+            self.logger.error(
+                f"Krytyczny błąd w _load_settings: {str(e_outer)}. Ładowanie awaryjnych ustawień domyślnych."
+            )
+            # Użyj self._load_default_settings(), która ma własny try-except
+            # Ta metoda już ustawia self.settings
+            # Na wszelki wypadek, jeśli _load_default_settings samo rzuci wyjątek i self.settings nie zostanie ustawione:
+            if (
+                not self.settings
+            ):  # Jeśli self.settings jest nadal puste po błędzie w _load_default_settings
+                current_defaults = (
+                    self._get_default_settings_dict()
+                )  # Pobierz świeże domyślne
+                self.settings.update(current_defaults)
+            self.logger.info(
+                f"MainWindow _load_settings: self.settings po obsłudze błędu zewnętrznego: {self.settings}"
+            )
+            # Rozważ, czy zapisywać tutaj. Jeśli zapis jest problemem, może to prowadzić do pętli.
 
     def _save_settings(self):
         """Zapisuje ustawienia aplikacji."""
         try:
+            print(f"DEBUG MW._save_settings: Zapisuję do pliku: " f"{self.settings}")
             with open("settings.json", "w") as f:
                 json.dump(self.settings, f, indent=4)
         except Exception as e:
@@ -509,6 +588,10 @@ class MainWindow(QMainWindow):
             # Wyświetl okno i czekaj na odpowiedź
             if settings_dialog.exec() == QDialog.DialogCode.Accepted:
                 # Jeśli użytkownik kliknął OK, zastosuj ustawienia
+                print(
+                    f"DEBUG MW po SettingsDialog.Accepted: "
+                    f"self.settings = {self.settings}"
+                )
                 self._apply_settings()
 
         except Exception as e:
@@ -705,8 +788,7 @@ class MainWindow(QMainWindow):
 
             if self.hardware_profile:
                 self.logger.info(
-                    f"Pomyślnie załadowano profil sprzętowy dla machine_id: "
-                    f"{self.hardware_profile.get('machine_id')}"
+                    f"Pomyślnie załadowano profil sprzętowy dla machine_id: {self.hardware_profile.get('machine_id')}"
                 )
                 # Aktualizuj cache
                 self._settings_cache["hardware_profile"] = self.hardware_profile
@@ -1131,7 +1213,11 @@ class MainWindow(QMainWindow):
 
             # Ścieżka do skryptu data_splitter_gui.py
             script_path = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                os.path.dirname(
+                    os.path.dirname(os.path.abspath(__file__))
+                ),  # to jest <project_root>/app
+                "utils",
+                "file_tools",
                 "data_splitter_gui.py",
             )
 
@@ -1192,25 +1278,6 @@ class MainWindow(QMainWindow):
             self.logger.error(f"Błąd stosowania ustawień: {str(e)}")
             QMessageBox.critical(
                 self, "Błąd", f"Nie udało się zastosować ustawień:\n{str(e)}"
-            )
-
-    def _load_default_settings(self):
-        """Ładuje domyślne ustawienia aplikacji."""
-        try:
-            from app.utils.config import load_default_settings
-
-            # Załaduj domyślne ustawienia
-            self.settings = load_default_settings()
-
-            # Zapisz ustawienia
-            self._save_settings()
-
-            self.logger.info("Załadowano domyślne ustawienia")
-
-        except Exception as e:
-            self.logger.error(f"Błąd ładowania domyślnych ustawień: {str(e)}")
-            QMessageBox.critical(
-                self, "Błąd", f"Nie udało się załadować domyślnych ustawień:\n{str(e)}"
             )
 
     def _verify_files(self):

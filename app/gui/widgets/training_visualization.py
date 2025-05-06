@@ -1,14 +1,15 @@
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 
 class TrainingVisualization(QWidget):
     """Widget do wizualizacji procesu treningu w czasie rzeczywistym."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, settings=None):
         super().__init__(parent)
+        self.settings = settings if settings is not None else {}
         self.setup_ui()
 
         # Inicjalizacja danych
@@ -17,15 +18,6 @@ class TrainingVisualization(QWidget):
         self.val_loss_data = []
         self.val_acc_data = []
         self.epochs = []
-
-        # Timer do automatycznego odświeżania
-        self.update_timer = QTimer()
-        self.update_timer.timeout.connect(self.update_plot)
-        self.update_timer.start(500)  # Odświeżaj co 500ms
-
-        # Debug info
-        self.debug_label = QLabel("Brak danych")
-        self.layout().addWidget(self.debug_label)
 
         # Flaga wskazująca czy dane zostały zaktualizowane
         self.data_updated = False
@@ -39,29 +31,31 @@ class TrainingVisualization(QWidget):
         header.setStyleSheet("font-weight: bold; font-size: 14px;")
         layout.addWidget(header)
 
-        # Kontrolki
+        # Kontrolki - usunięto wybór metryki
         controls_layout = QHBoxLayout()
-
-        # Wybór metryki
-        self.metric_combo = QComboBox()
-        self.metric_combo.addItems(["Strata", "Dokładność"])
-        self.metric_combo.currentTextChanged.connect(self.update_plot)
-        controls_layout.addWidget(QLabel("Metryka:"))
-        controls_layout.addWidget(self.metric_combo)
-
-        # Wybór zestawu danych
-        self.dataset_combo = QComboBox()
-        self.dataset_combo.addItems(["Trening", "Walidacja"])
-        self.dataset_combo.currentTextChanged.connect(self.update_plot)
-        controls_layout.addWidget(QLabel("Zestaw danych:"))
-        controls_layout.addWidget(self.dataset_combo)
-
+        # Usunięto QComboBox self.metric_combo i powiązaną etykietę
+        # oraz connect
         controls_layout.addStretch()
         layout.addLayout(controls_layout)
 
         # Wykres
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setBackground("w")
+
+        # Ustaw kolor tła obszaru kreślenia na podstawie ustawień lub domyślny biały
+        key = "chart_plot_area_background_color"
+        default_color = "w"
+        chart_plot_area_bg_color = self.settings.get(key, default_color)
+        print(
+            f"DEBUG TV: Klucz='{key}', "
+            f"Wartość='{chart_plot_area_bg_color}', "
+            f"Typ={type(chart_plot_area_bg_color)}"
+        )
+        if self.plot_widget.plotItem:
+            view_box = self.plot_widget.plotItem.getViewBox()
+            if view_box:
+                view_box.setBackgroundColor(chart_plot_area_bg_color)
+
+        # self.plot_widget.setBackground(chart_bg_color) # Usunięte lub zakomentowane - stary sposób
         self.plot_widget.showGrid(x=True, y=True)
         self.plot_widget.addLegend()
         self.plot_widget.setLabel("left", "Wartość")
@@ -74,176 +68,171 @@ class TrainingVisualization(QWidget):
         )
 
     def update_plot(self):
-        """Aktualizuje wykres na podstawie wybranej metryki i zestawu danych."""
-        if not self.data_updated:
-            return
+        """Aktualizuje wykres, rysując wszystkie dostępne metryki."""
+        try:
+            # Wyczyść wykres
+            self.plot_widget.clear()
 
-        metric = self.metric_combo.currentText()
-        dataset = self.dataset_combo.currentText()
+            # Sprawdź czy mamy dane do wyświetlenia
+            if not self.epochs or len(self.epochs) == 0:
+                return
 
-        # Debug info
-        debug_text = f"Epoki: {len(self.epochs)}\n"
-        debug_text += f"Strata treningowa: {len(self.train_loss_data)} punktów\n"
-        debug_text += f"Dokładność treningowa: {len(self.train_acc_data)} punktów\n"
-        debug_text += f"Strata walidacyjna: {len(self.val_loss_data)} punktów\n"
-        debug_text += f"Dokładność walidacyjna: {len(self.val_acc_data)} punktów\n\n"
+            # Przygotuj dane X (epoki)
+            x_data = np.array(self.epochs)
 
-        if self.epochs:
-            debug_text += f"Ostatnia epoka: {self.epochs[-1]}\n"
-            if self.train_loss_data:
-                debug_text += (
-                    f"Ostatnia strata treningowa: {self.train_loss_data[-1]:.4f}\n"
-                )
-            if self.train_acc_data:
-                debug_text += (
-                    f"Ostatnia dokładność treningowa: {self.train_acc_data[-1]:.4f}\n"
-                )
-            if self.val_loss_data:
-                debug_text += (
-                    f"Ostatnia strata walidacyjna: {self.val_loss_data[-1]:.4f}\n"
-                )
-            if self.val_acc_data:
-                debug_text += (
-                    f"Ostatnia dokładność walidacyjna: {self.val_acc_data[-1]:.4f}\n"
-                )
+            # Dodaj legendę
+            self.plot_widget.addLegend()
 
-        self.debug_label.setText(debug_text)
+            # Pobierz kolory z ustawień lub użyj domyślnych
+            train_loss_color = self.settings.get("chart_train_loss_color", "b")
+            val_loss_color = self.settings.get("chart_val_loss_color", "r")
+            train_acc_color = self.settings.get("chart_train_acc_color", "g")
+            val_acc_color = self.settings.get("chart_val_acc_color", "m")
 
-        # Sprawdź czy mamy dane do wyświetlenia
-        if not self.epochs:
-            print("DEBUG: Brak danych do wyświetlenia")
-            return
-
-        # Wyczyść wykres
-        self.plot_widget.clear()
-
-        # Przygotuj dane do wykresu
-        x_data = np.array(self.epochs)
-
-        # Dodaj legendę
-        self.plot_widget.addLegend()
-
-        # Rysuj dane treningowe
-        if metric == "Strata":
-            if self.train_loss_data:
-                y_data = np.array(self.train_loss_data)
-                print(f"DEBUG: Dane straty treningowej: {y_data}")
+            # Rysuj stratę treningową
+            if len(self.train_loss_data) > 0 and all(
+                isinstance(v, (int, float)) for v in self.train_loss_data
+            ):
+                y_data_train_loss = np.array(self.train_loss_data)
                 self.plot_widget.plot(
-                    x_data,
-                    y_data,
-                    pen=pg.mkPen(color="b", width=2),
+                    x_data[: len(y_data_train_loss)],
+                    y_data_train_loss,
+                    pen=pg.mkPen(color=train_loss_color, width=2),
                     name="Strata treningowa",
                     symbol="o",
                 )
-            if self.val_loss_data:
-                y_data = np.array(self.val_loss_data)
-                print(f"DEBUG: Dane straty walidacyjnej: {y_data}")
+
+            # Rysuj stratę walidacyjną
+            if len(self.val_loss_data) > 0 and all(
+                (v is None or isinstance(v, (int, float))) for v in self.val_loss_data
+            ):
+                x_val_loss, y_val_loss = [], []
+                for i, val in enumerate(self.val_loss_data):
+                    if val is not None and i < len(self.epochs):
+                        x_val_loss.append(self.epochs[i])
+                        y_val_loss.append(val)
+                if len(x_val_loss) > 0:
+                    self.plot_widget.plot(
+                        np.array(x_val_loss),
+                        np.array(y_val_loss),
+                        pen=pg.mkPen(color=val_loss_color, width=2),
+                        name="Strata walidacyjna",
+                        symbol="o",
+                    )
+
+            # Rysuj dokładność treningową
+            if len(self.train_acc_data) > 0 and all(
+                isinstance(v, (int, float)) for v in self.train_acc_data
+            ):
+                y_data_train_acc = np.array(self.train_acc_data)
                 self.plot_widget.plot(
-                    x_data,
-                    y_data,
-                    pen=pg.mkPen(color="r", width=2),
-                    name="Strata walidacyjna",
-                    symbol="o",
-                )
-        else:  # Dokładność
-            if self.train_acc_data:
-                y_data = np.array(self.train_acc_data)
-                print(f"DEBUG: Dane dokładności treningowej: {y_data}")
-                self.plot_widget.plot(
-                    x_data,
-                    y_data,
-                    pen=pg.mkPen(color="g", width=2),
+                    x_data[: len(y_data_train_acc)],
+                    y_data_train_acc,
+                    pen=pg.mkPen(color=train_acc_color, width=2),
                     name="Dokładność treningowa",
                     symbol="o",
                 )
-            if self.val_acc_data:
-                y_data = np.array(self.val_acc_data)
-                print(f"DEBUG: Dane dokładności walidacyjnej: {y_data}")
-                self.plot_widget.plot(
-                    x_data,
-                    y_data,
-                    pen=pg.mkPen(color="m", width=2),
-                    name="Dokładność walidacyjna",
-                    symbol="o",
-                )
 
-        # Rysuj linie epok
-        for epoch in self.epochs:
-            self.plot_widget.addItem(
-                pg.InfiniteLine(
-                    pos=epoch,
-                    angle=90,
-                    pen=self.epoch_line_pen,
-                    label=f"Epoka {epoch}",
-                )
-            )
+            # Rysuj dokładność walidacyjną
+            if len(self.val_acc_data) > 0 and all(
+                (v is None or isinstance(v, (int, float))) for v in self.val_acc_data
+            ):
+                x_val_acc, y_val_acc = [], []
+                for i, val in enumerate(self.val_acc_data):
+                    if val is not None and i < len(self.epochs):
+                        x_val_acc.append(self.epochs[i])
+                        y_val_acc.append(val)
+                if len(x_val_acc) > 0:
+                    self.plot_widget.plot(
+                        np.array(x_val_acc),
+                        np.array(y_val_acc),
+                        pen=pg.mkPen(color=val_acc_color, width=2),
+                        name="Dokładność walidacyjna",
+                        symbol="o",
+                    )
 
-        # Dostosuj widok do danych
-        self.plot_widget.autoRange()
+            # Dostosuj widok do danych
+            self.plot_widget.autoRange()
 
-        # Resetuj flagę aktualizacji
-        self.data_updated = False
+            # Resetuj flagę aktualizacji
+            self.data_updated = False
+
+        except Exception as e:
+            import traceback
+
+            print(f"Błąd w update_plot: {e}")
+            print(traceback.format_exc())
 
     def update_data(self, epoch, train_loss, train_acc, val_loss=None, val_acc=None):
         """Aktualizuje dane wykresu."""
-        print(f"\nDEBUG update_data:")
-        print(f"Epoka: {epoch}")
-        print(f"Strata treningowa: {train_loss}")
-        print(f"Dokładność treningowa: {train_acc}")
-        print(f"Strata walidacyjna: {val_loss}")
-        print(f"Dokładność walidacyjna: {val_acc}")
-
-        # Sprawdź poprawność danych
         try:
-            epoch = int(epoch)
-            train_loss = float(train_loss)
-            train_acc = float(train_acc)
-            if val_loss is not None:
-                val_loss = float(val_loss)
-            if val_acc is not None:
-                val_acc = float(val_acc)
-        except (ValueError, TypeError) as e:
-            print(f"BŁĄD konwersji danych: {e}")
-            return
+            # Konwersja i walidacja danych
+            try:
+                epoch = int(epoch)
+                train_loss = float(train_loss) if train_loss is not None else None
+                train_acc = float(train_acc) if train_acc is not None else None
+                val_loss = float(val_loss) if val_loss is not None else None
+                val_acc = float(val_acc) if val_acc is not None else None
+            except (ValueError, TypeError) as e:
+                print(f"BŁĄD konwersji danych: {e}")
+                # Nie przerywamy, tylko ustawiamy wartości domyślne
+                if train_loss is None or not isinstance(train_loss, (int, float)):
+                    train_loss = 1.0  # Wartość domyślna
+                if train_acc is None or not isinstance(train_acc, (int, float)):
+                    train_acc = 0.5  # Wartość domyślna
 
-        # Sprawdź czy dane są sensowne - POPRAWIONA WALIDACJA
-        if train_loss < 0 or train_acc < 0 or train_acc > 1:  # Zmieniamy <= na <
-            print(
-                f"BŁĄD: Nieprawidłowe wartości danych treningowych: loss={train_loss}, acc={train_acc}"
-            )
-            return
+            # Dodaj nowe dane tylko jeśli epoka jest dodatnia
+            if epoch > 0:
+                # Sprawdź czy ta epoka już istnieje
+                if epoch in self.epochs:
+                    # Znajdź indeks dla tej epoki
+                    idx = self.epochs.index(epoch)
+                    # Zaktualizuj istniejące dane
+                    self.train_loss_data[idx] = train_loss
+                    self.train_acc_data[idx] = train_acc
+                    if val_loss is not None and idx < len(self.val_loss_data):
+                        self.val_loss_data[idx] = val_loss
+                    elif val_loss is not None:
+                        # Rozszerz listę jeśli potrzeba
+                        while len(self.val_loss_data) < idx:
+                            self.val_loss_data.append(None)
+                        self.val_loss_data.append(val_loss)
 
-        if val_loss is not None and val_loss < 0:  # Zmieniamy <= na <
-            print(f"BŁĄD: Nieprawidłowa wartość straty walidacyjnej: {val_loss}")
-            return
+                    if val_acc is not None and idx < len(self.val_acc_data):
+                        self.val_acc_data[idx] = val_acc
+                    elif val_acc is not None:
+                        # Rozszerz listę jeśli potrzeba
+                        while len(self.val_acc_data) < idx:
+                            self.val_acc_data.append(None)
+                        self.val_acc_data.append(val_acc)
+                else:
+                    # Dodaj nowe dane na końcu list
+                    self.epochs.append(epoch)
+                    self.train_loss_data.append(train_loss)
+                    self.train_acc_data.append(train_acc)
+                    if val_loss is not None:
+                        # Rozszerz listę val_loss_data jeśli potrzeba
+                        while len(self.val_loss_data) < len(self.epochs) - 1:
+                            self.val_loss_data.append(None)
+                        self.val_loss_data.append(val_loss)
 
-        if val_acc is not None and (val_acc < 0 or val_acc > 1):
-            print(f"BŁĄD: Nieprawidłowa wartość dokładności walidacyjnej: {val_acc}")
-            return
+                    if val_acc is not None:
+                        # Rozszerz listę val_acc_data jeśli potrzeba
+                        while len(self.val_acc_data) < len(self.epochs) - 1:
+                            self.val_acc_data.append(None)
+                        self.val_acc_data.append(val_acc)
 
-        # Dodaj nowe dane
-        self.epochs.append(epoch)
-        self.train_loss_data.append(train_loss)
-        self.train_acc_data.append(train_acc)
+            # Oznacz, że dane zostały zaktualizowane
+            self.data_updated = True
 
-        if val_loss is not None:
-            self.val_loss_data.append(val_loss)
-        if val_acc is not None:
-            self.val_acc_data.append(val_acc)
+            # Ręczne wywołanie update_plot
+            self.update_plot()
 
-        print("\nDEBUG: Stan danych po aktualizacji:")
-        print(f"Epoki: {self.epochs}")
-        print(f"Strata treningowa: {self.train_loss_data}")
-        print(f"Dokładność treningowa: {self.train_acc_data}")
-        print(f"Strata walidacyjna: {self.val_loss_data}")
-        print(f"Dokładność walidacyjna: {self.val_acc_data}")
+        except Exception as e:
+            import traceback
 
-        # Oznacz, że dane zostały zaktualizowane i odśwież wykres
-        self.data_updated = True
-        self.update_plot()
-
-        # Wymuś odświeżenie wykresu
-        self.plot_widget.replot()
+            print(f"Błąd w update_data: {e}")
+            print(traceback.format_exc())
 
     def clear_data(self):
         """Czyści wszystkie dane wykresu."""
@@ -254,9 +243,3 @@ class TrainingVisualization(QWidget):
         self.val_acc_data = []
         self.data_updated = False
         self.update_plot()
-
-    def closeEvent(self, event):
-        """Obsługuje zamknięcie widgetu."""
-        # Zatrzymaj timer przed zamknięciem
-        self.update_timer.stop()
-        super().closeEvent(event)

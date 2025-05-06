@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import shutil
+import traceback
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -157,7 +158,7 @@ class ModelManager(QWidget, TabInterface):
 
     def connect_signals(self):
         """Podłącza sygnały do slotów."""
-        self.load_btn.clicked.connect(self._load_selected_model)
+        self.load_btn.clicked.connect(self._handle_load_button_click)
         self.export_btn.clicked.connect(self._export_selected_model)
         self.export_config_btn.clicked.connect(self._export_model_config)
         self.import_config_btn.clicked.connect(self._import_model_config)
@@ -167,6 +168,16 @@ class ModelManager(QWidget, TabInterface):
         self.stats_btn.clicked.connect(self._show_model_stats)
         self.compare_btn.clicked.connect(self._compare_models)
         self.refresh_btn.clicked.connect(self.refresh)
+
+    def update_settings(self, settings):
+        """Aktualizuje ustawienia zakładki."""
+        self.settings = settings
+        # Można tu dodać logikę specyficzną dla ModelManager,
+        # np. odświeżenie, jeśli zmiana ustawień tego wymaga (np. zmiana models_dir).
+        if self.parent and hasattr(self.parent, "logger"):
+            self.parent.logger.info("ModelManager zaktualizował ustawienia.")
+        # Odśwież listę modeli, bo np. models_dir mógł się zmienić
+        self._refresh_models_list()
 
     def refresh(self):
         """Odświeża listę modeli."""
@@ -276,80 +287,157 @@ class ModelManager(QWidget, TabInterface):
         except Exception as e:
             self.parent.logger.error(f"Błąd podczas odświeżania listy modeli: {str(e)}")
 
-    def _load_selected_model(self):
-        """Ładuje model wybrany z listy w tabeli modeli."""
+    def _handle_load_button_click(self):
+        """Obsługuje kliknięcie przycisku 'Załaduj model'.
+        Pobiera zaznaczony model i wywołuje self.load_model()."""
         try:
-            self.parent.logger.info("Rozpoczynam ładowanie wybranego modelu...")
-            # Sprawdź, czy jest wybrany wiersz
+            self.parent.logger.info("Kliknięto przycisk Załaduj model")
             selected_rows = []
             for i in range(self.models_table.rowCount()):
-                item = self.models_table.item(i, 0)
+                item = self.models_table.item(i, 0)  # Kolumna z checkboxem
                 if item and item.checkState() == Qt.CheckState.Checked:
                     selected_rows.append(i)
 
-            # Jeśli nie wybrano żadnego modelu, wybierz aktualnie zaznaczony wiersz
-            if not selected_rows:
+            model_to_load_name = None
+            if selected_rows:  # Jeśli są jakieś zaznaczone checkboxy
+                row = selected_rows[0]  # Bierzemy pierwszy zaznaczony
+                # Kolumna z nazwą modelu
+                model_item = self.models_table.item(row, 1)
+                if model_item:
+                    model_to_load_name = model_item.text()
+            # Jeśli brak zaznaczonych checkboxów, spróbuj z aktualnie podświetlonym
+            # wierszem
+            else:
                 current_row = self.models_table.currentRow()
                 if current_row >= 0:
-                    selected_rows = [current_row]
+                    # Kolumna z nazwą modelu
+                    model_item = self.models_table.item(current_row, 1)
+                    if model_item:
+                        model_to_load_name = model_item.text()
 
-            # Sprawdź czy wybrano model
-            if not selected_rows:
-                QMessageBox.warning(
-                    self, "Ostrzeżenie", "Wybierz model do załadowania."
+            if model_to_load_name:
+                self.parent.logger.info(
+                    f"Model wybrany przez przycisk: {model_to_load_name}"
                 )
-                return
+                self.load_model(model_to_load_name)
+            else:
+                QMessageBox.warning(
+                    self, "Ostrzeżenie", "Wybierz model do załadowania z listy."
+                )
+                self.parent.logger.warning(
+                    "Nie wybrano modelu do załadowania przyciskiem."
+                )
 
-            # Używamy tylko pierwszego wybranego modelu
-            row = selected_rows[0]
-            model_name = self.models_table.item(row, 1).text()
+        except Exception as e:
+            self.parent.logger.error(
+                f"Błąd w _handle_load_button_click: {str(e)} {traceback.format_exc()}"
+            )
+            QMessageBox.critical(self, "Błąd", f"Wystąpił nieoczekiwany błąd: {str(e)}")
+
+    def load_model(self, model_name_to_load: str):
+        """Ładuje model na podstawie przekazanej nazwy."""
+        try:
+            self.parent.logger.info(
+                f"Rozpoczynam ładowanie modelu: {model_name_to_load}"
+            )
+
+            if not model_name_to_load:
+                QMessageBox.warning(
+                    self, "Ostrzeżenie", "Nie podano nazwy modelu do załadowania."
+                )
+                self.parent.logger.warning("Nie podano nazwy modelu w load_model.")
+                return
 
             # Bezpieczne pobieranie wartości z ustawień z wartością domyślną
             models_dir = self.settings.get("models_dir", "data/models")
-            model_path = os.path.join(models_dir, model_name)
+            model_path = os.path.join(models_dir, model_name_to_load)
 
             # Sprawdź czy plik istnieje
             if not os.path.exists(model_path):
                 QMessageBox.warning(
-                    self, "Ostrzeżenie", f"Plik modelu {model_name} nie istnieje."
+                    self,
+                    "Ostrzeżenie",
+                    f"Plik modelu {model_name_to_load} nie istnieje.",
                 )
+                self.parent.logger.error(f"Plik modelu nie istnieje: {model_path}")
                 return
 
             # Załaduj model w głównym oknie
             self.parent.logger.info(f"Ładowanie modelu z: {model_path}")
-            self.parent.classifier = ImageClassifier(weights_path=model_path)
+            # Zakładamy, że self.parent ma atrybut classifier lub potrafi go utworzyć
+            if (
+                hasattr(self.parent, "classifier")
+                and self.parent.classifier is not None
+            ):
+                # Jeśli klasyfikator istnieje, można go próbować zaktualizować lub przeładować
+                # Dla bezpieczeństwa tworzymy nowy, jeśli to konieczne
+                try:
+                    self.parent.classifier.load_weights(
+                        model_path
+                    )  # Przykładowa metoda, jeśli istnieje
+                    self.parent.logger.info(
+                        f"Załadowano wagi do istniejącego klasyfikatora dla modelu: {model_name_to_load}"
+                    )
+                except AttributeError:
+                    self.parent.logger.info(
+                        f"Tworzenie nowego klasyfikatora dla modelu: {model_name_to_load}"
+                    )
+                    self.parent.classifier = ImageClassifier(weights_path=model_path)
+            else:
+                self.parent.logger.info(
+                    f"Tworzenie nowego klasyfikatora dla modelu: {model_name_to_load}"
+                )
+                self.parent.classifier = ImageClassifier(weights_path=model_path)
+
             self.parent.model_loaded = True
             self.parent.model_path = model_path
-            self.parent.current_model = model_name
+            self.parent.current_model = model_name_to_load
 
             # Aktualizuj informacje o aktywnym modelu
-            self.parent._update_active_model_info()
+            if hasattr(self.parent, "_update_active_model_info"):
+                self.parent._update_active_model_info()
 
             # Odśwież zakładkę Przetwarzanie wsadowe
-            if hasattr(self.parent, "batch_processor_tab"):
+            if hasattr(self.parent, "batch_processor_tab") and hasattr(
+                self.parent.batch_processor_tab, "refresh"
+            ):
                 self.parent.batch_processor_tab.refresh()
 
             # Zapisz ostatnio używany model
-            self.parent.settings["last_model"] = model_name
-            self.parent._save_settings()
+            self.parent.settings["last_model"] = model_name_to_load
+            if hasattr(self.parent, "_save_settings"):
+                self.parent._save_settings()
 
             # Aktualizuj status w tabeli
             for i in range(self.models_table.rowCount()):
-                status_item = self.models_table.item(i, 5)
-                status_item.setText("Aktywny" if i == row else "")
+                item = self.models_table.item(i, 1)  # Kolumna z nazwą modelu
+                status_item = self.models_table.item(i, 5)  # Kolumna ze statusem
+                if item and status_item:
+                    if item.text() == model_name_to_load:
+                        status_item.setText("Aktywny")
+                    else:
+                        status_item.setText("")
 
             # Wyświetl komunikat
             QMessageBox.information(
-                self, "Sukces", f"Model {model_name} został załadowany pomyślnie."
+                self,
+                "Sukces",
+                f"Model {model_name_to_load} został załadowany pomyślnie.",
             )
 
-            self.parent.logger.info(f"Model {model_name} został pomyślnie załadowany")
+            self.parent.logger.info(
+                f"Model {model_name_to_load} został pomyślnie załadowany"
+            )
 
         except Exception as e:
-            QMessageBox.critical(
-                self, "Błąd", f"Nie udało się załadować modelu: {str(e)}"
+            self.parent.logger.error(
+                f"Błąd ładowania modelu ({model_name_to_load}): {str(e)} {traceback.format_exc()}"
             )
-            self.parent.logger.error(f"Błąd ładowania modelu: {str(e)}")
+            QMessageBox.critical(
+                self,
+                "Błąd",
+                f"Nie udało się załadować modelu {model_name_to_load}: {str(e)}",
+            )
 
     def _export_selected_model(self):
         """Eksportuje model wybrany z tabeli modeli."""
@@ -1275,5 +1363,3 @@ class ModelManager(QWidget, TabInterface):
             if gpu_info:
                 info_text += f"GPU: {gpu_info.get('name', 'Nieznany')}\n"
             info_text += f"RAM: {profile.get('ram_total', 0):.1f} GB"
-
-            self.profile_info_label.setText(info_text)
