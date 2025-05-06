@@ -1,3 +1,5 @@
 {
-    "last_model": "vit_50epok_2025-05-06_10-05.pt"
+    "last_model": "efficientnet_50epok_2025-05-06_12-57.pt",
+    "last_batch_input_dir": "D:/_set_B",
+    "last_batch_output_dir": "F:/_sort_files"
 }

@@ -1,5 +1,9 @@
 - ustawienia poprawic
 
+- komentarz do modelu
+- poprawa zmiany nazwy
+
+
 "num_workers": 2 - na bazie profilu
 
 - Eksportowany do formatu ONNX dla wykorzystania w innych aplikacjach

@@ -1,4 +1,6 @@
+import logging
 import os
+import traceback
 from typing import List
 
 from PyQt6.QtCore import QCoreApplication
@@ -36,6 +38,14 @@ class BatchProcessor(QWidget, TabInterface):
         self.image_sorter = None
         self.setup_ui()
         self.connect_signals()
+        # Konfiguracja loggera
+        self.logger = logging.getLogger("BatchProcessor")
+        if not self.logger.hasHandlers():
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
 
     def setup_ui(self):
         """Konfiguruje interfejs użytkownika zakładki."""
@@ -267,9 +277,11 @@ class BatchProcessor(QWidget, TabInterface):
             )
         except ValueError as ve:
             # Obsługa błędu walidacji katalogów z ImageSorter
+            self.logger.error(f"Błąd konfiguracji: {str(ve)}\n{traceback.format_exc()}")
             QMessageBox.critical(self, "Błąd konfiguracji", str(ve))
             self.status_label.setText("Błąd konfiguracji")
         except Exception as e:
+            self.logger.error(f"Błąd sortowania: {str(e)}\n{traceback.format_exc()}")
             QMessageBox.critical(
                 self, "Błąd sortowania", f"Wystąpił nieoczekiwany błąd: {str(e)}"
             )
