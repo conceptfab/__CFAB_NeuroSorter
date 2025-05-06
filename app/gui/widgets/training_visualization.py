@@ -206,17 +206,19 @@ class TrainingVisualization(QWidget):
             print(f"BŁĄD konwersji danych: {e}")
             return
 
-        # Sprawdź czy dane są sensowne
-        if train_loss <= 0 or train_acc < 0 or train_acc > 1:
-            print("BŁĄD: Nieprawidłowe wartości danych treningowych")
+        # Sprawdź czy dane są sensowne - POPRAWIONA WALIDACJA
+        if train_loss < 0 or train_acc < 0 or train_acc > 1:  # Zmieniamy <= na <
+            print(
+                f"BŁĄD: Nieprawidłowe wartości danych treningowych: loss={train_loss}, acc={train_acc}"
+            )
             return
 
-        if val_loss is not None and val_loss <= 0:
-            print("BŁĄD: Nieprawidłowa wartość straty walidacyjnej")
+        if val_loss is not None and val_loss < 0:  # Zmieniamy <= na <
+            print(f"BŁĄD: Nieprawidłowa wartość straty walidacyjnej: {val_loss}")
             return
 
         if val_acc is not None and (val_acc < 0 or val_acc > 1):
-            print("BŁĄD: Nieprawidłowa wartość dokładności walidacyjnej")
+            print(f"BŁĄD: Nieprawidłowa wartość dokładności walidacyjnej: {val_acc}")
             return
 
         # Dodaj nowe dane

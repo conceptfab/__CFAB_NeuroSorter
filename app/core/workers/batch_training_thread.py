@@ -28,6 +28,7 @@ class BatchTrainingThread(QThread):
     task_completed = pyqtSignal(str, dict)
     all_tasks_completed = pyqtSignal()
     error = pyqtSignal(str, str)
+    log_message_signal = pyqtSignal(str)
 
     def __init__(self, task_paths_or_data):
         """
@@ -307,28 +308,37 @@ class BatchTrainingThread(QThread):
             ):
                 """Callback do śledzenia postępu treningu."""
                 # Debug - sprawdź wartości przed emisją sygnału
-                print(f"\nDEBUG Progress Callback:")
-                print(f"Epoka: {epoch}/{num_epochs}")
-                print(f"Strata treningowa: {train_loss}")
-                print(f"Dokładność treningowa: {train_acc}")
-                print(f"Strata walidacyjna: {val_loss}")
-                print(f"Dokładność walidacyjna: {val_acc}")
+                self.log_message_signal.emit(
+                    f"DEBUG: Emitowanie sygnału task_progress:"
+                )
+                self.log_message_signal.emit(
+                    f"- epoch: {epoch}, num_epochs: {num_epochs}"
+                )
+                self.log_message_signal.emit(
+                    f"- train_loss: {train_loss}, train_acc: {train_acc}"
+                )
+                self.log_message_signal.emit(
+                    f"- val_loss: {val_loss}, val_acc: {val_acc}"
+                )
 
-                # Upewnij się, że wartości nie są None i są liczbami
-                train_loss = float(train_loss) if train_loss is not None else 0.0
-                train_acc = float(train_acc) if train_acc is not None else 0.0
-                val_loss = float(val_loss) if val_loss is not None else None
-                val_acc = float(val_acc) if val_acc is not None else None
+                # Sprawdź czy wartości są poprawne przed emisją sygnału
+                if train_loss <= 0:
+                    self.log_message_signal.emit(
+                        f"UWAGA: Ujemna lub zerowa wartość straty: {train_loss}"
+                    )
 
-                # Emituj sygnał z postępem
+                # Emituj sygnał
+                progress = int((epoch / num_epochs) * 100) if num_epochs > 0 else 0
                 self.task_progress.emit(
                     task_name,
-                    int((epoch / num_epochs) * 100) if num_epochs > 0 else 0,
+                    progress,
                     {
                         "epoch": epoch,
                         "total_epochs": num_epochs,
-                        "train_loss": train_loss,
-                        "train_acc": train_acc,
+                        "train_loss": max(
+                            train_loss, 0.0001
+                        ),  # Zapewnij minimalną wartość dodatnią
+                        "train_acc": max(min(train_acc, 1.0), 0.0),  # Ogranicz do [0,1]
                         "val_loss": val_loss,
                         "val_acc": val_acc,
                     },
