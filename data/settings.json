@@ -1,0 +1,18 @@
+{
+    "generate_reports": true,
+    "report_format": "md",
+    "report_dir": "data\\reports",
+    "sort_copy_files": true,
+    "sort_add_metadata": true,
+    "augmentation_mode": "basic",
+    "augmentation_params": {
+        "brightness": 0.2,
+        "contrast": 0.2,
+        "saturation": 0.2,
+        "hue": 0.1,
+        "rotation": 15,
+        "vertical_flip": false,
+        "grayscale": false,
+        "perspective": false
+    }
+}
