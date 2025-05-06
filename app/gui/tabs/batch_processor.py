@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -94,11 +95,14 @@ class BatchProcessor(QWidget, TabInterface):
         self.results_table.horizontalHeader().setSectionResizeMode(
             3, QHeaderView.ResizeMode.ResizeToContents
         )
+        # Ustawienie polityki rozmiaru dla tabeli
+        self.results_table.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        self.results_table.setMinimumHeight(200)  # Minimalna wysokość tabeli
         results_layout.addWidget(self.results_table)
         results_group.setLayout(results_layout)
         main_layout.addWidget(results_group)
-
-        main_layout.addStretch()
 
     def connect_signals(self):
         """Podłącza sygnały (obecnie puste)."""

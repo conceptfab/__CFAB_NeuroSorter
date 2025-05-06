@@ -1,26 +1,8 @@
 [
     {
-        "date": "2025-05-06T09:36:38.139114",
-        "image_path": "F:/_____test/3DC_PDI_001_Poto_01_CoronaPhysicalMtl_4K.jpg",
-        "class_name": "indoor_plant",
-        "confidence": 1.0
-    },
-    {
-        "date": "2025-05-06T09:36:45.522502",
-        "image_path": "F:/_____test/2 species of succulents in glass vases.jpg",
-        "class_name": "decorations",
-        "confidence": 1.0
-    },
-    {
-        "date": "2025-05-06T09:36:54.482322",
+        "date": "2025-05-06T10:06:50.272001",
         "image_path": "F:/_____test/10410.5268bf3423495.jpg",
-        "class_name": "technology",
-        "confidence": 0.99560546875
-    },
-    {
-        "date": "2025-05-06T09:37:07.743820",
-        "image_path": "F:/_____test/1066852.590f84fc4669d 1.jpg",
-        "class_name": "indoor_plant",
-        "confidence": 1.0
+        "class_name": "decorations",
+        "confidence": 0.9169921875
     }
 ]
