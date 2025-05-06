@@ -3,6 +3,8 @@
 import json
 import logging  # Dodano import logging
 import os
+import shutil
+
 # import time # nieużywane
 import traceback  # Dodano import traceback
 
@@ -12,15 +14,38 @@ from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QFrame  # Potrzebne do separatora
 from PyQt6.QtWidgets import (  # Potrzebne; QApplication, # nieużywane; QListWidget, # nieużywane; QStatusBar, # nieużywane; QMenu, # nieużywane; QMenuBar, # nieużywane; QSizePolicy, # nieużywane; QDialogButtonBox, # Usunięto nieużywany import; QScrollArea, # Usunięto nieużywany import
-    QApplication, QDialog, QFileDialog, QHBoxLayout, QLabel, QMainWindow,
-    QMessageBox, QProgressBar, QProgressDialog, QPushButton, QTabWidget,
-    QTextEdit, QVBoxLayout, QWidget)
+    QApplication,
+    QDialog,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QProgressBar,
+    QProgressDialog,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from app.core.logger import Logger
+
 # Wewnętrzne importy aplikacji
 from app.gui.tabs import SettingsManager  # Dodano import SettingsManager
-from app.gui.tabs import (BatchProcessor, HelpTab, ImageClassifierTab,
-                          ModelManager, ReportGenerator, TrainingManager)
+from app.gui.tabs import (
+    BatchProcessor,
+    HelpTab,
+    ImageClassifierTab,
+    ModelManager,
+    ReportGenerator,
+    TrainingManager,
+)
 from app.utils.profiler import HardwareProfiler  # Dodano import
 
 # import sys # Usunięto nieużywany import
@@ -270,6 +295,12 @@ class MainWindow(QMainWindow):
         data_splitter_action.triggered.connect(self._run_data_splitter)
         tools_menu.addAction(data_splitter_action)
 
+        tools_menu.addSeparator()
+
+        verify_files_action = QAction("Weryfikacja plików", self)
+        verify_files_action.triggered.connect(self._verify_files)
+        tools_menu.addAction(verify_files_action)
+
         # Menu Pomoc
         help_menu = menubar.addMenu("Pomoc")
 
@@ -371,21 +402,29 @@ class MainWindow(QMainWindow):
 
     def _load_last_model(self):
         """Ładuje ostatnio używany model."""
-        if self.settings.get("auto_load_last_model", True) and self.settings.get("last_model"):
+        if self.settings.get("auto_load_last_model", True) and self.settings.get(
+            "last_model"
+        ):
             try:
-                model_path = os.path.join(self.settings["models_dir"], self.settings["last_model"])
+                model_path = os.path.join(
+                    self.settings["models_dir"], self.settings["last_model"]
+                )
                 if os.path.exists(model_path):
-                    self.logger.info(f"Ładowanie ostatnio używanego modelu: {self.settings['last_model']}")
+                    self.logger.info(
+                        f"Ładowanie ostatnio używanego modelu: {self.settings['last_model']}"
+                    )
                     self.model_manager_tab.load_model(self.settings["last_model"])
                     self.logger.info("Model został pomyślnie załadowany")
                 else:
-                    self.logger.warning(f"Ostatnio używany model {self.settings['last_model']} nie istnieje")
+                    self.logger.warning(
+                        f"Ostatnio używany model {self.settings['last_model']} nie istnieje"
+                    )
             except Exception as e:
                 self.logger.error(f"Błąd ładowania ostatniego modelu: {str(e)}")
                 QMessageBox.critical(
                     self,
                     "Błąd",
-                    f"Nie udało się załadować ostatniego modelu:\n{str(e)}"
+                    f"Nie udało się załadować ostatniego modelu:\n{str(e)}",
                 )
 
     def _update_system_info(self):
@@ -1158,3 +1197,291 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(
                 self, "Błąd", f"Nie udało się załadować domyślnych ustawień:\n{str(e)}"
             )
+
+    def _verify_files(self):
+        """Weryfikuje pliki w wybranym katalogu pod kątem błędów."""
+        try:
+            # Pobierz ostatnio używany katalog lub domyślny
+            last_dir = self.settings.get("last_verify_dir", os.path.expanduser("~"))
+
+            # Wybierz katalog do weryfikacji
+            dir_path = QFileDialog.getExistingDirectory(
+                self, "Wybierz katalog do weryfikacji", last_dir
+            )
+
+            if not dir_path:
+                return
+
+            # Zapisz wybrany katalog
+            self.settings["last_verify_dir"] = dir_path
+            self._save_settings()
+
+            # Utwórz okno dialogowe postępu
+            progress_dialog = QProgressDialog(
+                "Weryfikacja plików...", "Anuluj", 0, 100, self
+            )
+            progress_dialog.setWindowTitle("Weryfikacja plików")
+            progress_dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
+            progress_dialog.setMinimumDuration(0)
+            progress_dialog.show()
+            QApplication.processEvents()
+
+            # Lista do przechowywania wyników weryfikacji
+            results = {"total_files": 0, "valid_files": 0, "invalid_files": []}
+
+            # Znajdź wszystkie pliki w katalogu
+            all_files = []
+            for root, _, files in os.walk(dir_path):
+                for file in files:
+                    all_files.append(os.path.join(root, file))
+
+            total_files = len(all_files)
+
+            # Sprawdź wszystkie pliki
+            for i, file_path in enumerate(all_files):
+                if progress_dialog.wasCanceled():
+                    break
+
+                results["total_files"] += 1
+
+                try:
+                    # Sprawdź czy plik można otworzyć
+                    with open(file_path, "rb") as f:
+                        # Próba odczytu pierwszych kilku bajtów
+                        f.read(1024)
+
+                    # Sprawdź czy to obraz
+                    if file_path.lower().endswith(
+                        (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")
+                    ):
+                        try:
+                            from PIL import Image
+
+                            img = Image.open(file_path)
+                            img.verify()  # Weryfikacja integralności obrazu
+                            img.close()
+
+                            # Sprawdź rozmiar pliku
+                            file_size = os.path.getsize(file_path)
+                            if file_size > 10 * 1024 * 1024:  # Większe niż 10MB
+                                results["invalid_files"].append(
+                                    {
+                                        "path": file_path,
+                                        "error": f"Duży rozmiar pliku: {file_size / (1024*1024):.1f} MB",
+                                    }
+                                )
+                            else:
+                                results["valid_files"] += 1
+
+                        except Exception as e:
+                            results["invalid_files"].append(
+                                {
+                                    "path": file_path,
+                                    "error": f"Błąd weryfikacji obrazu: {str(e)}",
+                                }
+                            )
+                    else:
+                        results["valid_files"] += 1
+
+                except Exception as e:
+                    results["invalid_files"].append(
+                        {"path": file_path, "error": f"Błąd odczytu pliku: {str(e)}"}
+                    )
+
+                # Aktualizuj postęp
+                progress = int((i + 1) / total_files * 100)
+                progress_dialog.setValue(progress)
+                QApplication.processEvents()
+
+            progress_dialog.close()
+
+            # Wyświetl wyniki w nowym oknie dialogowym
+            dialog = FileVerificationDialog(results, self)
+            dialog.exec()
+
+        except Exception as e:
+            self.logger.error(f"Błąd podczas weryfikacji plików: {str(e)}")
+            QMessageBox.critical(
+                self, "Błąd", f"Wystąpił błąd podczas weryfikacji plików:\n{str(e)}"
+            )
+
+
+class FileVerificationDialog(QDialog):
+    """Dialog wyświetlający wyniki weryfikacji plików w formie tabeli."""
+
+    def __init__(self, results, parent=None):
+        super().__init__(parent)
+        self.results = results
+        self.selected_files = []
+        self.setup_ui()
+
+    def setup_ui(self):
+        """Konfiguruje interfejs użytkownika dialogu."""
+        self.setWindowTitle("Wyniki weryfikacji plików")
+        self.setMinimumWidth(800)
+        self.setMinimumHeight(600)
+
+        layout = QVBoxLayout(self)
+
+        # Statystyki
+        stats_group = QGroupBox("Statystyki")
+        stats_layout = QHBoxLayout()
+        stats_layout.addWidget(
+            QLabel(f"Łączna liczba plików: {self.results['total_files']}")
+        )
+        stats_layout.addWidget(QLabel(f"Poprawne pliki: {self.results['valid_files']}"))
+        stats_layout.addWidget(
+            QLabel(f"Błędne pliki: {len(self.results['invalid_files'])}")
+        )
+        stats_group.setLayout(stats_layout)
+        layout.addWidget(stats_group)
+
+        # Tabela plików
+        self.files_table = QTableWidget()
+        self.files_table.setColumnCount(5)
+        self.files_table.setHorizontalHeaderLabels(
+            ["", "Nazwa pliku", "Ścieżka", "Błąd", "Rozmiar"]
+        )
+        self.files_table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Stretch
+        )
+        self.files_table.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.ResizeMode.Stretch
+        )
+
+        # Wypełnij tabelę danymi
+        self.files_table.setRowCount(len(self.results["invalid_files"]))
+        for i, file_info in enumerate(self.results["invalid_files"]):
+            # Checkbox
+            checkbox = QTableWidgetItem()
+            checkbox.setFlags(
+                Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled
+            )
+            checkbox.setCheckState(Qt.CheckState.Unchecked)
+            self.files_table.setItem(i, 0, checkbox)
+
+            # Nazwa pliku
+            self.files_table.setItem(
+                i, 1, QTableWidgetItem(os.path.basename(file_info["path"]))
+            )
+
+            # Ścieżka
+            self.files_table.setItem(i, 2, QTableWidgetItem(file_info["path"]))
+
+            # Błąd
+            self.files_table.setItem(i, 3, QTableWidgetItem(file_info["error"]))
+
+            # Rozmiar
+            try:
+                size = os.path.getsize(file_info["path"])
+                size_str = self._format_size(size)
+            except:
+                size_str = "N/A"
+            self.files_table.setItem(i, 4, QTableWidgetItem(size_str))
+
+        layout.addWidget(self.files_table)
+
+        # Przyciski akcji
+        buttons_layout = QHBoxLayout()
+
+        select_all_btn = QPushButton("Zaznacz wszystkie")
+        select_all_btn.clicked.connect(self._select_all)
+        buttons_layout.addWidget(select_all_btn)
+
+        deselect_all_btn = QPushButton("Odznacz wszystkie")
+        deselect_all_btn.clicked.connect(self._deselect_all)
+        buttons_layout.addWidget(deselect_all_btn)
+
+        buttons_layout.addStretch()
+
+        move_selected_btn = QPushButton("Przenieś zaznaczone")
+        move_selected_btn.clicked.connect(self._move_selected)
+        buttons_layout.addWidget(move_selected_btn)
+
+        close_btn = QPushButton("Zamknij")
+        close_btn.clicked.connect(self.accept)
+        buttons_layout.addWidget(close_btn)
+
+        layout.addLayout(buttons_layout)
+
+    def _format_size(self, size):
+        """Formatuje rozmiar pliku do czytelnej postaci."""
+        for unit in ["B", "KB", "MB", "GB"]:
+            if size < 1024:
+                return f"{size:.1f} {unit}"
+            size /= 1024
+        return f"{size:.1f} TB"
+
+    def _select_all(self):
+        """Zaznacza wszystkie pliki w tabeli."""
+        for row in range(self.files_table.rowCount()):
+            self.files_table.item(row, 0).setCheckState(Qt.CheckState.Checked)
+
+    def _deselect_all(self):
+        """Odznacza wszystkie pliki w tabeli."""
+        for row in range(self.files_table.rowCount()):
+            self.files_table.item(row, 0).setCheckState(Qt.CheckState.Unchecked)
+
+    def _move_selected(self):
+        """Przenosi zaznaczone pliki do wybranego katalogu."""
+        # Zbierz zaznaczone pliki
+        selected_files = []
+        for row in range(self.files_table.rowCount()):
+            if self.files_table.item(row, 0).checkState() == Qt.CheckState.Checked:
+                file_path = self.files_table.item(row, 2).text()
+                selected_files.append(file_path)
+
+        if not selected_files:
+            QMessageBox.warning(self, "Ostrzeżenie", "Nie zaznaczono żadnych plików.")
+            return
+
+        # Wybierz katalog docelowy
+        target_dir = QFileDialog.getExistingDirectory(
+            self,
+            "Wybierz katalog docelowy",
+            "",
+            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks,
+        )
+
+        if not target_dir:
+            return
+
+        # Przenieś pliki
+        moved_files = 0
+        errors = []
+
+        for file_path in selected_files:
+            try:
+                file_name = os.path.basename(file_path)
+                target_path = os.path.join(target_dir, file_name)
+
+                # Jeśli plik o takiej nazwie już istnieje, dodaj numer
+                counter = 1
+                while os.path.exists(target_path):
+                    base_name, ext = os.path.splitext(file_name)
+                    target_path = os.path.join(
+                        target_dir, f"{base_name}_{counter}{ext}"
+                    )
+                    counter += 1
+
+                shutil.move(file_path, target_path)
+                moved_files += 1
+
+            except Exception as e:
+                errors.append(f"{file_name}: {str(e)}")
+
+        # Wyświetl podsumowanie
+        if errors:
+            error_msg = "\n".join(errors)
+            QMessageBox.warning(
+                self,
+                "Błędy podczas przenoszenia",
+                f"Przeniesiono {moved_files} z {len(selected_files)} plików.\n\nBłędy:\n{error_msg}",
+            )
+        else:
+            QMessageBox.information(
+                self, "Sukces", f"Pomyślnie przeniesiono {moved_files} plików."
+            )
+
+        # Odśwież tabelę
+        self.accept()

@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import os
 import time
 from typing import Callable, Dict, Optional, Tuple
@@ -17,6 +18,9 @@ from .preprocessing import (
     get_extended_augmentation_transforms,
 )
 
+# Konfiguracja loggera
+logger = logging.getLogger(__name__)
+
 
 class ImageDataset(Dataset):
     def __init__(self, root_dir, transform=None):
@@ -29,7 +33,9 @@ class ImageDataset(Dataset):
         """
         # Sprawdź czy katalog istnieje
         if not os.path.exists(root_dir):
-            raise ValueError(f"Katalog {root_dir} nie istnieje.")
+            error_msg = f"Katalog {root_dir} nie istnieje."
+            logger.error(error_msg)
+            raise ValueError(error_msg)
 
         # Sprawdź czy katalog zawiera podkatalogi
         has_subdirs = any(
@@ -37,26 +43,63 @@ class ImageDataset(Dataset):
         )
 
         if not has_subdirs:
-            raise ValueError(f"Katalog {root_dir} nie zawiera podkatalogów z klasami.")
+            error_msg = f"Katalog {root_dir} nie zawiera podkatalogów z klasami."
+            logger.error(error_msg)
+            raise ValueError(error_msg)
 
         # Sprawdź czy istnieją jakiekolwiek obrazy w podkatalogach
         found_images = False
+        supported_extensions = (
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".bmp",
+            ".ppm",
+            ".pgm",
+            ".tif",
+            ".tiff",
+            ".webp",
+        )
+
         for item in os.listdir(root_dir):
             item_path = os.path.join(root_dir, item)
             if os.path.isdir(item_path):
-                if any(
-                    f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))
-                    for f in os.listdir(item_path)
-                ):
+                files = os.listdir(item_path)
+                if not files:
+                    logger.warning(f"Katalog {item_path} jest pusty")
+                    continue
+
+                valid_files = [
+                    f for f in files if f.lower().endswith(supported_extensions)
+                ]
+                if not valid_files:
+                    logger.warning(
+                        f"W katalogu {item_path} nie znaleziono plików o obsługiwanych rozszerzeniach. "
+                        f"Obsługiwane rozszerzenia: {', '.join(supported_extensions)}"
+                    )
+                else:
                     found_images = True
-                    break
+                    logger.info(
+                        f"Znaleziono {len(valid_files)} plików w katalogu {item_path}"
+                    )
 
         if not found_images:
-            raise ValueError(
-                f"Nie znaleziono obrazów w podkatalogach katalogu {root_dir}."
+            error_msg = (
+                f"Nie znaleziono obrazów w podkatalogach katalogu {root_dir}. "
+                f"Obsługiwane rozszerzenia: {', '.join(supported_extensions)}"
             )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
 
-        self.dataset = datasets.ImageFolder(root_dir, transform=transform)
+        try:
+            self.dataset = datasets.ImageFolder(root_dir, transform=transform)
+            logger.info(
+                f"Utworzono dataset z {len(self.dataset)} obrazami w {len(self.dataset.classes)} klasach"
+            )
+        except Exception as e:
+            error_msg = f"Błąd podczas tworzenia datasetu: {str(e)}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
 
     def __len__(self):
         return len(self.dataset)

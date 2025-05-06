@@ -1,8 +1,10 @@
+dodac zatrzymanie sortowania!!!
+
 - ustawienia poprawic
 
 - komentarz do modelu
 - poprawa zmiany nazwy
-
+- Przegladarka - baza danych
 
 "num_workers": 2 - na bazie profilu
 

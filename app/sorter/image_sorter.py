@@ -1,18 +1,21 @@
 import logging
 import os
 import shutil
+import traceback
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 from ai.classifier import ImageClassifier
-from app.metadata.metadata_manager import MetadataManager
 from app.core.logger import Logger
+from app.metadata.metadata_manager import MetadataManager
 
 # Utworzenie katalogu na logi jeśli nie istnieje
 os.makedirs("logs", exist_ok=True)
 
 # Użyj głównego loggera
 logger = Logger()
+
 
 class ImageSorter:
     """Klasa do sortowania obrazów na podstawie klasyfikacji AI."""
@@ -52,13 +55,21 @@ class ImageSorter:
         start_time = datetime.now()
 
         try:
-            logger.info(f"Przetwarzanie obrazu: {image_path}")
-            logger.debug(
-                f"Parametry: output_dir={output_dir}, confidence_threshold={confidence_threshold}"
-            )
+            logger.info(f"Rozpoczęcie przetwarzania obrazu: {image_path}")
+            logger.debug(f"Sprawdzanie istnienia pliku: {image_path}")
 
+            if not os.path.exists(image_path):
+                raise FileNotFoundError(f"Plik nie istnieje: {image_path}")
+
+            logger.debug(f"Sprawdzanie uprawnień do pliku: {image_path}")
+            if not os.access(image_path, os.R_OK):
+                raise PermissionError(f"Brak uprawnień do odczytu pliku: {image_path}")
+
+            logger.debug(f"Próba klasyfikacji obrazu: {image_path}")
             # Klasyfikuj obraz
             classification = self.classifier.predict(image_path)
+            logger.debug(f"Wynik klasyfikacji: {classification}")
+
             category = classification["class_name"]
             confidence = classification["confidence"]
 
@@ -209,134 +220,136 @@ class ImageSorter:
         return sanitized
 
     def sort_directory(
-        self, input_dir, output_dir=None, confidence_threshold=0.5, callback=None
-    ):
-        """
-        Sortuje obrazy z katalogu wejściowego do podfolderów według klas.
-
-        Args:
-            input_dir: Katalog wejściowy
-            output_dir: Katalog wyjściowy (jeśli None, używa input_dir)
-            confidence_threshold: Minimalny próg pewności klasyfikacji
-            callback: Opcjonalna funkcja callback do aktualizacji postępu (current, total)
-
-        Returns:
-            dict: Szczegółowe statystyki sortowania
-        """
-        start_time = datetime.now()
-        logger.info(f"Rozpoczęcie sortowania katalogu: {input_dir}")
-        logger.info(
-            f"Parametry: output_dir={output_dir}, confidence_threshold={confidence_threshold}"
-        )
-
-        # Jeśli nie podano katalogu wyjściowego, użyj wejściowego
-        if output_dir is None:
-            output_dir = input_dir
-            logger.info("Użyto katalogu wejściowego jako wyjściowego")
-
-        # Upewniamy się, że mamy różne katalogi wejściowy i wyjściowy jeśli przenosimy pliki
-        if not self.copy_files and input_dir == output_dir:
-            error_msg = (
-                "Katalog wejściowy i wyjściowy muszą być różne przy przenoszeniu plików"
+        self,
+        input_dir: str,
+        output_dir: str,
+        confidence_threshold: float = 0.5,
+        callback: Optional[callable] = None,
+    ) -> Dict:
+        """Sortuje pliki w katalogu na podstawie klasyfikacji."""
+        try:
+            start_time = datetime.now()
+            logger.info(f"Rozpoczęcie sortowania katalogu: {input_dir}")
+            logger.info(
+                f"Parametry: output_dir={output_dir}, confidence_threshold={confidence_threshold}"
             )
+
+            # Jeśli nie podano katalogu wyjściowego, użyj wejściowego
+            if output_dir is None:
+                output_dir = input_dir
+                logger.info("Użyto katalogu wejściowego jako wyjściowego")
+
+            # Upewniamy się, że mamy różne katalogi wejściowy i wyjściowy jeśli przenosimy pliki
+            if not self.copy_files and input_dir == output_dir:
+                error_msg = "Katalog wejściowy i wyjściowy muszą być różne przy przenoszeniu plików"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+
+            # Utwórz katalog wyjściowy jeśli nie istnieje
+            os.makedirs(output_dir, exist_ok=True)
+            logger.info(f"Utworzono katalog wyjściowy: {output_dir}")
+
+            # Utwórz katalog dla plików bez kategorii
+            uncategorized_path = os.path.join(output_dir, self.uncategorized_dir)
+            os.makedirs(uncategorized_path, exist_ok=True)
+            logger.info(
+                f"Utworzono katalog dla plików bez kategorii: {uncategorized_path}"
+            )
+
+            # Znajdź wszystkie pliki obrazów w katalogu wejściowym
+            image_files = []
+            valid_extensions = [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"]
+
+            logger.info("Skanowanie katalogu w poszukiwaniu obrazów...")
+            for root, _, files in os.walk(input_dir):
+                for file in files:
+                    if any(file.lower().endswith(ext) for ext in valid_extensions):
+                        image_files.append(os.path.join(root, file))
+
+            total_files = len(image_files)
+            logger.info(f"Znaleziono {total_files} plików obrazów")
+
+            # Inicjalizacja statystyk
+            stats = {
+                "processed": 0,
+                "moved": 0,
+                "skipped": 0,
+                "uncategorized": 0,
+                "categories": {},
+            }
+            created_dirs = {}
+
+            # Sortuj każdy obraz
+            for i, image_path in enumerate(image_files):
+                try:
+                    stats["processed"] += 1
+                    logger.info(
+                        f"Przetwarzanie pliku {i+1}/{total_files}: {image_path}"
+                    )
+
+                    # Klasyfikacja obrazu
+                    result = self.classifier.predict(image_path)
+
+                    if result and result["confidence"] >= confidence_threshold:
+                        category = result["class_name"]
+                        target_dir = os.path.join(output_dir, category)
+                        os.makedirs(target_dir, exist_ok=True)
+
+                        # Kopiuj lub przenieś plik
+                        target_path = os.path.join(
+                            target_dir, os.path.basename(image_path)
+                        )
+                        if self.copy_files:
+                            shutil.copy2(image_path, target_path)
+                        else:
+                            shutil.move(image_path, target_path)
+
+                        stats["categories"][category] = (
+                            stats["categories"].get(category, 0) + 1
+                        )
+                        stats["moved"] += 1
+                        logger.info(f"Sukces - plik zaklasyfikowany jako: {category}")
+                    else:
+                        # Przenieś do katalogu plików bez kategorii
+                        target_path = os.path.join(
+                            uncategorized_path, os.path.basename(image_path)
+                        )
+                        if self.copy_files:
+                            shutil.copy2(image_path, target_path)
+                        else:
+                            shutil.move(image_path, target_path)
+
+                        stats["uncategorized"] += 1
+                        logger.warning(f"Plik przeniesiony do kategorii bez kategorii")
+
+                    # Wywołaj callback z postępem
+                    if callback:
+                        callback(i + 1, total_files)
+
+                except Exception as e:
+                    logger.error(
+                        f"Nieoczekiwany błąd podczas sortowania obrazu {image_path}: {str(e)}",
+                        exc_info=True,
+                    )
+                    stats["skipped"] += 1
+
+            # Podsumowanie
+            processing_time = (datetime.now() - start_time).total_seconds()
+            logger.info("=== PODSUMOWANIE SORTOWANIA ===")
+            logger.info(f"Czas wykonania: {processing_time:.2f}s")
+            logger.info(f"Przetworzono plików: {stats['processed']}")
+            logger.info(f"Przeniesiono/skopiowano: {stats['moved']}")
+            logger.info(f"Pliki bez kategorii: {stats['uncategorized']}")
+            logger.info(f"Pominięto: {stats['skipped']}")
+            logger.info("Statystyki kategorii:")
+            for category, count in stats["categories"].items():
+                logger.info(f"  - {category}: {count} plików")
+
+            return stats
+        except Exception as e:
+            error_msg = f"Błąd podczas sortowania: {str(e)}\n{traceback.format_exc()}"
             logger.error(error_msg)
             raise ValueError(error_msg)
-
-        # Utwórz katalog wyjściowy jeśli nie istnieje
-        os.makedirs(output_dir, exist_ok=True)
-        logger.info(f"Utworzono katalog wyjściowy: {output_dir}")
-
-        # Utwórz katalog dla plików bez kategorii
-        uncategorized_path = os.path.join(output_dir, self.uncategorized_dir)
-        os.makedirs(uncategorized_path, exist_ok=True)
-        logger.info(f"Utworzono katalog dla plików bez kategorii: {uncategorized_path}")
-
-        # Znajdź wszystkie pliki obrazów w katalogu wejściowym
-        image_files = []
-        valid_extensions = [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"]
-
-        logger.info("Skanowanie katalogu w poszukiwaniu obrazów...")
-        for root, _, files in os.walk(input_dir):
-            for file in files:
-                if any(file.lower().endswith(ext) for ext in valid_extensions):
-                    image_files.append(os.path.join(root, file))
-
-        total_files = len(image_files)
-        logger.info(f"Znaleziono {total_files} plików obrazów")
-
-        # Inicjalizacja statystyk
-        stats = {
-            "processed": 0,
-            "moved": 0,
-            "skipped": 0,
-            "uncategorized": 0,
-            "categories": {},
-        }
-        created_dirs = {}
-
-        # Sortuj każdy obraz
-        for i, image_path in enumerate(image_files):
-            try:
-                stats["processed"] += 1
-                logger.info(f"Przetwarzanie pliku {i+1}/{total_files}: {image_path}")
-
-                # Klasyfikacja obrazu
-                result = self.classifier.predict(image_path)
-
-                if result and result["confidence"] >= confidence_threshold:
-                    category = result["class_name"]
-                    target_dir = os.path.join(output_dir, category)
-                    os.makedirs(target_dir, exist_ok=True)
-
-                    # Kopiuj lub przenieś plik
-                    target_path = os.path.join(target_dir, os.path.basename(image_path))
-                    if self.copy_files:
-                        shutil.copy2(image_path, target_path)
-                    else:
-                        shutil.move(image_path, target_path)
-
-                    stats["categories"][category] = (
-                        stats["categories"].get(category, 0) + 1
-                    )
-                    stats["moved"] += 1
-                    logger.info(f"Sukces - plik zaklasyfikowany jako: {category}")
-                else:
-                    # Przenieś do katalogu plików bez kategorii
-                    target_path = os.path.join(
-                        uncategorized_path, os.path.basename(image_path)
-                    )
-                    if self.copy_files:
-                        shutil.copy2(image_path, target_path)
-                    else:
-                        shutil.move(image_path, target_path)
-
-                    stats["uncategorized"] += 1
-                    logger.warning(f"Plik przeniesiony do kategorii bez kategorii")
-
-                # Wywołaj callback z postępem
-                if callback:
-                    callback(i + 1, total_files)
-
-            except Exception as e:
-                logger.error(
-                    f"Nieoczekiwany błąd podczas sortowania obrazu {image_path}: {str(e)}",
-                    exc_info=True,
-                )
-                stats["skipped"] += 1
-
-        # Podsumowanie
-        processing_time = (datetime.now() - start_time).total_seconds()
-        logger.info("=== PODSUMOWANIE SORTOWANIA ===")
-        logger.info(f"Czas wykonania: {processing_time:.2f}s")
-        logger.info(f"Przetworzono plików: {stats['processed']}")
-        logger.info(f"Przeniesiono/skopiowano: {stats['moved']}")
-        logger.info(f"Pliki bez kategorii: {stats['uncategorized']}")
-        logger.info(f"Pominięto: {stats['skipped']}")
-        logger.info("Statystyki kategorii:")
-        for category, count in stats["categories"].items():
-            logger.info(f"  - {category}: {count} plików")
-
-        return stats
 
     def sort_images(
         self, image_paths, output_dir, confidence_threshold=0.5, callback=None
