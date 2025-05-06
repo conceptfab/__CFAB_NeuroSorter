@@ -253,7 +253,7 @@ def train_model_optimized(
 
     print("\n=== ROZPOCZYNAM TRENING ===")
 
-    # Pętla treningowa
+    # Główna pętla treningu
     for epoch in range(num_epochs):
         # Sprawdź, czy przerwano trening
         if should_stop_callback and should_stop_callback():
@@ -263,77 +263,74 @@ def train_model_optimized(
         epoch_start_time = time.time()
         print(f"\n=== EPOKA {epoch+1}/{num_epochs} ===")
 
-        # Faza treningu
         model.train()
         train_loss = 0.0
         train_correct = 0
         train_total = 0
+        batch_count = 0
 
-        for batch_idx, (inputs, labels) in enumerate(train_loader):
-            inputs = inputs.to(device, dtype=torch.float32)
-            labels = labels.to(device)
-
+        # Trening na batchu
+        for batch_idx, (inputs, targets) in enumerate(train_loader):
+            inputs, targets = inputs.to(device), targets.to(device)
             optimizer.zero_grad()
 
-            if use_mixed_precision and torch.cuda.is_available():
-                with torch.amp.autocast(device_type="cuda", enabled=True):
-                    outputs = model(inputs)
-                    loss = criterion(outputs, labels)
+            # Forward pass
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
 
-                scaler.scale(loss).backward()
-                scaler.unscale_(optimizer)
-                scaler.step(optimizer)
-                scaler.update()
-            else:
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
+            # Backward pass
+            loss.backward()
+            optimizer.step()
 
-            train_loss += loss.item() * inputs.size(0)
-            _, predicted = torch.max(outputs, 1)
-            train_total += labels.size(0)
-            train_correct += (predicted == labels).sum().item()
+            # Oblicz dokładność
+            _, predicted = outputs.max(1)
+            train_total += targets.size(0)
+            train_correct += predicted.eq(targets).sum().item()
+            train_loss += loss.item()
+            batch_count += 1
 
-            if batch_idx % 10 == 0:
-                print(
-                    f"Batch {batch_idx+1}/{len(train_loader)} - "
-                    f"Strata: {loss.item():.4f}"
-                )
+            # Debug - wyświetl wartości dla każdego batcha
+            batch_loss = loss.item()
+            batch_acc = predicted.eq(targets).sum().item() / targets.size(0)
+            print(f"\nDEBUG Batch {batch_idx + 1}/{len(train_loader)}:")
+            print(f"Strata: {batch_loss:.4f}")
+            print(f"Dokładność: {batch_acc:.4f}")
 
-        train_loss = train_loss / len(train_loader.dataset)
-        train_acc = train_correct / train_total if train_total > 0 else 0
+        # Oblicz średnie wartości dla epoki
+        epoch_loss = train_loss / batch_count
+        epoch_acc = train_correct / train_total
 
-        # Faza walidacji
-        val_loss = 0.0
-        val_acc = 0.0
+        print(f"\nDEBUG Epoka {epoch + 1}/{num_epochs}:")
+        print(f"Średnia strata: {epoch_loss:.4f}")
+        print(f"Średnia dokładność: {epoch_acc:.4f}")
 
+        # Walidacja
+        val_loss = None
+        val_acc = None
         if val_loader:
             model.eval()
             val_loss = 0.0
             val_correct = 0
             val_total = 0
+            batch_count = 0
 
             with torch.no_grad():
-                for inputs, labels in val_loader:
-                    inputs = inputs.to(device, dtype=torch.float32)
-                    labels = labels.to(device)
+                for inputs, targets in val_loader:
+                    inputs, targets = inputs.to(device), targets.to(device)
+                    outputs = model(inputs)
+                    loss = criterion(outputs, targets)
 
-                    if use_mixed_precision and torch.cuda.is_available():
-                        with torch.amp.autocast(device_type="cuda", enabled=True):
-                            outputs = model(inputs)
-                            loss = criterion(outputs, labels)
-                    else:
-                        outputs = model(inputs)
-                        loss = criterion(outputs, labels)
+                    _, predicted = outputs.max(1)
+                    val_total += targets.size(0)
+                    val_correct += predicted.eq(targets).sum().item()
+                    val_loss += loss.item()
+                    batch_count += 1
 
-                    val_loss += loss.item() * inputs.size(0)
-                    _, predicted = torch.max(outputs, 1)
-                    val_total += labels.size(0)
-                    val_correct += (predicted == labels).sum().item()
-
-            val_loss = val_loss / len(val_loader.dataset)
+            val_loss = val_loss / batch_count
             val_acc = val_correct / val_total
+
+            print(f"Walidacja - Strata: {val_loss:.4f}")
+            print(f"Walidacja - Dokładność: {val_acc:.4f}")
 
             if early_stopping:
                 if val_loss < best_val_loss:
@@ -361,8 +358,8 @@ def train_model_optimized(
 
         epoch_time = time.time() - epoch_start_time
         history["epoch_times"].append(epoch_time)
-        history["train_loss"].append(train_loss)
-        history["train_acc"].append(train_acc)
+        history["train_loss"].append(epoch_loss)
+        history["train_acc"].append(epoch_acc)
 
         if val_loader:
             history["val_loss"].append(val_loss)
@@ -370,17 +367,36 @@ def train_model_optimized(
 
         print("\n--- PODSUMOWANIE EPOKI ---")
         print(f"Czas trwania: {epoch_time:.2f}s")
-        print(f"Strata treningowa: {train_loss:.4f}")
-        print(f"Dokładność treningowa: {train_acc:.4f}")
+        print(f"Średnia strata: {epoch_loss:.4f}")
+        print(f"Średnia dokładność: {epoch_acc:.4f}")
 
         if val_loader:
-            print(f"Strata walidacyjna: {val_loss:.4f}")
-            print(f"Dokładność walidacyjna: {val_acc:.4f}")
+            print(f"Walidacja - Strata: {val_loss:.4f}")
+            print(f"Walidacja - Dokładność: {val_acc:.4f}")
 
-        if progress_callback is not None:
-            progress_callback(
-                epoch + 1, num_epochs, train_loss, train_acc, val_loss, val_acc
-            )
+        # Wywołaj callback z postępem
+        if progress_callback:
+            try:
+                print("\nDEBUG: Przekazuję dane do callbacka:")
+                print(f"Epoka: {epoch + 1}")
+                print(f"Liczba epok: {num_epochs}")
+                print(f"Strata treningowa: {epoch_loss:.4f}")
+                print(f"Dokładność treningowa: {epoch_acc:.4f}")
+                print(
+                    f"Strata walidacyjna: {val_loss:.4f if val_loss is not None else None}"
+                )
+                print(
+                    f"Dokładność walidacyjna: {val_acc:.4f if val_acc is not None else None}"
+                )
+
+                progress_callback(
+                    epoch + 1, num_epochs, epoch_loss, epoch_acc, val_loss, val_acc
+                )
+            except Exception as e:
+                print(f"BŁĄD w progress_callback: {e}")
+                print(
+                    f"Wartości: epoch={epoch + 1}, loss={epoch_loss:.4f}, acc={epoch_acc:.4f}"
+                )
 
     print("\n=== ZAKOŃCZENIE TRENINGU ===")
     print(f"Data zakończenia: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")

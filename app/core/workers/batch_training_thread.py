@@ -191,10 +191,15 @@ class BatchTrainingThread(QThread):
                     task = json.load(f)
 
                 # Sprawdzamy czy zadanie jest typu Trening lub Doszkalanie i ma status Nowy
-                if task.get("status") == "Nowy" and task.get("type") in ["Trening", "Doszkalanie"]:
+                if task.get("status") == "Nowy" and task.get("type") in [
+                    "Trening",
+                    "Doszkalanie",
+                ]:
                     task["path"] = task_path
                     tasks.append(task)
-                    self.logger.info(f"Znaleziono zadanie: {task.get('name')} typu {task.get('type')}")
+                    self.logger.info(
+                        f"Znaleziono zadanie: {task.get('name')} typu {task.get('type')}"
+                    )
 
             except Exception as e:
                 self.logger.error(f"Błąd wczytywania zadania {task_file}: {str(e)}")
@@ -296,6 +301,39 @@ class BatchTrainingThread(QThread):
             self.logger.info(f"DEBUG: learning_rate={learning_rate}")
 
             start_time = time.time()
+
+            def progress_callback(
+                epoch, num_epochs, train_loss, train_acc, val_loss, val_acc
+            ):
+                """Callback do śledzenia postępu treningu."""
+                # Debug - sprawdź wartości przed emisją sygnału
+                print(f"\nDEBUG Progress Callback:")
+                print(f"Epoka: {epoch}/{num_epochs}")
+                print(f"Strata treningowa: {train_loss}")
+                print(f"Dokładność treningowa: {train_acc}")
+                print(f"Strata walidacyjna: {val_loss}")
+                print(f"Dokładność walidacyjna: {val_acc}")
+
+                # Upewnij się, że wartości nie są None i są liczbami
+                train_loss = float(train_loss) if train_loss is not None else 0.0
+                train_acc = float(train_acc) if train_acc is not None else 0.0
+                val_loss = float(val_loss) if val_loss is not None else None
+                val_acc = float(val_acc) if val_acc is not None else None
+
+                # Emituj sygnał z postępem
+                self.task_progress.emit(
+                    task_name,
+                    int((epoch / num_epochs) * 100) if num_epochs > 0 else 0,
+                    {
+                        "epoch": epoch,
+                        "total_epochs": num_epochs,
+                        "train_loss": train_loss,
+                        "train_acc": train_acc,
+                        "val_loss": val_loss,
+                        "val_acc": val_acc,
+                    },
+                )
+
             result = train_model_optimized(
                 model=model.model,
                 train_dir=training_dir,
@@ -303,18 +341,7 @@ class BatchTrainingThread(QThread):
                 num_epochs=epochs,
                 batch_size=batch_size,
                 learning_rate=learning_rate,
-                progress_callback=lambda epoch, num_epochs, train_loss, train_acc, val_loss, val_acc: self.task_progress.emit(
-                    task_name,
-                    int((epoch / num_epochs) * 100) if num_epochs > 0 else 0,
-                    {
-                        "epoch": epoch,
-                        "total_epochs": num_epochs,
-                        "train_loss": train_loss if train_loss > 0 else 0.0001,
-                        "train_acc": train_acc if train_acc > 0 else 0.0001,
-                        "val_loss": val_loss,
-                        "val_acc": val_acc,
-                    },
-                ),
+                progress_callback=progress_callback,
             )
 
             training_time = time.time() - start_time

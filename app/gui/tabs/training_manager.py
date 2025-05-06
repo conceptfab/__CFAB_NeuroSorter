@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
 
 from app.core.workers.batch_training_thread import BatchTrainingThread
 from app.gui.tab_interface import TabInterface
+from app.gui.widgets.training_visualization import TrainingVisualization
 from app.utils.config import DEFAULT_TRAINING_PARAMS
 from app.utils.file_utils import (
     validate_task_config,
@@ -105,6 +106,10 @@ class TrainingManager(QWidget, TabInterface):
         layout.addLayout(profile_layout)
 
         self._create_add_task_panel(layout)
+
+        # Panel wizualizacji treningu
+        self.training_visualization = TrainingVisualization()
+        layout.addWidget(self.training_visualization)
 
         # Panel kolejki zadań treningowych (skalowalny)
         queue_panel = self._create_queue_panel_widget()
@@ -1301,6 +1306,50 @@ class TrainingManager(QWidget, TabInterface):
         total_epochs = details.get("total_epochs", 0)
         loss = details.get("train_loss", 0.0)
         accuracy = details.get("train_acc", 0.0)
+        val_loss = details.get("val_loss", None)
+        val_acc = details.get("val_acc", None)
+
+        # Debug - sprawdź wartości przed przekazaniem do wizualizacji
+        print(f"\nDEBUG Training Progress:")
+        print(f"Task: {task_name}")
+        print(f"Progress: {progress}%")
+        print(f"Epoka: {epoch}/{total_epochs}")
+        print(f"Strata treningowa: {loss}")
+        print(f"Dokładność treningowa: {accuracy}")
+        print(f"Strata walidacyjna: {val_loss}")
+        print(f"Dokładność walidacyjna: {val_acc}")
+
+        # Upewnij się, że wartości są liczbami
+        try:
+            loss = float(loss) if loss is not None else 0.0
+            accuracy = float(accuracy) if accuracy is not None else 0.0
+            val_loss = float(val_loss) if val_loss is not None else None
+            val_acc = float(val_acc) if val_acc is not None else None
+        except (ValueError, TypeError) as e:
+            print(f"BŁĄD konwersji wartości: {e}")
+            self.parent.logger.error(
+                f"Błąd konwersji wartości w _training_task_progress: {e}"
+            )
+            return
+
+        # Aktualizuj wizualizację
+        if hasattr(self, "training_visualization"):
+            print("\nDEBUG: Przekazuję dane do wizualizacji:")
+            print(f"Epoka: {epoch}")
+            print(f"Strata: {loss}")
+            print(f"Dokładność: {accuracy}")
+            print(f"Strata walidacyjna: {val_loss}")
+            print(f"Dokładność walidacyjna: {val_acc}")
+
+            # Upewnij się, że wartości są sensowne
+            if loss > 0 and 0 <= accuracy <= 1:
+                self.training_visualization.update_data(
+                    epoch, loss, accuracy, val_loss, val_acc
+                )
+            else:
+                print("BŁĄD: Nieprawidłowe wartości danych treningowych")
+        else:
+            print("BŁĄD: Brak widgetu wizualizacji!")
 
         # Sprawdź czy wartości są sensowne przed logowaniem:
         if epoch > 0 and total_epochs > 0:
@@ -1334,6 +1383,9 @@ class TrainingManager(QWidget, TabInterface):
             self.parent.task_progress_bar.setValue(0)
             self.parent.task_progress_details.setText("")
             self.parent.stop_task_btn.setEnabled(False)
+
+            # Wyczyść dane wizualizacji
+            self.training_visualization.clear_data()
 
             # Zmień status zadania na 'Zakończony'
             self._set_task_status(task_name, "Zakończony")

@@ -1,13 +1,13 @@
 {
-    "name": "efficientnet_50epok_2025-05-06_18-03.json",
+    "name": "efficientnet_50epok_2025-05-06_18-55.json",
     "type": "Trening",
     "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-06 18:03:44",
+    "created_at": "2025-05-06 18:55:01",
     "config": {
         "model_arch": "efficientnet",
-        "data_dir": "F:/_set_V2/__dane_treningowe",
-        "val_dir": "F:/_set_V2/__dane_walidacyjne",
+        "data_dir": "F:/_set_V2/__dane_walidacyjne",
+        "val_dir": "",
         "epochs": 50,
         "batch_size": 128,
         "learning_rate": 0.001,

@@ -118,7 +118,7 @@ class MainWindow(QMainWindow):
             else:
                 self.logger.warning(f"Nie znaleziono pliku ikony: {icon_path}")
 
-            self.setMinimumSize(1200, 800)
+            self.setMinimumSize(1600, 900)
 
             # Załaduj ostatnio używany model
             self._load_last_model()
