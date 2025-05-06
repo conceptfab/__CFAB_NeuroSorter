@@ -301,6 +301,21 @@ class MainWindow(QMainWindow):
         verify_files_action.triggered.connect(self._verify_files)
         tools_menu.addAction(verify_files_action)
 
+        # Dodaj podmenu dla narzędzi plikowych
+        file_tools_menu = tools_menu.addMenu("Narzędzia plikowe")
+
+        jpeg_to_jpg_action = QAction("Konwerter JPEG -> JPG", self)
+        jpeg_to_jpg_action.triggered.connect(self._run_jpeg_to_jpg)
+        file_tools_menu.addAction(jpeg_to_jpg_action)
+
+        copy_images_action = QAction("Kopiowanie plików graficznych", self)
+        copy_images_action.triggered.connect(self._run_copy_images)
+        file_tools_menu.addAction(copy_images_action)
+
+        move_jpeg_action = QAction("Przenoszenie plików JPEG", self)
+        move_jpeg_action.triggered.connect(self._run_move_jpeg)
+        file_tools_menu.addAction(move_jpeg_action)
+
         # Menu Pomoc
         help_menu = menubar.addMenu("Pomoc")
 
@@ -1303,6 +1318,47 @@ class MainWindow(QMainWindow):
             self.logger.error(f"Błąd podczas weryfikacji plików: {str(e)}")
             QMessageBox.critical(
                 self, "Błąd", f"Wystąpił błąd podczas weryfikacji plików:\n{str(e)}"
+            )
+
+    def _run_jpeg_to_jpg(self):
+        """Uruchamia narzędzie do konwersji plików JPEG na JPG."""
+        try:
+            from app.utils.file_tools import JpegToJpgConverter
+
+            converter = JpegToJpgConverter(self)
+            converter.show()
+        except Exception as e:
+            self.logger.error(f"Błąd podczas uruchamiania konwertera JPEG: {str(e)}")
+            QMessageBox.critical(
+                self, "Błąd", f"Wystąpił błąd podczas uruchamiania narzędzia:\n{str(e)}"
+            )
+
+    def _run_copy_images(self):
+        """Uruchamia narzędzie do kopiowania plików graficznych."""
+        try:
+            from app.utils.file_tools import ImageCopierApp
+
+            copier = ImageCopierApp(self)
+            copier.show()
+        except Exception as e:
+            self.logger.error(f"Błąd podczas uruchamiania kopiarki plików: {str(e)}")
+            QMessageBox.critical(
+                self, "Błąd", f"Wystąpił błąd podczas uruchamiania narzędzia:\n{str(e)}"
+            )
+
+    def _run_move_jpeg(self):
+        """Uruchamia narzędzie do przenoszenia plików JPEG."""
+        try:
+            from app.utils.file_tools import JpegMoverApp
+
+            mover = JpegMoverApp(self)
+            mover.show()
+        except Exception as e:
+            self.logger.error(
+                f"Błąd podczas uruchamiania narzędzia przenoszenia: {str(e)}"
+            )
+            QMessageBox.critical(
+                self, "Błąd", f"Wystąpił błąd podczas uruchamiania narzędzia:\n{str(e)}"
             )
 
 
