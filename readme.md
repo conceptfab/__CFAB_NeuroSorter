@@ -186,6 +186,74 @@ Funkcjonalność sortowania jest dostępna bezpośrednio w interfejsie graficzny
 - Dostrajanie modelu - fine-tuning istniejącego modelu
 - Eksportuj model - zapisanie modelu w formacie ONNX
 
+### Menu Narzędzia
+
+- Przygotowanie danych AI - dedykowane narzędzie do przygotowania zbiorów danych do treningu
+  - Import i organizacja danych
+  - Podział na zbiory treningowe, walidacyjne i testowe
+  - Zachowanie proporcji klas
+  - Walidacja struktury katalogów
+  - Eksport przygotowanych zbiorów
+
+### Zakładki interfejsu
+
+#### Zakładka Modele
+
+![Zakładka Modele](app/img/modele.jpg)
+
+- Zarządzanie modelami AI
+- Ładowanie, eksport i import konfiguracji modeli
+- Podgląd statystyk i porównywanie modeli
+- Zarządzanie mapowaniem klas
+- Eksport modeli do różnych formatów
+
+#### Zakładka Trening
+
+![Zakładka Trening](app/img/trening.jpg)
+
+- Konfiguracja i zarządzanie zadaniami treningowymi
+- Kolejka zadań treningowych
+- Optymalizacja sprzętowa
+- Monitorowanie postępu treningu
+- Zarządzanie parametrami uczenia
+
+#### Zakładka Klasyfikacja
+
+![Zakładka Klasyfikacja](app/img/klasyfikacja.jpg)
+
+- Klasyfikacja pojedynczych obrazów
+- Podgląd wyników klasyfikacji
+- Historia klasyfikacji
+- Eksport wyników
+- Podgląd obrazów i metadanych
+
+#### Zakładka Klasyfikacja wsadowa
+
+![Zakładka Klasyfikacja wsadowa](app/img/klasyfikacja_wsadowa.jpg)
+
+- Przetwarzanie całych katalogów
+- Konfiguracja opcji sortowania
+- Monitorowanie postępu
+- Wyniki sortowania
+- Opcje kopiowania/przenoszenia plików
+
+#### Zakładka Raporty (w trakcie implementacji)
+
+- Generowanie raportów z klasyfikacji
+- Statystyki i wykresy
+- Eksport danych w różnych formatach
+- Historia klasyfikacji
+- Analiza porównawcza modeli
+
+#### Zakładka Pomoc
+
+![Zakładka Pomoc](app/img/pomoc.jpg)
+
+- Dokumentacja i pomoc użytkownika
+- Informacje o programie
+- Przewodnik użytkownika
+- FAQ i rozwiązywanie problemów
+
 ### Opcje treningowe
 
 - Wybór typu modelu (ResNet50, EfficientNet, MobileNet, ViT, ConvNeXt)

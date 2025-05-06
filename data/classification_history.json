@@ -1,38 +1,26 @@
 [
     {
-        "class_name": "tree",
-        "confidence": 0.9924513697624207,
-        "date": "2025-05-05T22:15:05.116303",
-        "image_path": "C:/_cloud/_A_A_A_/__dane_treningowe/tree/2502086.5d3cb2757ab93 1.jpg"
+        "date": "2025-05-06T09:36:38.139114",
+        "image_path": "F:/_____test/3DC_PDI_001_Poto_01_CoronaPhysicalMtl_4K.jpg",
+        "class_name": "indoor_plant",
+        "confidence": 1.0
     },
     {
-        "class_name": "bicycle",
-        "confidence": 0.9993826150894165,
-        "date": "2025-05-05T23:39:51.911345",
-        "image_path": "C:/_cloud/_A_A_A_/__dane_treningowe/bicycle/119449.5402749d5015a.jpeg"
+        "date": "2025-05-06T09:36:45.522502",
+        "image_path": "F:/_____test/2 species of succulents in glass vases.jpg",
+        "class_name": "decorations",
+        "confidence": 1.0
     },
     {
-        "class_name": "motor",
-        "confidence": 0.9978729486465454,
-        "date": "2025-05-05T23:40:08.160027",
-        "image_path": "C:/_cloud/_A_A_A_/__dane_treningowe/motor/Custom motorcycle.jpeg"
+        "date": "2025-05-06T09:36:54.482322",
+        "image_path": "F:/_____test/10410.5268bf3423495.jpg",
+        "class_name": "technology",
+        "confidence": 0.99560546875
     },
     {
-        "class_name": "outdoor_plant",
-        "confidence": 0.9997383952140808,
-        "date": "2025-05-05T23:40:20.774843",
-        "image_path": "C:/_cloud/_A_A_A_/__dane_treningowe/outdoor_plant/Am204_018.jpg"
-    },
-    {
-        "class_name": "tree",
-        "confidence": 0.9997825026512146,
-        "date": "2025-05-05T23:40:37.371878",
-        "image_path": "C:/_cloud/_A_A_A_/__dane_treningowe/tree/MT_PM_V114_Alnus_rubra_01_01.jpg"
-    },
-    {
-        "date": "2025-05-05T23:43:15.216432",
-        "image_path": "C:/_cloud/__training data/grass/2206379.5bc188886c7d8.jpg",
-        "class_name": "grass",
-        "confidence": 0.9942281246185303
+        "date": "2025-05-06T09:37:07.743820",
+        "image_path": "F:/_____test/1066852.590f84fc4669d 1.jpg",
+        "class_name": "indoor_plant",
+        "confidence": 1.0
     }
 ]
