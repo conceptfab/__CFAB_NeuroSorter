@@ -1,6 +1,6 @@
 # CFAB NeuroSorter
 
-![CFAB NeuroSorter](app/img/splash.jpg)
+![CFAB NeuroSorter](app/img/splash_doc.jpg)
 
 ## Opis projektu
 
