@@ -25,7 +25,16 @@ from PyQt6.QtWidgets import (
 TRAIN_FOLDER_NAME = "__dane_treningowe"
 VALID_FOLDER_NAME = "__dane_walidacyjne"
 DEFAULT_TRAIN_SPLIT_PERCENT = 80
-ALLOWED_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff")
+ALLOWED_IMAGE_EXTENSIONS = (
+    ".png",
+    ".webp",
+    ".jpg",
+    ".jpeg",
+    ".bmp",
+    ".gif",
+    ".tiff",
+    ".tif",
+)
 
 # --- Style ---
 PRIMARY_COLOR = "#007ACC"  # Niebieski VS Code

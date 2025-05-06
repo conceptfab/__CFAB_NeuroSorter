@@ -1,30 +1,27 @@
-# Standardowe importy
 import os
 import shutil
 import sys
 
-# Importy PyQt
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QLineEdit,
-    QLabel,
     QFileDialog,
-    QTextEdit,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
     QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 
 class JpegMoverApp(QWidget):
-    """Narzędzie do przenoszenia plików JPEG do innego katalogu."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self):
+        super().__init__()
         self.setWindowTitle("Przenoszenie plików JPEG")
-        self.setGeometry(200, 200, 600, 400)
+        self.setGeometry(200, 200, 600, 400)  # x, y, width, height
 
         self.source_dir_path = ""
         self.dest_dir_path = ""
@@ -71,29 +68,22 @@ class JpegMoverApp(QWidget):
         self.setLayout(main_layout)
 
     def browse_source_folder(self):
-        """Wybór folderu źródłowego."""
-        folder_path = QFileDialog.getExistingDirectory(
-            self, "Wybierz folder źródłowy"
-        )
+        folder_path = QFileDialog.getExistingDirectory(self, "Wybierz folder źródłowy")
         if folder_path:
             self.source_dir_path = folder_path
             self.source_edit.setText(folder_path)
             self.log_area.append(f"Wybrano folder źródłowy: {folder_path}")
 
     def browse_dest_folder(self):
-        """Wybór folderu docelowego."""
-        folder_path = QFileDialog.getExistingDirectory(
-            self, "Wybierz folder docelowy"
-        )
+        folder_path = QFileDialog.getExistingDirectory(self, "Wybierz folder docelowy")
         if folder_path:
             self.dest_dir_path = folder_path
             self.dest_edit.setText(folder_path)
             self.log_area.append(f"Wybrano folder docelowy: {folder_path}")
 
     def log_message(self, message):
-        """Logowanie wiadomości."""
         self.log_area.append(message)
-        QApplication.processEvents()
+        QApplication.processEvents()  # Aby odświeżyć UI
 
     def get_unique_dest_path(self, dest_folder, filename):
         """Generuje unikalną ścieżkę docelową, jeśli plik już istnieje."""
@@ -108,7 +98,6 @@ class JpegMoverApp(QWidget):
         return dest_path
 
     def process_files(self):
-        """Rozpoczyna proces przenoszenia plików."""
         if not self.source_dir_path:
             QMessageBox.warning(self, "Błąd", "Wybierz folder źródłowy.")
             self.log_message("BŁĄD: Nie wybrano folderu źródłowego.")
@@ -121,15 +110,13 @@ class JpegMoverApp(QWidget):
 
         if self.source_dir_path == self.dest_dir_path:
             QMessageBox.warning(
-                self,
-                "Błąd",
-                "Folder źródłowy i docelowy nie mogą być takie same.",
+                self, "Błąd", "Folder źródłowy i docelowy nie mogą być takie same."
             )
             self.log_message("BŁĄD: Folder źródłowy i docelowy są takie same.")
             return
 
         self.log_message("\nRozpoczynam przetwarzanie plików...")
-        self.move_button.setEnabled(False)
+        self.move_button.setEnabled(False)  # Wyłącz przycisk podczas przetwarzania
 
         files_moved_count = 0
         files_found_count = 0
@@ -138,13 +125,13 @@ class JpegMoverApp(QWidget):
             # Utwórz folder docelowy, jeśli nie istnieje
             if not os.path.exists(self.dest_dir_path):
                 os.makedirs(self.dest_dir_path)
-                self.log_message(
-                    f"Utworzono folder docelowy: {self.dest_dir_path}"
-                )
+                self.log_message(f"Utworzono folder docelowy: {self.dest_dir_path}")
 
             for root, _, files in os.walk(self.source_dir_path):
                 for filename in files:
-                    if filename.lower().endswith(".jpeg"):
+                    if filename.lower().endswith(
+                        ".jpeg"
+                    ):  # Możesz dodać .jpg jeśli chcesz: ('.jpeg', '.jpg')
                         files_found_count += 1
                         source_file_path = os.path.join(root, filename)
 
@@ -156,40 +143,32 @@ class JpegMoverApp(QWidget):
                         try:
                             shutil.move(source_file_path, dest_file_path)
                             self.log_message(
-                                f"Przeniesiono: {source_file_path} -> "
-                                f"{dest_file_path}"
+                                f"Przeniesiono: {source_file_path} -> {dest_file_path}"
                             )
                             files_moved_count += 1
                         except Exception as e:
                             self.log_message(
-                                f"BŁĄD podczas przenoszenia {source_file_path}: "
-                                f"{e}"
+                                f"BŁĄD podczas przenoszenia {source_file_path}: {e}"
                             )
 
-            self.log_message("\nZakończono przetwarzanie.")
+            self.log_message(f"\nZakończono przetwarzanie.")
             self.log_message(f"Znaleziono plików JPEG: {files_found_count}")
             self.log_message(f"Przeniesiono plików: {files_moved_count}")
             QMessageBox.information(
                 self,
                 "Zakończono",
-                f"Przeniesiono {files_moved_count} z {files_found_count} "
-                f"znalezionych plików JPEG.",
+                f"Przeniesiono {files_moved_count} z {files_found_count} znalezionych plików JPEG.",
             )
 
         except Exception as e:
             self.log_message(f"Krytyczny błąd podczas przetwarzania: {e}")
             QMessageBox.critical(self, "Krytyczny błąd", f"Wystąpił błąd: {e}")
         finally:
-            self.move_button.setEnabled(True)
+            self.move_button.setEnabled(True)  # Włącz przycisk z powrotem
 
 
-def main():
-    """Funkcja główna do samodzielnego uruchomienia narzędzia."""
+def run_mover():
     app = QApplication(sys.argv)
     window = JpegMoverApp()
     window.show()
     sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main() 

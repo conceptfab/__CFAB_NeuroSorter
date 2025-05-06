@@ -1,10 +1,8 @@
-# Standardowe importy
 import os
 import shutil
 import sys
 
-# Importy PyQt
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -34,7 +32,9 @@ IMAGE_EXTENSIONS = [
 
 
 class Worker(QThread):
-    """Wątek roboczy do obsługi operacji plikowych, aby nie blokować GUI."""
+    """
+    Wątek roboczy do obsługi operacji plikowych, aby nie blokować GUI.
+    """
 
     progress_update = pyqtSignal(int, str)  # (procent, wiadomość)
     finished_signal = pyqtSignal(int, int)  # (liczba znalezionych, liczba skopiowanych)
@@ -53,7 +53,7 @@ class Worker(QThread):
         total_files_to_scan = 0
 
         try:
-            # Pierwsze przejście, aby policzyć pliki do przeskanowania
+            # Pierwsze przejście, aby policzyć pliki do przeskanowania (dla paska postępu)
             for _, _, files in os.walk(self.source_dir):
                 if not self.running:
                     self.progress_update.emit(100, "Przerwano przez użytkownika.")
@@ -123,26 +123,25 @@ class Worker(QThread):
 
         except Exception as e:
             self.error_signal.emit(f"Wystąpił krytyczny błąd: {e}")
-            self.finished_signal.emit(found_count, copied_count)
+            self.finished_signal.emit(
+                found_count, copied_count
+            )  # Zakończ nawet przy błędzie
 
     def stop(self):
         self.running = False
 
 
 class ImageCopierApp(QWidget):
-    """Aplikacja do kopiowania plików graficznych."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self):
+        super().__init__()
         self.source_dir = ""
         self.dest_dir = ""
         self.worker_thread = None
         self.initUI()
 
     def initUI(self):
-        """Inicjalizacja interfejsu użytkownika."""
         self.setWindowTitle("Kopiowanie Plików Graficznych")
-        self.setGeometry(300, 300, 600, 450)
+        self.setGeometry(300, 300, 600, 450)  # x, y, width, height
 
         layout = QVBoxLayout()
 
@@ -195,7 +194,6 @@ class ImageCopierApp(QWidget):
         self.setLayout(layout)
 
     def select_source_dir(self):
-        """Wybór folderu źródłowego."""
         directory = QFileDialog.getExistingDirectory(self, "Wybierz folder źródłowy")
         if directory:
             self.source_dir = directory
@@ -203,7 +201,6 @@ class ImageCopierApp(QWidget):
             self.log_message(f"Wybrano folder źródłowy: {directory}")
 
     def select_dest_dir(self):
-        """Wybór folderu docelowego."""
         directory = QFileDialog.getExistingDirectory(self, "Wybierz folder docelowy")
         if directory:
             self.dest_dir = directory
@@ -211,12 +208,10 @@ class ImageCopierApp(QWidget):
             self.log_message(f"Wybrano folder docelowy: {directory}")
 
     def log_message(self, message):
-        """Logowanie wiadomości."""
         self.log_area.append(message)
-        QApplication.processEvents()
+        QApplication.processEvents()  # Aby GUI się odświeżało
 
     def start_copying(self):
-        """Rozpoczyna proces kopiowania."""
         if not self.source_dir:
             QMessageBox.warning(self, "Brak folderu", "Proszę wybrać folder źródłowy.")
             return
@@ -267,37 +262,34 @@ class ImageCopierApp(QWidget):
         self.worker_thread.start()
 
     def cancel_copying(self):
-        """Anuluje proces kopiowania."""
         if self.worker_thread and self.worker_thread.isRunning():
             self.log_message("Próba anulowania operacji...")
             self.worker_thread.stop()
-            self.cancel_button.setEnabled(False)
+            self.cancel_button.setEnabled(False)  # Zapobiegaj wielokrotnemu klikaniu
 
     def update_progress(self, percent, message):
-        """Aktualizuje pasek postępu i logi."""
         self.progress_bar.setValue(percent)
         self.log_message(message)
 
     def on_finished(self, found_count, copied_count):
-        """Obsługa zakończenia kopiowania."""
-        final_message = (
-            f"Zakończono. Znaleziono plików graficznych: {found_count}. "
-            f"Skopiowano: {copied_count}."
-        )
+        final_message = f"Zakończono. Znaleziono plików graficznych: {found_count}. Skopiowano: {copied_count}."
         self.log_message(final_message)
-        if self.worker_thread and not self.worker_thread.running:
+        if (
+            self.worker_thread and not self.worker_thread.running
+        ):  # Jeśli było przerwane
             self.log_message("Operacja została przerwana przez użytkownika.")
         QMessageBox.information(self, "Zakończono", final_message)
 
-        self.progress_bar.setValue(100 if found_count > 0 or copied_count > 0 else 0)
+        self.progress_bar.setValue(
+            100 if found_count > 0 or copied_count > 0 else 0
+        )  # Ustaw na 100% lub 0%
         self.start_button.setEnabled(True)
         self.source_button.setEnabled(True)
         self.dest_button.setEnabled(True)
         self.cancel_button.setEnabled(False)
-        self.worker_thread = None
+        self.worker_thread = None  # Usuń referencję do wątku
 
     def on_error(self, error_message):
-        """Obsługa błędów."""
         self.log_message(f"BŁĄD KRYTYCZNY: {error_message}")
         QMessageBox.critical(self, "Błąd krytyczny", error_message)
         self.start_button.setEnabled(True)
@@ -318,7 +310,7 @@ class ImageCopierApp(QWidget):
             )
             if reply == QMessageBox.StandardButton.Yes:
                 self.worker_thread.stop()
-                self.worker_thread.wait()
+                self.worker_thread.wait()  # Poczekaj na zakończenie wątku
                 event.accept()
             else:
                 event.ignore()
@@ -326,13 +318,8 @@ class ImageCopierApp(QWidget):
             event.accept()
 
 
-def main():
-    """Funkcja główna do samodzielnego uruchomienia narzędzia."""
+def run_copier():
     app = QApplication(sys.argv)
     ex = ImageCopierApp()
     ex.show()
     sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()

@@ -141,7 +141,7 @@ class JpegToJpgConverter(QWidget):
             )
 
 
-if __name__ == "__main__":
+def run_converter():
     app = QApplication(sys.argv)
     converter = JpegToJpgConverter()
     converter.show()
