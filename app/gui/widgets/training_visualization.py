@@ -22,6 +22,18 @@ class TrainingVisualization(QWidget):
         # Flaga wskazująca czy dane zostały zaktualizowane
         self.data_updated = False
 
+    def get_theme_colors(self):
+        """Zwraca kolory dla ciemnego motywu."""
+        return {
+            "background": (30, 30, 30),  # Ciemnoszary
+            "foreground": (200, 200, 200),  # Jasnoszary
+            "grid": (60, 60, 60),  # Średni szary
+            "train_loss": (0, 120, 215),  # Niebieski
+            "val_loss": (215, 0, 0),  # Czerwony
+            "train_acc": (0, 180, 0),  # Zielony
+            "val_acc": (180, 0, 180),  # Fioletowy
+        }
+
     def setup_ui(self):
         """Konfiguruje interfejs użytkownika."""
         layout = QVBoxLayout(self)
@@ -31,40 +43,41 @@ class TrainingVisualization(QWidget):
         header.setStyleSheet("font-weight: bold; font-size: 14px;")
         layout.addWidget(header)
 
-        # Kontrolki - usunięto wybór metryki
+        # Kontrolki
         controls_layout = QHBoxLayout()
-        # Usunięto QComboBox self.metric_combo i powiązaną etykietę
-        # oraz connect
         controls_layout.addStretch()
         layout.addLayout(controls_layout)
 
         # Wykres
         self.plot_widget = pg.PlotWidget()
 
-        # Ustaw kolor tła obszaru kreślenia na podstawie ustawień lub domyślny biały
-        key = "chart_plot_area_background_color"
-        default_color = "w"
-        chart_plot_area_bg_color = self.settings.get(key, default_color)
-        print(
-            f"DEBUG TV: Klucz='{key}', "
-            f"Wartość='{chart_plot_area_bg_color}', "
-            f"Typ={type(chart_plot_area_bg_color)}"
-        )
-        if self.plot_widget.plotItem:
-            view_box = self.plot_widget.plotItem.getViewBox()
-            if view_box:
-                view_box.setBackgroundColor(chart_plot_area_bg_color)
+        # Pobierz kolory z motywu
+        colors = self.get_theme_colors()
 
-        # self.plot_widget.setBackground(chart_bg_color) # Usunięte lub zakomentowane - stary sposób
+        # Ustaw kolor tła
+        self.plot_widget.setBackground(colors["background"])
+
+        # Ustaw kolor siatki
         self.plot_widget.showGrid(x=True, y=True)
-        self.plot_widget.addLegend()
-        self.plot_widget.setLabel("left", "Wartość")
-        self.plot_widget.setLabel("bottom", "Epoka")
+        self.plot_widget.getAxis("bottom").setPen(colors["grid"])
+        self.plot_widget.getAxis("left").setPen(colors["grid"])
+
+        # Ustaw kolory osi
+        self.plot_widget.getAxis("bottom").setTextPen(colors["foreground"])
+        self.plot_widget.getAxis("left").setTextPen(colors["foreground"])
+
+        # Ustaw kolory legendy
+        self.plot_widget.addLegend(labelTextColor=colors["foreground"])
+
+        # Ustaw etykiety osi
+        self.plot_widget.setLabel("left", "Wartość", color=colors["foreground"])
+        self.plot_widget.setLabel("bottom", "Epoka", color=colors["foreground"])
+
         layout.addWidget(self.plot_widget)
 
         # Style dla linii epok
         self.epoch_line_pen = pg.mkPen(
-            color=(100, 100, 100), style=Qt.PenStyle.DashLine, width=1
+            color=colors["grid"], style=Qt.PenStyle.DashLine, width=1
         )
 
     def update_plot(self):
@@ -83,11 +96,8 @@ class TrainingVisualization(QWidget):
             # Dodaj legendę
             self.plot_widget.addLegend()
 
-            # Pobierz kolory z ustawień lub użyj domyślnych
-            train_loss_color = self.settings.get("chart_train_loss_color", "b")
-            val_loss_color = self.settings.get("chart_val_loss_color", "r")
-            train_acc_color = self.settings.get("chart_train_acc_color", "g")
-            val_acc_color = self.settings.get("chart_val_acc_color", "m")
+            # Pobierz kolory z motywu
+            colors = self.get_theme_colors()
 
             # Rysuj stratę treningową
             if len(self.train_loss_data) > 0 and all(
@@ -97,7 +107,7 @@ class TrainingVisualization(QWidget):
                 self.plot_widget.plot(
                     x_data[: len(y_data_train_loss)],
                     y_data_train_loss,
-                    pen=pg.mkPen(color=train_loss_color, width=2),
+                    pen=pg.mkPen(color=colors["train_loss"], width=2),
                     name="Strata treningowa",
                     symbol="o",
                 )
@@ -115,7 +125,7 @@ class TrainingVisualization(QWidget):
                     self.plot_widget.plot(
                         np.array(x_val_loss),
                         np.array(y_val_loss),
-                        pen=pg.mkPen(color=val_loss_color, width=2),
+                        pen=pg.mkPen(color=colors["val_loss"], width=2),
                         name="Strata walidacyjna",
                         symbol="o",
                     )
@@ -128,7 +138,7 @@ class TrainingVisualization(QWidget):
                 self.plot_widget.plot(
                     x_data[: len(y_data_train_acc)],
                     y_data_train_acc,
-                    pen=pg.mkPen(color=train_acc_color, width=2),
+                    pen=pg.mkPen(color=colors["train_acc"], width=2),
                     name="Dokładność treningowa",
                     symbol="o",
                 )
@@ -146,7 +156,7 @@ class TrainingVisualization(QWidget):
                     self.plot_widget.plot(
                         np.array(x_val_acc),
                         np.array(y_val_acc),
-                        pen=pg.mkPen(color=val_acc_color, width=2),
+                        pen=pg.mkPen(color=colors["val_acc"], width=2),
                         name="Dokładność walidacyjna",
                         symbol="o",
                     )

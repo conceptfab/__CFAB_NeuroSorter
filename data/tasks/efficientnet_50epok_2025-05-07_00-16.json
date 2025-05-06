@@ -1,0 +1,26 @@
+{
+    "name": "efficientnet_50epok_2025-05-07_00-16.json",
+    "type": "Trening",
+    "status": "Nowy",
+    "priority": 0,
+    "created_at": "2025-05-07 00:16:26",
+    "config": {
+        "model_arch": "efficientnet",
+        "data_dir": "C:/_cloud/___X___/__dane_treningowe",
+        "val_dir": "C:/_cloud/___X___/__dane_walidacyjne",
+        "epochs": 50,
+        "batch_size": 64,
+        "learning_rate": 0.001,
+        "optimizer": "Adam",
+        "scheduler": "None",
+        "use_mixed_precision": false,
+        "num_workers": 10,
+        "weight_decay": 0.0001,
+        "gradient_clip": 0.1,
+        "early_stopping": 5,
+        "augmentation": {
+            "basic": true,
+            "advanced": false
+        }
+    }
+}

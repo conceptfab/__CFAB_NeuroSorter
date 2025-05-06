@@ -1,7 +1,7 @@
 import json
+import logging
 
-# from PyQt6.QtCore import Qt # Usunięto nieużywany import Qt
-from PyQt6.QtWidgets import (  # QDialogButtonBox, # Usunięto nieużywany import; QFrame, # Usunięto nieużywany import; QLabel, # Usunięto nieużywany import; QScrollArea, # Usunięto nieużywany import
+from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
@@ -19,10 +19,10 @@ from PyQt6.QtWidgets import (  # QDialogButtonBox, # Usunięto nieużywany impor
     QWidget,
 )
 
-# Usunięto nieużywany import TabInterface
-# Poniższy import jest problematyczny - wymaga sprawdzenia struktury projektu
 from app.utils.settings_utils import validate_settings
 
+# Usunięto nieużywany import TabInterface
+# Poniższy import jest problematyczny - wymaga sprawdzenia struktury projektu
 # import os # Usunięto nieużywany import
 
 
@@ -33,8 +33,11 @@ class SettingsManager(QDialog):
         super().__init__(parent)
         self.parent = parent
         self.settings = settings
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
         self.setup_ui()
         self.connect_signals()
+        self.logger.info("Zainicjalizowano SettingsManager")
 
     def setup_ui(self):
         """Tworzy i konfiguruje elementy interfejsu okna."""
@@ -468,144 +471,167 @@ class SettingsManager(QDialog):
     def _load_settings(self):
         """Ładuje ustawienia z pliku."""
         try:
+            self.logger.debug("Rozpoczynam ładowanie ustawień")
+            self.logger.debug(f"Aktualne ustawienia: {self.settings}")
+
             # Ustawienia ogólne (zakładka "Ogólne")
             if hasattr(self, "data_dir_edit"):
-                self.data_dir_edit.setText(self.settings.get("data_dir", "data"))
+                value = self.settings.get("data_dir", "data")
+                self.data_dir_edit.setText(value)
+                self.logger.debug(f"Ustawiono data_dir: {value}")
+
             if hasattr(self, "models_dir_edit"):
-                self.models_dir_edit.setText(
-                    self.settings.get("models_dir", "data/models")
-                )
+                value = self.settings.get("models_dir", "data/models")
+                self.models_dir_edit.setText(value)
+                self.logger.debug(f"Ustawiono models_dir: {value}")
+
             if hasattr(self, "reports_dir_edit"):
-                self.reports_dir_edit.setText(
-                    self.settings.get("reports_dir", "data/reports")
-                )
+                value = self.settings.get("reports_dir", "data/reports")
+                self.reports_dir_edit.setText(value)
+                self.logger.debug(f"Ustawiono reports_dir: {value}")
+
             if hasattr(self, "log_level_combo"):
-                self.log_level_combo.setCurrentText(
-                    self.settings.get("log_level", "INFO")
-                )
+                value = self.settings.get("log_level", "INFO")
+                self.log_level_combo.setCurrentText(value)
+                self.logger.debug(f"Ustawiono log_level: {value}")
+
             if hasattr(self, "log_file_edit"):
-                self.log_file_edit.setText(self.settings.get("log_file", "app.log"))
+                value = self.settings.get("log_file", "app.log")
+                self.log_file_edit.setText(value)
+                self.logger.debug(f"Ustawiono log_file: {value}")
 
             # Ustawienia modelu (zakładka "Model")
             if hasattr(self, "confidence_threshold"):
-                self.confidence_threshold.setValue(
-                    int(self.settings.get("confidence_threshold", 50))
-                )
+                value = int(self.settings.get("confidence_threshold", 50))
+                self.confidence_threshold.setValue(value)
+                self.logger.debug(f"Ustawiono confidence_threshold: {value}")
             if hasattr(self, "use_gpu_checkbox"):
-                self.use_gpu_checkbox.setChecked(self.settings.get("use_gpu", True))
-            if hasattr(
-                self, "batch_size"
-            ):  # Uwaga: to batch_size dla klasyfikacji/modelu
-                self.batch_size.setValue(self.settings.get("batch_size", 32))
+                value = self.settings.get("use_gpu", True)
+                self.use_gpu_checkbox.setChecked(value)
+                self.logger.debug(f"Ustawiono use_gpu: {value}")
+            if hasattr(self, "batch_size"):
+                value = self.settings.get("batch_size", 32)
+                self.batch_size.setValue(value)
+                self.logger.debug(f"Ustawiono batch_size: {value}")
             if hasattr(self, "num_workers"):
-                self.num_workers.setValue(self.settings.get("num_workers", 4))
+                value = self.settings.get("num_workers", 4)
+                self.num_workers.setValue(value)
+                self.logger.debug(f"Ustawiono num_workers: {value}")
             if hasattr(self, "auto_load_last_model_checkbox"):
-                self.auto_load_last_model_checkbox.setChecked(
-                    self.settings.get("auto_load_last_model", True)
-                )
+                value = self.settings.get("auto_load_last_model", True)
+                self.auto_load_last_model_checkbox.setChecked(value)
+                self.logger.debug(f"Ustawiono auto_load_last_model: {value}")
 
             # Ustawienia treningu (zakładka "Trening")
             if hasattr(self, "epochs_spin"):
-                self.epochs_spin.setValue(int(self.settings.get("epochs", 10)))
-            if hasattr(
-                self, "train_batch_size_spin"
-            ):  # Dedykowany batch_size dla treningu
-                self.train_batch_size_spin.setValue(
-                    self.settings.get("train_batch_size", 32)
-                )
+                value = int(self.settings.get("epochs", 10))
+                self.epochs_spin.setValue(value)
+                self.logger.debug(f"Ustawiono epochs: {value}")
+            if hasattr(self, "train_batch_size_spin"):
+                value = self.settings.get("train_batch_size", 32)
+                self.train_batch_size_spin.setValue(value)
+                self.logger.debug(f"Ustawiono train_batch_size: {value}")
             if hasattr(self, "learning_rate_combo"):
-                self.learning_rate_combo.setCurrentText(
-                    str(self.settings.get("learning_rate", 0.001))
-                )
+                value = str(self.settings.get("learning_rate", 0.001))
+                self.learning_rate_combo.setCurrentText(value)
+                self.logger.debug(f"Ustawiono learning_rate: {value}")
             if hasattr(self, "optimizer_combo"):
-                self.optimizer_combo.setCurrentText(
-                    self.settings.get("optimizer", "Adam")
-                )
+                value = self.settings.get("optimizer", "Adam")
+                self.optimizer_combo.setCurrentText(value)
+                self.logger.debug(f"Ustawiono optimizer: {value}")
             # Ustawienia augmentacji
             augmentation_settings = self.settings.get("augmentation_settings", {})
             if hasattr(self, "use_augmentation_checkbox"):
-                self.use_augmentation_checkbox.setChecked(
-                    augmentation_settings.get("use_augmentation", True)
-                )
+                value = augmentation_settings.get("use_augmentation", True)
+                self.use_augmentation_checkbox.setChecked(value)
+                self.logger.debug(f"Ustawiono use_augmentation: {value}")
             if hasattr(self, "rotation_spin"):
-                self.rotation_spin.setValue(
-                    augmentation_settings.get("rotation_angle", 15)
-                )
+                value = augmentation_settings.get("rotation_angle", 15)
+                self.rotation_spin.setValue(value)
+                self.logger.debug(f"Ustawiono rotation_angle: {value}")
             if hasattr(self, "brightness_spin"):
-                self.brightness_spin.setValue(
-                    augmentation_settings.get("brightness_change", 20)
-                )
+                value = augmentation_settings.get("brightness_change", 20)
+                self.brightness_spin.setValue(value)
+                self.logger.debug(f"Ustawiono brightness_change: {value}")
 
             # Ustawienia interfejsu (zakładka "Interfejs")
             if hasattr(self, "theme_combo"):
-                self.theme_combo.setCurrentText(self.settings.get("theme", "Ciemny"))
+                value = self.settings.get("theme", "Ciemny")
+                self.theme_combo.setCurrentText(value)
+                self.logger.debug(f"Ustawiono theme: {value}")
             if hasattr(self, "language_combo"):
-                self.language_combo.setCurrentText(
-                    self.settings.get("language", "Polski")
-                )
+                value = self.settings.get("language", "Polski")
+                self.language_combo.setCurrentText(value)
+                self.logger.debug(f"Ustawiono language: {value}")
             if hasattr(self, "font_size_spin"):
-                self.font_size_spin.setValue(self.settings.get("font_size", 11))
+                value = self.settings.get("font_size", 11)
+                self.font_size_spin.setValue(value)
+                self.logger.debug(f"Ustawiono font_size: {value}")
             # Kolory wykresu
             if hasattr(self, "train_loss_color_edit"):
-                self.train_loss_color_edit.setText(
-                    self.settings.get("chart_train_loss_color", "b")
-                )
+                value = self.settings.get("chart_train_loss_color", "b")
+                self.train_loss_color_edit.setText(value)
+                self.logger.debug(f"Ustawiono chart_train_loss_color: {value}")
             if hasattr(self, "val_loss_color_edit"):
-                self.val_loss_color_edit.setText(
-                    self.settings.get("chart_val_loss_color", "r")
-                )
+                value = self.settings.get("chart_val_loss_color", "r")
+                self.val_loss_color_edit.setText(value)
+                self.logger.debug(f"Ustawiono chart_val_loss_color: {value}")
             if hasattr(self, "train_acc_color_edit"):
-                self.train_acc_color_edit.setText(
-                    self.settings.get("chart_train_acc_color", "g")
-                )
+                value = self.settings.get("chart_train_acc_color", "g")
+                self.train_acc_color_edit.setText(value)
+                self.logger.debug(f"Ustawiono chart_train_acc_color: {value}")
             if hasattr(self, "val_acc_color_edit"):
-                self.val_acc_color_edit.setText(
-                    self.settings.get("chart_val_acc_color", "m")
-                )
+                value = self.settings.get("chart_val_acc_color", "m")
+                self.val_acc_color_edit.setText(value)
+                self.logger.debug(f"Ustawiono chart_val_acc_color: {value}")
             if hasattr(self, "chart_plot_area_background_color_edit"):
-                self.chart_plot_area_background_color_edit.setText(
-                    self.settings.get("chart_plot_area_background_color", "w")
+                value = self.settings.get("chart_plot_area_background_color", "w")
+                self.chart_plot_area_background_color_edit.setText(value)
+                self.logger.debug(
+                    f"Ustawiono chart_plot_area_background_color: {value}"
                 )
             # Ustawienia zachowania
             if hasattr(self, "autosave_checkbox"):
-                self.autosave_checkbox.setChecked(self.settings.get("autosave", True))
+                value = self.settings.get("autosave", True)
+                self.autosave_checkbox.setChecked(value)
+                self.logger.debug(f"Ustawiono autosave: {value}")
             if hasattr(self, "confirm_exit_checkbox"):
-                self.confirm_exit_checkbox.setChecked(
-                    self.settings.get("confirm_exit", True)
-                )
+                value = self.settings.get("confirm_exit", True)
+                self.confirm_exit_checkbox.setChecked(value)
+                self.logger.debug(f"Ustawiono confirm_exit: {value}")
             if hasattr(self, "notifications_checkbox"):
-                self.notifications_checkbox.setChecked(
-                    self.settings.get("notifications", True)
-                )
+                value = self.settings.get("notifications", True)
+                self.notifications_checkbox.setChecked(value)
+                self.logger.debug(f"Ustawiono notifications: {value}")
 
             # Ustawienia systemowe (zakładka "System")
             if hasattr(self, "memory_limit_spin"):
-                self.memory_limit_spin.setValue(self.settings.get("memory_limit", 4096))
+                value = self.settings.get("memory_limit", 4096)
+                self.memory_limit_spin.setValue(value)
+                self.logger.debug(f"Ustawiono memory_limit: {value}")
             if hasattr(self, "threads_spin"):
-                self.threads_spin.setValue(self.settings.get("threads", 4))
+                value = self.settings.get("threads", 4)
+                self.threads_spin.setValue(value)
+                self.logger.debug(f"Ustawiono threads: {value}")
             if hasattr(self, "backup_enabled_checkbox"):
-                self.backup_enabled_checkbox.setChecked(
-                    self.settings.get("backup_enabled", False)
-                )
+                value = self.settings.get("backup_enabled", False)
+                self.backup_enabled_checkbox.setChecked(value)
+                self.logger.debug(f"Ustawiono backup_enabled: {value}")
             if hasattr(self, "backup_dir_edit"):
-                self.backup_dir_edit.setText(
-                    self.settings.get("backup_dir", "data/backup")
-                )
+                value = self.settings.get("backup_dir", "data/backup")
+                self.backup_dir_edit.setText(value)
+                self.logger.debug(f"Ustawiono backup_dir: {value}")
             if hasattr(self, "backup_interval_spin"):
-                self.backup_interval_spin.setValue(
-                    self.settings.get("backup_interval", 24)
-                )
+                value = self.settings.get("backup_interval", 24)
+                self.backup_interval_spin.setValue(value)
+                self.logger.debug(f"Ustawiono backup_interval: {value}")
+
+            self.logger.info("Pomyślnie załadowano wszystkie ustawienia")
 
         except Exception as e:
-            # Logowanie błędu powinno być obsługiwane przez self.parent.logger, jeśli dostępne
-            if self.parent and hasattr(self.parent, "logger"):
-                self.parent.logger.error(
-                    f"Błąd ładowania ustawień w SettingsManager: {str(e)}"
-                )
-            else:
-                print(
-                    f"Błąd ładowania ustawień w SettingsManager: {str(e)}"
-                )  # Fallback
+            self.logger.error(
+                f"Błąd podczas ładowania ustawień: {str(e)}", exc_info=True
+            )
             QMessageBox.critical(
                 self, "Błąd", f"Nie udało się załadować ustawień:\n{str(e)}"
             )
@@ -613,128 +639,232 @@ class SettingsManager(QDialog):
     def _save_settings(self):
         """Zbiera ustawienia z UI i aktualizuje self.settings oraz self.parent.settings."""
         try:
+            self.logger.debug("Rozpoczynam zbieranie ustawień z UI")
             current_settings = {}
 
             # Ustawienia ogólne
             if hasattr(self, "data_dir_edit"):
                 current_settings["data_dir"] = self.data_dir_edit.text()
+                self.logger.debug(f"Zebrano data_dir: {self.data_dir_edit.text()}")
+
             if hasattr(self, "models_dir_edit"):
                 current_settings["models_dir"] = self.models_dir_edit.text()
+                self.logger.debug(f"Zebrano models_dir: {self.models_dir_edit.text()}")
+
             if hasattr(self, "reports_dir_edit"):
                 current_settings["reports_dir"] = self.reports_dir_edit.text()
+                self.logger.debug(
+                    f"Zebrano reports_dir: {self.reports_dir_edit.text()}"
+                )
+
             if hasattr(self, "log_level_combo"):
                 current_settings["log_level"] = self.log_level_combo.currentText()
+                self.logger.debug(
+                    f"Zebrano log_level: {self.log_level_combo.currentText()}"
+                )
+
             if hasattr(self, "log_file_edit"):
                 current_settings["log_file"] = self.log_file_edit.text()
+                self.logger.debug(f"Zebrano log_file: {self.log_file_edit.text()}")
 
             # Ustawienia modelu
             if hasattr(self, "confidence_threshold"):
                 current_settings["confidence_threshold"] = (
                     self.confidence_threshold.value()
                 )
+                self.logger.debug(
+                    f"Zebrano confidence_threshold: "
+                    f"{self.confidence_threshold.value()}"
+                )
             if hasattr(self, "use_gpu_checkbox"):
                 current_settings["use_gpu"] = self.use_gpu_checkbox.isChecked()
+                self.logger.debug(
+                    f"Zebrano use_gpu: {self.use_gpu_checkbox.isChecked()}"
+                )
             if hasattr(self, "batch_size"):
                 current_settings["batch_size"] = self.batch_size.value()
+                self.logger.debug(f"Zebrano batch_size: {self.batch_size.value()}")
             if hasattr(self, "num_workers"):
                 current_settings["num_workers"] = self.num_workers.value()
+                self.logger.debug(f"Zebrano num_workers: {self.num_workers.value()}")
             if hasattr(self, "auto_load_last_model_checkbox"):
                 current_settings["auto_load_last_model"] = (
                     self.auto_load_last_model_checkbox.isChecked()
+                )
+                self.logger.debug(
+                    f"Zebrano auto_load_last_model: "
+                    f"{self.auto_load_last_model_checkbox.isChecked()}"
                 )
 
             # Ustawienia treningu
             if hasattr(self, "epochs_spin"):
                 current_settings["epochs"] = self.epochs_spin.value()
+                self.logger.debug(f"Zebrano epochs: {self.epochs_spin.value()}")
             if hasattr(self, "train_batch_size_spin"):
                 current_settings["train_batch_size"] = (
                     self.train_batch_size_spin.value()
+                )
+                self.logger.debug(
+                    f"Zebrano train_batch_size: "
+                    f"{self.train_batch_size_spin.value()}"
                 )
             if hasattr(self, "learning_rate_combo"):
                 current_settings["learning_rate"] = float(
                     self.learning_rate_combo.currentText()
                 )
+                self.logger.debug(
+                    f"Zebrano learning_rate: "
+                    f"{float(self.learning_rate_combo.currentText())}"
+                )
             if hasattr(self, "optimizer_combo"):
                 current_settings["optimizer"] = self.optimizer_combo.currentText()
+                self.logger.debug(
+                    f"Zebrano optimizer: {self.optimizer_combo.currentText()}"
+                )
+
             # Ustawienia augmentacji
             augmentation_settings = {}
             if hasattr(self, "use_augmentation_checkbox"):
                 augmentation_settings["use_augmentation"] = (
                     self.use_augmentation_checkbox.isChecked()
                 )
+                self.logger.debug(
+                    f"Zebrano use_augmentation: "
+                    f"{self.use_augmentation_checkbox.isChecked()}"
+                )
             if hasattr(self, "rotation_spin"):
                 augmentation_settings["rotation_angle"] = self.rotation_spin.value()
+                self.logger.debug(
+                    f"Zebrano rotation_angle: {self.rotation_spin.value()}"
+                )
             if hasattr(self, "brightness_spin"):
                 augmentation_settings["brightness_change"] = (
                     self.brightness_spin.value()
                 )
-            if (
-                augmentation_settings
-            ):  # Zapisz tylko jeśli są jakieś ustawienia augmentacji
+                self.logger.debug(
+                    f"Zebrano brightness_change: {self.brightness_spin.value()}"
+                )
+
+            if augmentation_settings:
                 current_settings["augmentation_settings"] = augmentation_settings
+                self.logger.debug(
+                    f"Zebrano augmentation_settings: {augmentation_settings}"
+                )
 
             # Ustawienia interfejsu
             if hasattr(self, "theme_combo"):
                 current_settings["theme"] = self.theme_combo.currentText()
+                self.logger.debug(f"Zebrano theme: {self.theme_combo.currentText()}")
             if hasattr(self, "language_combo"):
                 current_settings["language"] = self.language_combo.currentText()
+                self.logger.debug(
+                    f"Zebrano language: {self.language_combo.currentText()}"
+                )
             if hasattr(self, "font_size_spin"):
                 current_settings["font_size"] = self.font_size_spin.value()
+                self.logger.debug(f"Zebrano font_size: {self.font_size_spin.value()}")
+
             # Kolory wykresu
             if hasattr(self, "train_loss_color_edit"):
                 current_settings["chart_train_loss_color"] = (
                     self.train_loss_color_edit.text()
                 )
+                self.logger.debug(
+                    f"Zebrano chart_train_loss_color: "
+                    f"{self.train_loss_color_edit.text()}"
+                )
             if hasattr(self, "val_loss_color_edit"):
                 current_settings["chart_val_loss_color"] = (
                     self.val_loss_color_edit.text()
+                )
+                self.logger.debug(
+                    f"Zebrano chart_val_loss_color: "
+                    f"{self.val_loss_color_edit.text()}"
                 )
             if hasattr(self, "train_acc_color_edit"):
                 current_settings["chart_train_acc_color"] = (
                     self.train_acc_color_edit.text()
                 )
+                self.logger.debug(
+                    f"Zebrano chart_train_acc_color: "
+                    f"{self.train_acc_color_edit.text()}"
+                )
             if hasattr(self, "val_acc_color_edit"):
                 current_settings["chart_val_acc_color"] = self.val_acc_color_edit.text()
+                self.logger.debug(
+                    f"Zebrano chart_val_acc_color: " f"{self.val_acc_color_edit.text()}"
+                )
             if hasattr(self, "chart_plot_area_background_color_edit"):
                 current_settings["chart_plot_area_background_color"] = (
                     self.chart_plot_area_background_color_edit.text()
                 )
+                self.logger.debug(
+                    f"Zebrano chart_plot_area_background_color: "
+                    f"{self.chart_plot_area_background_color_edit.text()}"
+                )
+
             # Ustawienia zachowania
             if hasattr(self, "autosave_checkbox"):
                 current_settings["autosave"] = self.autosave_checkbox.isChecked()
+                self.logger.debug(
+                    f"Zebrano autosave: {self.autosave_checkbox.isChecked()}"
+                )
             if hasattr(self, "confirm_exit_checkbox"):
                 current_settings["confirm_exit"] = (
                     self.confirm_exit_checkbox.isChecked()
+                )
+                self.logger.debug(
+                    f"Zebrano confirm_exit: {self.confirm_exit_checkbox.isChecked()}"
                 )
             if hasattr(self, "notifications_checkbox"):
                 current_settings["notifications"] = (
                     self.notifications_checkbox.isChecked()
                 )
+                self.logger.debug(
+                    f"Zebrano notifications: {self.notifications_checkbox.isChecked()}"
+                )
 
             # Ustawienia systemowe
             if hasattr(self, "memory_limit_spin"):
                 current_settings["memory_limit"] = self.memory_limit_spin.value()
+                self.logger.debug(
+                    f"Zebrano memory_limit: {self.memory_limit_spin.value()}"
+                )
             if hasattr(self, "threads_spin"):
                 current_settings["threads"] = self.threads_spin.value()
+                self.logger.debug(f"Zebrano threads: {self.threads_spin.value()}")
             if hasattr(self, "backup_enabled_checkbox"):
                 current_settings["backup_enabled"] = (
                     self.backup_enabled_checkbox.isChecked()
                 )
+                self.logger.debug(
+                    f"Zebrano backup_enabled: "
+                    f"{self.backup_enabled_checkbox.isChecked()}"
+                )
             if hasattr(self, "backup_dir_edit"):
                 current_settings["backup_dir"] = self.backup_dir_edit.text()
+                self.logger.debug(f"Zebrano backup_dir: {self.backup_dir_edit.text()}")
             if hasattr(self, "backup_interval_spin"):
                 current_settings["backup_interval"] = self.backup_interval_spin.value()
+                self.logger.debug(
+                    f"Zebrano backup_interval: {self.backup_interval_spin.value()}"
+                )
 
-            # Zaktualizuj słownik self.settings oraz self.parent.settings
+            self.logger.debug(f"Zebrane ustawienia: {current_settings}")
+
+            # Walidacja ustawień
+            if not validate_settings(current_settings):
+                self.logger.error("Walidacja ustawień nie powiodła się")
+                raise ValueError("Nieprawidłowe ustawienia")
+
+            # Aktualizacja ustawień
+            self.logger.debug("Aktualizuję ustawienia")
             self.settings.update(current_settings)
             if self.parent and hasattr(self.parent, "settings"):
-                self.parent.settings.update(
-                    self.settings
-                )  # Przekaż zaktualizowane ustawienia do rodzica
+                self.logger.debug("Aktualizuję ustawienia rodzica")
+                self.parent.settings.update(self.settings)
 
-            # Usunięto bezpośredni zapis do pliku z tej metody.
-            # MainWindow będzie odpowiedzialne za zapis po zaakceptowaniu dialogu.
-
+            self.logger.info("Pomyślnie przygotowano ustawienia do zapisu")
             QMessageBox.information(
                 self,
                 "Sukces",
@@ -742,12 +872,9 @@ class SettingsManager(QDialog):
             )
 
         except Exception as e:
-            if self.parent and hasattr(self.parent, "logger"):
-                self.parent.logger.error(
-                    f"Błąd przygotowywania ustawień do zapisu: {str(e)}"
-                )
-            else:
-                print(f"Błąd przygotowywania ustawień do zapisu: {str(e)}")  # Fallback
+            self.logger.error(
+                f"Błąd podczas przygotowywania ustawień: {str(e)}", exc_info=True
+            )
             QMessageBox.critical(
                 self, "Błąd", f"Nie udało się przygotować ustawień do zapisu:\n{str(e)}"
             )
