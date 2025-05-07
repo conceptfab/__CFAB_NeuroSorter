@@ -1,32 +1,26 @@
 {
-    "name": "convnext_2epok_2025-05-07_15-50.json",
+    "name": "efficientnet_50epok_2025-05-07_16-02.json",
     "type": "Trening",
-    "status": "Zakończony",
+    "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-07 15:50:06",
+    "created_at": "2025-05-07 16:02:24",
     "config": {
-        "model_arch": "convnext",
+        "model_arch": "efficientnet",
         "data_dir": "F:/_set_A/__dane_treningowe",
         "val_dir": "F:/_set_A/__dane_walidacyjne",
-        "epochs": 2,
+        "epochs": 50,
         "batch_size": 128,
         "learning_rate": 0.001,
         "optimizer": "Adam",
         "scheduler": "None",
         "use_mixed_precision": true,
         "num_workers": 16,
-        "weight_decay": 0.0001,
+        "weight_decay": 0.001,
         "gradient_clip": 0.1,
         "early_stopping": 5,
         "augmentation": {
             "basic": true,
             "advanced": true
         }
-    },
-    "training_time": 47.59,
-    "training_time_str": "0:00:47",
-    "train_accuracy": 0.6706349206349206,
-    "train_loss": 1.3610582053661346,
-    "validation_accuracy": 0.625,
-    "validation_loss": 1.262649416923523
+    }
 }

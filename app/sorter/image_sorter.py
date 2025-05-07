@@ -121,19 +121,12 @@ class ImageSorter:
                 return result
 
             # Pobierz mapowanie klas
-            class_mapping = self.classifier.get_class_mapping()
+            class_mapping = {}
+            if hasattr(self.classifier, "get_class_mapping"):
+                class_mapping = self.classifier.get_class_mapping() or {}
 
-            # Sprawdź czy kategoria istnieje w mapowaniu (jako klucz lub wartość)
+            # Aktualizuj wynik - bez sprawdzania czy kategoria jest w mapowaniu
             category = classification_result["class_name"]
-            if (
-                category not in class_mapping.values()
-                and category not in class_mapping.keys()
-            ):
-                result["message"] = f"Nieznana kategoria: {category}"
-                logger.warning(f"Nieznana kategoria: {category}")
-                return result
-
-            # Aktualizuj wynik
             result.update(
                 {
                     "status": "success",
@@ -150,6 +143,7 @@ class ImageSorter:
         except Exception as e:
             result["message"] = f"Błąd klasyfikacji: {str(e)}"
             logger.error(f"Błąd podczas przetwarzania obrazu {image_path}: {e}")
+            logger.error(traceback.format_exc())
 
         return result
 

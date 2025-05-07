@@ -394,16 +394,15 @@ def train_model_optimized(
                         print(f"Early stopping na epoce {epoch+1}")
                         break
 
-            # Aktualizuj scheduler jeśli istnieje
             if scheduler is not None:
-                if isinstance(scheduler, optim.lr_scheduler.ReduceLROnPlateau):
+                if lr_scheduler_type == "plateau":
                     scheduler.step(val_loss)
                 else:
                     scheduler.step()
 
-            current_lr = optimizer.param_groups[0]["lr"]
-            history["learning_rates"].append(current_lr)
-            # print(f"Aktualny learning rate: {current_lr:.6f}")
+                current_lr = optimizer.param_groups[0]["lr"]
+                history["learning_rates"].append(current_lr)
+                # print(f"Aktualny learning rate: {current_lr:.6f}")
 
         epoch_time = time.time() - epoch_start_time
         history["epoch_times"].append(epoch_time)

@@ -105,12 +105,13 @@ def export_model(classifier, export_dir, include_sample_code=True, formats=None)
             try:
                 # Tryb śledzenia
                 trace_path = os.path.join(export_dir, "model_trace.pt")
-                with torch.no_grad():
-                    traced_model = torch.jit.trace(classifier.model, dummy_input)
+                traced_model = torch.jit.trace(classifier.model, dummy_input)
                 traced_model.save(trace_path)
                 export_paths["torchscript_trace"] = trace_path
             except Exception as e:
-                print(f"Błąd podczas eksportu do TorchScript (trace): {e}")
+                print(
+                    f"Błąd podczas eksportu do TorchScript (trace): {e}"
+                )  # Logowanie błędu
                 # Docelowo: logger.error(..., func_name="export_model", file_name="ai/export.py")
 
             try:

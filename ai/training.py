@@ -430,7 +430,7 @@ def train_model(
 
             # Aktualizuj scheduler jeśli istnieje
             if scheduler is not None:
-                if isinstance(scheduler, optim.lr_scheduler.ReduceLROnPlateau):
+                if scheduler == "plateau":
                     scheduler.step(val_loss)
                 else:
                     scheduler.step()

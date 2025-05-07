@@ -137,28 +137,11 @@ def batch_preprocess_images(image_paths, transform=None, batch_size=16):
         Lista przekształconych tensorów PyTorch
     """
     results = []
-    errors = []
 
     # Przetwarzanie wsadowe
     for i in range(0, len(image_paths), batch_size):
         batch_paths = image_paths[i : i + batch_size]
-        batch_results = []
-
-        for path in batch_paths:
-            try:
-                tensor = preprocess_image(path, transform)
-                batch_results.append((path, tensor))
-            except Exception as e:
-                errors.append((path, str(e)))
-                continue
-
-        results.extend([tensor for _, tensor in batch_results])
-
-    if errors:
-        print(f"Napotkano błędy podczas przetwarzania {len(errors)} obrazów:")
-        for path, error in errors[:5]:  # Pokaż pierwsze 5 błędów
-            print(f"  - {path}: {error}")
-        if len(errors) > 5:
-            print(f"  - ... i {len(errors) - 5} więcej")
+        batch_results = [preprocess_image(path, transform) for path in batch_paths]
+        results.extend(batch_results)
 
     return results
