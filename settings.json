@@ -45,7 +45,8 @@
     "chart_val_acc_color": "m",
     "chart_plot_area_background_color": "w",
     "last_verify_dir": "F:/______training_database_V2",
-    "last_model": "efficientnet_2epok_2025-05-07_15-59.pt",
+    "last_model": "efficientnet_50epok_2025-05-07_16-06.pt",
     "last_batch_input_dir": "D:/_set_D",
-    "last_batch_output_dir": "F:/_sort_files"
+    "last_batch_output_dir": "F:/_sort_files",
+    "last_single_image_dir": "F:/______training_database_V2/animal"
 }
