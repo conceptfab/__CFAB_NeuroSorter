@@ -17,6 +17,12 @@ class TrainingVisualization(QWidget):
         self.train_acc_data = []
         self.val_loss_data = []
         self.val_acc_data = []
+        self.val_top3_data = []
+        self.val_top5_data = []
+        self.val_precision_data = []
+        self.val_recall_data = []
+        self.val_f1_data = []
+        self.val_auc_data = []
         self.epochs = []
 
         # Flaga wskazująca czy dane zostały zaktualizowane
@@ -32,6 +38,12 @@ class TrainingVisualization(QWidget):
             "val_loss": (215, 0, 0),  # Czerwony
             "train_acc": (0, 180, 0),  # Zielony
             "val_acc": (180, 0, 180),  # Fioletowy
+            "val_top3": (255, 165, 0),  # Pomarańczowy
+            "val_top5": (255, 140, 0),  # Ciemny pomarańczowy
+            "val_precision": (0, 255, 255),  # Cyjan
+            "val_recall": (255, 0, 255),  # Magenta
+            "val_f1": (255, 255, 0),  # Żółty
+            "val_auc": (128, 0, 128),  # Fioletowy
         }
 
     def setup_ui(self):
@@ -80,100 +92,158 @@ class TrainingVisualization(QWidget):
             color=colors["grid"], style=Qt.PenStyle.DashLine, width=1
         )
 
+    def get_line_configs(self):
+        """Zwraca konfiguracje dla wszystkich linii wykresu."""
+        return [
+            # Metryki kluczowe - najgrubsze linie, mocne kolory, linia ciągła
+            {
+                "data": self.val_loss_data,
+                "color": (215, 0, 0),  # Czerwony
+                "width": 4,
+                "style": Qt.PenStyle.SolidLine,
+                "name": "Strata walidacyjna",
+                "symbol": "o",
+                "symbol_size": 6,
+            },
+            {
+                "data": self.val_acc_data,
+                "color": (0, 180, 0),  # Zielony
+                "width": 4,
+                "style": Qt.PenStyle.SolidLine,
+                "name": "Dokładność walidacyjna",
+                "symbol": "o",
+                "symbol_size": 6,
+            },
+            # Metryki drugorzędne - średnia grubość, mocne kolory, linia ciągła
+            {
+                "data": self.train_loss_data,
+                "color": (0, 120, 215),  # Niebieski
+                "width": 3,
+                "style": Qt.PenStyle.SolidLine,
+                "name": "Strata treningowa",
+                "symbol": "o",
+                "symbol_size": 4,
+            },
+            {
+                "data": self.train_acc_data,
+                "color": (180, 0, 180),  # Fioletowy
+                "width": 3,
+                "style": Qt.PenStyle.SolidLine,
+                "name": "Dokładność treningowa",
+                "symbol": "o",
+                "symbol_size": 4,
+            },
+            # Metryki dodatkowe - cienkie linie, różne style
+            {
+                "data": self.val_f1_data,
+                "color": (255, 165, 0),  # Pomarańczowy
+                "width": 2,
+                "style": Qt.PenStyle.DashLine,
+                "name": "F1-score",
+                "symbol": "t",
+                "symbol_size": 3,
+            },
+            {
+                "data": self.val_auc_data,
+                "color": (128, 0, 128),  # Purpurowy
+                "width": 2,
+                "style": Qt.PenStyle.DotLine,
+                "name": "AUC",
+                "symbol": "t",
+                "symbol_size": 3,
+            },
+            # Metryki specjalistyczne - najcieńsze linie, różne style
+            {
+                "data": self.val_precision_data,
+                "color": (0, 255, 255),  # Cyjan
+                "width": 1,
+                "style": Qt.PenStyle.DashDotLine,
+                "name": "Precyzja",
+                "symbol": "s",
+                "symbol_size": 2,
+            },
+            {
+                "data": self.val_recall_data,
+                "color": (255, 0, 255),  # Magenta
+                "width": 1,
+                "style": Qt.PenStyle.DashDotDotLine,
+                "name": "Recall",
+                "symbol": "s",
+                "symbol_size": 2,
+            },
+            {
+                "data": self.val_top3_data,
+                "color": (255, 140, 0),  # Ciemny pomarańczowy
+                "width": 1,
+                "style": Qt.PenStyle.DashDotLine,
+                "name": "Top-3 dokładność",
+                "symbol": "t",
+                "symbol_size": 2,
+            },
+            {
+                "data": self.val_top5_data,
+                "color": (255, 69, 0),  # Czerwono-pomarańczowy
+                "width": 1,
+                "style": Qt.PenStyle.DashDotDotLine,
+                "name": "Top-5 dokładność",
+                "symbol": "t",
+                "symbol_size": 2,
+            },
+        ]
+
     def update_plot(self):
         """Aktualizuje wykres, rysując wszystkie dostępne metryki."""
         try:
-            # Wyczyść wykres
             self.plot_widget.clear()
-
-            # Sprawdź czy mamy dane do wyświetlenia
             if not self.epochs or len(self.epochs) == 0:
                 return
 
-            # Przygotuj dane X (epoki)
             x_data = np.array(self.epochs)
 
-            # Dodaj legendę
-            self.plot_widget.addLegend()
-
-            # Pobierz kolory z motywu
-            colors = self.get_theme_colors()
-
-            # Rysuj stratę treningową
-            if len(self.train_loss_data) > 0 and all(
-                isinstance(v, (int, float)) for v in self.train_loss_data
-            ):
-                y_data_train_loss = np.array(self.train_loss_data)
-                self.plot_widget.plot(
-                    x_data[: len(y_data_train_loss)],
-                    y_data_train_loss,
-                    pen=pg.mkPen(color=colors["train_loss"], width=2),
-                    name="Strata treningowa",
-                    symbol="o",
-                )
-
-            # Rysuj stratę walidacyjną
-            if len(self.val_loss_data) > 0 and all(
-                (v is None or isinstance(v, (int, float))) for v in self.val_loss_data
-            ):
-                x_val_loss, y_val_loss = [], []
-                for i, val in enumerate(self.val_loss_data):
-                    if val is not None and i < len(self.epochs):
-                        x_val_loss.append(self.epochs[i])
-                        y_val_loss.append(val)
-                if len(x_val_loss) > 0:
+            # Rysuj wszystkie metryki według konfiguracji
+            for config in self.get_line_configs():
+                if len(config["data"]) > 0 and all(
+                    v is not None for v in config["data"]
+                ):
+                    y_data = np.array(config["data"])
                     self.plot_widget.plot(
-                        np.array(x_val_loss),
-                        np.array(y_val_loss),
-                        pen=pg.mkPen(color=colors["val_loss"], width=2),
-                        name="Strata walidacyjna",
-                        symbol="o",
+                        x_data[: len(y_data)],
+                        y_data,
+                        pen=pg.mkPen(
+                            color=config["color"],
+                            width=config["width"],
+                            style=config["style"],
+                        ),
+                        name=config["name"],
+                        symbol=config["symbol"],
+                        symbolSize=config["symbol_size"],
+                        symbolBrush=config["color"],
+                        symbolPen=None,
                     )
 
-            # Rysuj dokładność treningową
-            if len(self.train_acc_data) > 0 and all(
-                isinstance(v, (int, float)) for v in self.train_acc_data
-            ):
-                y_data_train_acc = np.array(self.train_acc_data)
-                self.plot_widget.plot(
-                    x_data[: len(y_data_train_acc)],
-                    y_data_train_acc,
-                    pen=pg.mkPen(color=colors["train_acc"], width=2),
-                    name="Dokładność treningowa",
-                    symbol="o",
-                )
-
-            # Rysuj dokładność walidacyjną
-            if len(self.val_acc_data) > 0 and all(
-                (v is None or isinstance(v, (int, float))) for v in self.val_acc_data
-            ):
-                x_val_acc, y_val_acc = [], []
-                for i, val in enumerate(self.val_acc_data):
-                    if val is not None and i < len(self.epochs):
-                        x_val_acc.append(self.epochs[i])
-                        y_val_acc.append(val)
-                if len(x_val_acc) > 0:
-                    self.plot_widget.plot(
-                        np.array(x_val_acc),
-                        np.array(y_val_acc),
-                        pen=pg.mkPen(color=colors["val_acc"], width=2),
-                        name="Dokładność walidacyjna",
-                        symbol="o",
-                    )
-
-            # Dostosuj widok do danych
             self.plot_widget.autoRange()
-
-            # Resetuj flagę aktualizacji
             self.data_updated = False
 
         except Exception as e:
+            print(f"Błąd w update_plot: {e}")
             import traceback
 
-            print(f"Błąd w update_plot: {e}")
             print(traceback.format_exc())
 
-    def update_data(self, epoch, train_loss, train_acc, val_loss=None, val_acc=None):
+    def update_data(
+        self,
+        epoch,
+        train_loss,
+        train_acc,
+        val_loss=None,
+        val_acc=None,
+        val_top3=None,
+        val_top5=None,
+        val_precision=None,
+        val_recall=None,
+        val_f1=None,
+        val_auc=None,
+    ):
         """Aktualizuje dane wykresu."""
         try:
             # Konwersja i walidacja danych
@@ -183,65 +253,61 @@ class TrainingVisualization(QWidget):
                 train_acc = float(train_acc) if train_acc is not None else None
                 val_loss = float(val_loss) if val_loss is not None else None
                 val_acc = float(val_acc) if val_acc is not None else None
+                val_top3 = float(val_top3) if val_top3 is not None else None
+                val_top5 = float(val_top5) if val_top5 is not None else None
+                val_precision = (
+                    float(val_precision) if val_precision is not None else None
+                )
+                val_recall = float(val_recall) if val_recall is not None else None
+                val_f1 = float(val_f1) if val_f1 is not None else None
+                val_auc = float(val_auc) if val_auc is not None else None
             except (ValueError, TypeError) as e:
                 print(f"BŁĄD konwersji danych: {e}")
-                # Nie przerywamy, tylko ustawiamy wartości domyślne
-                if train_loss is None or not isinstance(train_loss, (int, float)):
-                    train_loss = 1.0  # Wartość domyślna
-                if train_acc is None or not isinstance(train_acc, (int, float)):
-                    train_acc = 0.5  # Wartość domyślna
+                return
 
             # Dodaj nowe dane tylko jeśli epoka jest dodatnia
             if epoch > 0:
                 # Sprawdź czy ta epoka już istnieje
                 if epoch in self.epochs:
-                    # Znajdź indeks dla tej epoki
                     idx = self.epochs.index(epoch)
-                    # Zaktualizuj istniejące dane
                     self.train_loss_data[idx] = train_loss
                     self.train_acc_data[idx] = train_acc
-                    if val_loss is not None and idx < len(self.val_loss_data):
+                    if val_loss is not None:
                         self.val_loss_data[idx] = val_loss
-                    elif val_loss is not None:
-                        # Rozszerz listę jeśli potrzeba
-                        while len(self.val_loss_data) < idx:
-                            self.val_loss_data.append(None)
-                        self.val_loss_data.append(val_loss)
-
-                    if val_acc is not None and idx < len(self.val_acc_data):
+                    if val_acc is not None:
                         self.val_acc_data[idx] = val_acc
-                    elif val_acc is not None:
-                        # Rozszerz listę jeśli potrzeba
-                        while len(self.val_acc_data) < idx:
-                            self.val_acc_data.append(None)
-                        self.val_acc_data.append(val_acc)
+                    if val_top3 is not None:
+                        self.val_top3_data[idx] = val_top3
+                    if val_top5 is not None:
+                        self.val_top5_data[idx] = val_top5
+                    if val_precision is not None:
+                        self.val_precision_data[idx] = val_precision
+                    if val_recall is not None:
+                        self.val_recall_data[idx] = val_recall
+                    if val_f1 is not None:
+                        self.val_f1_data[idx] = val_f1
+                    if val_auc is not None:
+                        self.val_auc_data[idx] = val_auc
                 else:
-                    # Dodaj nowe dane na końcu list
                     self.epochs.append(epoch)
                     self.train_loss_data.append(train_loss)
                     self.train_acc_data.append(train_acc)
-                    if val_loss is not None:
-                        # Rozszerz listę val_loss_data jeśli potrzeba
-                        while len(self.val_loss_data) < len(self.epochs) - 1:
-                            self.val_loss_data.append(None)
-                        self.val_loss_data.append(val_loss)
+                    self.val_loss_data.append(val_loss)
+                    self.val_acc_data.append(val_acc)
+                    self.val_top3_data.append(val_top3)
+                    self.val_top5_data.append(val_top5)
+                    self.val_precision_data.append(val_precision)
+                    self.val_recall_data.append(val_recall)
+                    self.val_f1_data.append(val_f1)
+                    self.val_auc_data.append(val_auc)
 
-                    if val_acc is not None:
-                        # Rozszerz listę val_acc_data jeśli potrzeba
-                        while len(self.val_acc_data) < len(self.epochs) - 1:
-                            self.val_acc_data.append(None)
-                        self.val_acc_data.append(val_acc)
-
-            # Oznacz, że dane zostały zaktualizowane
             self.data_updated = True
-
-            # Ręczne wywołanie update_plot
             self.update_plot()
 
         except Exception as e:
+            print(f"Błąd w update_data: {e}")
             import traceback
 
-            print(f"Błąd w update_data: {e}")
             print(traceback.format_exc())
 
     def clear_data(self):
@@ -251,5 +317,11 @@ class TrainingVisualization(QWidget):
         self.train_acc_data = []
         self.val_loss_data = []
         self.val_acc_data = []
+        self.val_top3_data = []
+        self.val_top5_data = []
+        self.val_precision_data = []
+        self.val_recall_data = []
+        self.val_f1_data = []
+        self.val_auc_data = []
         self.data_updated = False
         self.update_plot()

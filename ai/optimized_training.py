@@ -8,6 +8,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from sklearn.metrics import (
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+    top_k_accuracy_score,
+)
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
@@ -91,6 +98,12 @@ def train_model_optimized(
         "train_acc": [],
         "val_loss": [],
         "val_acc": [],
+        "val_top_3_accuracy": [],
+        "val_top_5_accuracy": [],
+        "val_precision": [],
+        "val_recall": [],
+        "val_f1_score": [],
+        "val_auc": [],
         "epoch_times": [],
         "learning_rates": [],
         "best_val_loss": float("inf"),
@@ -326,6 +339,9 @@ def train_model_optimized(
             val_correct = 0
             val_total = 0
             batch_count = 0
+            all_targets = []
+            all_preds = []
+            all_probs = []
 
             with torch.no_grad():
                 for inputs, targets in val_loader:
@@ -339,11 +355,51 @@ def train_model_optimized(
                     val_loss += loss.item()
                     batch_count += 1
 
+                    all_targets.extend(targets.cpu().numpy())
+                    all_preds.extend(predicted.cpu().numpy())
+                    all_probs.extend(torch.softmax(outputs, dim=1).cpu().numpy())
+
             val_loss = val_loss / batch_count
             val_acc = val_correct / val_total
 
-            # print(f"Walidacja - Strata: {val_loss:.4f}")
-            # print(f"Walidacja - Dokładność: {val_acc:.4f}")
+            # Dodatkowe metryki
+            y_true = np.array(all_targets)
+            y_pred = np.array(all_preds)
+            y_prob = np.array(all_probs)
+            try:
+                val_precision = precision_score(
+                    y_true, y_pred, average="macro", zero_division=0
+                )
+                val_recall = recall_score(
+                    y_true, y_pred, average="macro", zero_division=0
+                )
+                val_f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
+            except Exception:
+                val_precision = val_recall = val_f1 = 0.0
+            try:
+                if y_prob.shape[1] > 1:
+                    val_auc = roc_auc_score(y_true, y_prob, multi_class="ovr")
+                else:
+                    val_auc = roc_auc_score(y_true, y_prob[:, 0])
+            except Exception:
+                val_auc = 0.0
+            try:
+                val_top_3 = top_k_accuracy_score(y_true, y_prob, k=3)
+            except Exception:
+                val_top_3 = 0.0
+            try:
+                val_top_5 = top_k_accuracy_score(y_true, y_prob, k=5)
+            except Exception:
+                val_top_5 = 0.0
+
+            history["val_loss"].append(val_loss)
+            history["val_acc"].append(val_acc)
+            history["val_precision"].append(val_precision)
+            history["val_recall"].append(val_recall)
+            history["val_f1_score"].append(val_f1)
+            history["val_auc"].append(val_auc)
+            history["val_top_3_accuracy"].append(val_top_3)
+            history["val_top_5_accuracy"].append(val_top_5)
 
             if early_stopping:
                 if val_loss < best_val_loss:
@@ -390,31 +446,26 @@ def train_model_optimized(
         print(
             f"DEBUG optimized_training: Koniec epoki {epoch + 1}. Zaraz wywołam progress_callback (jeśli istnieje)."
         )
-        # Wywołaj callback z postępem
+        # Wywołaj callback z postępem jeśli istnieje
         if progress_callback:
             try:
-                print("\nDEBUG: Przekazuję dane do callbacka:")
-                print(f"Epoka: {epoch + 1}")
-                print(f"Liczba epok: {num_epochs}")
-                print(f"Strata treningowa: {epoch_loss:.4f}")
-                print(f"Dokładność treningowa: {epoch_acc:.4f}")
-                # Poprawione printy dla val_loss i val_acc
-                val_loss_str = f"{val_loss:.4f}" if val_loss is not None else "N/A"
-                val_acc_str = f"{val_acc:.4f}" if val_acc is not None else "N/A"
-                print(f"Strata walidacyjna: {val_loss_str}")
-                print(f"Dokładność walidacyjna: {val_acc_str}")
-
                 progress_callback(
-                    epoch + 1, num_epochs, epoch_loss, epoch_acc, val_loss, val_acc
+                    epoch + 1,
+                    num_epochs,
+                    epoch_loss,
+                    epoch_acc,
+                    val_loss,
+                    val_acc,
+                    val_top_3,
+                    val_top_5,
+                    val_precision,
+                    val_recall,
+                    val_f1,
+                    val_auc,
                 )
-            except Exception as e_outer_callback:
-                print(
-                    f"BŁĄD PODCZAS WYWOŁANIA progress_callback (złapany w optimized_training): Typ błędu: {type(e_outer_callback).__name__}, Treść: {str(e_outer_callback)}"
-                )
+            except Exception as e_cb:
+                print(f"BŁĄD podczas wywołania progress_callback: {str(e_cb)}")
                 print(traceback.format_exc())
-                print(
-                    f"Wartości przy błędzie: epoch={epoch + 1}, loss={epoch_loss:.4f}, acc={epoch_acc:.4f}"
-                )
 
         # Na końcu każdej epoki dodajemy czyszczenie pamięci GPU:
         if torch.cuda.is_available():
@@ -489,11 +540,11 @@ def configure_scheduler(
     """Konfiguruje scheduler learning rate odpowiedni do typu optymalizatora i długości treningu."""
     if scheduler_type == "plateau":
         return optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.1, patience=patience, verbose=True
+            optimizer, mode="min", factor=0.1, patience=patience
         )
     elif scheduler_type == "cosine":
         return optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=epochs, eta_min=1e-6, verbose=True
+            optimizer, T_max=epochs, eta_min=1e-6
         )
     elif scheduler_type == "onecycle":
         return optim.lr_scheduler.OneCycleLR(
@@ -505,7 +556,6 @@ def configure_scheduler(
             anneal_strategy="cos",
             div_factor=25.0,
             final_div_factor=10000.0,
-            verbose=True,
         )
     else:
         return None
@@ -557,7 +607,20 @@ def mixup_criterion(criterion, pred, y_a, y_b, lam):
     return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
 
 
-def progress_callback(epoch, num_epochs, train_loss, train_acc, val_loss, val_acc):
+def progress_callback(
+    epoch,
+    num_epochs,
+    train_loss,
+    train_acc,
+    val_loss,
+    val_acc,
+    val_top3,
+    val_top5,
+    val_precision,
+    val_recall,
+    val_f1,
+    val_auc,
+):
     # Sprawdź, czy parametry są prawidłowe
     if epoch < 1 or epoch > num_epochs:
         print(f"BŁĄD: Nieprawidłowy numer epoki: {epoch}/{num_epochs}")

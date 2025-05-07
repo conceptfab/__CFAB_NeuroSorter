@@ -1,3 +1,8 @@
+:\tools\python\Lib\site-packages\torch\optim\lr_scheduler.py:62: UserWarning: The verbose parameter is deprecated. Please use get_last_lr() to access the learning rate.
+  warnings.warn(
+
+
+usunac logi startowe
 
 Optymalne ustawienia treningu dla EfficientNet
 Aktualne ustawienia są poprawne:

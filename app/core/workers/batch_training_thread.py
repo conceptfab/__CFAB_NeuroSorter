@@ -315,7 +315,18 @@ class BatchTrainingThread(QThread):
             start_time = time.time()
 
             def progress_callback(
-                epoch, num_epochs, train_loss, train_acc, val_loss, val_acc
+                epoch,
+                num_epochs,
+                train_loss,
+                train_acc,
+                val_loss,
+                val_acc,
+                val_top3=None,
+                val_top5=None,
+                val_precision=None,
+                val_recall=None,
+                val_f1=None,
+                val_auc=None,
             ):
                 """Callback do śledzenia postępu treningu."""
                 try:
@@ -337,13 +348,9 @@ class BatchTrainingThread(QThread):
                         0.0, min(1.0, train_acc)
                     )  # Upewnij się, że jest w zakresie [0,1]
 
-                    # Nie weryfikujemy val_loss i val_acc, mogą być None
-
                     # Oblicz postęp treningu
                     progress = int((epoch / num_epochs) * 100) if num_epochs > 0 else 0
-                    progress = max(
-                        0, min(100, progress)
-                    )  # Upewnij się, że jest w zakresie [0,100]
+                    progress = max(0, min(100, progress))
 
                     # Emituj sygnał z danymi
                     self.task_progress.emit(
@@ -356,13 +363,15 @@ class BatchTrainingThread(QThread):
                             "train_acc": train_acc,
                             "val_loss": val_loss,
                             "val_acc": val_acc,
+                            "val_top3": val_top3,
+                            "val_top5": val_top5,
+                            "val_precision": val_precision,
+                            "val_recall": val_recall,
+                            "val_f1": val_f1,
+                            "val_auc": val_auc,
                         },
                     )
-                except (
-                    Exception
-                ) as e_cb_internal:  # Zmieniona nazwa zmiennej błędu, aby uniknąć konfliktu z 'e' z zewnętrznego try-except
-                    import traceback  # Import wewnątrz, aby uniknąć problemów z cyklicznymi zależnościami jeśli ten plik byłby importowany gdzieś gdzie Logger jeszcze nie jest gotowy
-
+                except Exception as e_cb_internal:
                     error_msg = (
                         f"BŁĄD WEWNĘTRZNY w "
                         f"BatchTrainingThread.progress_callback: "
@@ -665,7 +674,7 @@ class BatchTrainingThread(QThread):
                 batch_size=batch_size,
                 learning_rate=learning_rate,
                 freeze_backbone=freeze_backbone,
-                progress_callback=lambda epoch, num_epochs, train_loss, train_acc, val_loss, val_acc: (
+                progress_callback=lambda epoch, num_epochs, train_loss, train_acc, val_loss, val_acc, val_top3, val_top5, val_precision, val_recall, val_f1, val_auc: (
                     log_progress(
                         epoch, num_epochs, train_loss, train_acc, val_loss, val_acc
                     ),
@@ -679,6 +688,12 @@ class BatchTrainingThread(QThread):
                             "train_acc": train_acc if train_acc > 0 else 0.0001,
                             "val_loss": val_loss,
                             "val_acc": val_acc,
+                            "val_top3": val_top3,
+                            "val_top5": val_top5,
+                            "val_precision": val_precision,
+                            "val_recall": val_recall,
+                            "val_f1": val_f1,
+                            "val_auc": val_auc,
                         },
                     ),
                 ),

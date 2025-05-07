@@ -1416,7 +1416,7 @@ class TrainingManager(QWidget, TabInterface):
             self.training_visualization.clear_data()
 
     def _training_task_progress(self, task_name, progress, details):
-        """Obsługa postępu zadania treningowego."""
+        """Obsługuje aktualizacje postępu treningu."""
         try:
             # Pobierz dane z details i upewnij się, że mają prawidłowe wartości
             epoch = int(details.get("epoch", 0))
@@ -1426,11 +1426,17 @@ class TrainingManager(QWidget, TabInterface):
             if total_epochs <= 0:
                 total_epochs = 1
 
-            # Pobierz i weryfikuj wartości loss i accuracy
+            # Pobierz i weryfikuj wartości metryk
             train_loss = details.get("train_loss")
             train_acc = details.get("train_acc")
             val_loss = details.get("val_loss")
             val_acc = details.get("val_acc")
+            val_top3 = details.get("val_top3")
+            val_top5 = details.get("val_top5")
+            val_precision = details.get("val_precision")
+            val_recall = details.get("val_recall")
+            val_f1 = details.get("val_f1")
+            val_auc = details.get("val_auc")
 
             # Aktualizacja paska postępu
             percentage = min(100, max(0, int((epoch / total_epochs) * 100)))
@@ -1440,9 +1446,26 @@ class TrainingManager(QWidget, TabInterface):
             if epoch > 0:
                 loss_text = f"{train_loss:.4f}" if train_loss is not None else "N/A"
                 acc_text = f"{train_acc:.2%}" if train_acc is not None else "N/A"
+                val_loss_text = f"{val_loss:.4f}" if val_loss is not None else "N/A"
+                val_acc_text = f"{val_acc:.2%}" if val_acc is not None else "N/A"
+                val_top3_text = f"{val_top3:.2%}" if val_top3 is not None else "N/A"
+                val_top5_text = f"{val_top5:.2%}" if val_top5 is not None else "N/A"
+                val_precision_text = (
+                    f"{val_precision:.2%}" if val_precision is not None else "N/A"
+                )
+                val_recall_text = (
+                    f"{val_recall:.2%}" if val_recall is not None else "N/A"
+                )
+                val_f1_text = f"{val_f1:.2%}" if val_f1 is not None else "N/A"
+                val_auc_text = f"{val_auc:.2%}" if val_auc is not None else "N/A"
+
                 details_text = (
-                    f"Epoka {epoch}/{total_epochs} | Strata: {loss_text}, "
-                    f"Dokładność: {acc_text}"
+                    f"Epoka {epoch}/{total_epochs} | "
+                    f"Strata: {loss_text}, Dokładność: {acc_text} | "
+                    f"Val Strata: {val_loss_text}, Val Acc: {val_acc_text} | "
+                    f"Top-3: {val_top3_text}, Top-5: {val_top5_text} | "
+                    f"Precision: {val_precision_text}, Recall: {val_recall_text} | "
+                    f"F1: {val_f1_text}, AUC: {val_auc_text}"
                 )
                 self.parent.task_progress_details.setText(details_text)
                 self.parent.logger.info(details_text)
@@ -1458,6 +1481,12 @@ class TrainingManager(QWidget, TabInterface):
                             train_acc=train_acc,
                             val_loss=val_loss,
                             val_acc=val_acc,
+                            val_top3=val_top3,
+                            val_top5=val_top5,
+                            val_precision=val_precision,
+                            val_recall=val_recall,
+                            val_f1=val_f1,
+                            val_auc=val_auc,
                         )
                     except Exception as vis_error:
                         self.parent.logger.error(

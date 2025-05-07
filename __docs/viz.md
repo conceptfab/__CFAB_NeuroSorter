@@ -82,3 +82,41 @@ if __name__ == '__main__':
     pg.exec()
 Warto zauważyć, że grubość linii określa się w pikselach parametrem width, a styl linii ustawia się za pomocą parametru style w funkcji mkPen(). Readthedocs
 Jeśli potrzebujesz bardziej zaawansowanych stylów linii, możesz również korzystać z ustawień pen.setDashPattern() do definiowania własnych wzorów linii przerywanych.
+
+Hierarchia ważności metryk:
+1. Metryki kluczowe (zawsze monitoruj):
+
+val_loss - najważniejsza metryka, pokazuje generalizację modelu, idealna do early stopping najlepiej wykrywa przeuczenie i jest najczęściej używana do early stopping EITCA Academy
+val_acc - druga najważniejsza, pokazuje rzeczywistą skuteczność modelu na danych walidacyjnych
+
+2. Metryki drugorzędne (monitoruj, gdy to możliwe):
+
+train_loss - pokazuje jak dobrze model uczy się danych treningowych, ważna do porównania z val_loss
+train_acc - pomocna do oceny zdolności modelu do dopasowania się do danych treningowych
+
+3. Metryki dodatkowe (warto dodać, gdy zależy nam na szczegółowej analizie):
+
+val_f1_score - trzecia w kolejności ważności, szczególnie kluczowa dla niezbalansowanych zbiorów danych
+val_auc - czwarta, dobra miara ogólnej skuteczności klasyfikatora, niezależna od progu decyzyjnego
+
+4. Metryki specjalistyczne (dodaj w zależności od zastosowania):
+
+val_precision - kluczowa, gdy fałszywie pozytywne wyniki są kosztowne
+val_recall - ważna, gdy nie możemy pozwolić sobie na przeoczenie pozytywnych przypadków
+val_top_k_accuracy - przydatna w klasyfikacji wieloklasowej z wieloma kategoriami
+
+Zalecenie dotyczące implementacji:
+
+Zawsze monitoruj: val_loss, val_acc, train_loss, train_acc
+Dodaj jako pierwszą dodatkową metrykę: val_f1_score
+Jeśli masz niezbalansowany zbiór danych: dodaj val_precision i val_recall
+Dla klasyfikacji z wieloma klasami: dodaj val_top_k_accuracy (k=3 lub k=5)
+
+Dla EfficientNet, jak i większości modeli głębokiego uczenia, val_loss i val_acc powinny być priorytetowymi metrykami do monitorowania podczas procesu treningu, z val_loss używaną jako główny wskaźnik do early stopping.
+
+
+QtCore.Qt.SolidLine - linia ciągła (domyślna)
+QtCore.Qt.DashLine - linia przerywana
+QtCore.Qt.DotLine - linia kropkowana
+QtCore.Qt.DashDotLine - linia kropkowo-kreskowa
+QtCore.Qt.DashDotDotLine - linia z kreską i dwiema kropkami
