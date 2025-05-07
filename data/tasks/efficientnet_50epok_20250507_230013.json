@@ -1,0 +1,43 @@
+{
+    "name": "efficientnet_50epok_20250507_230013.json",
+    "type": "Trening",
+    "status": "Zakończony",
+    "priority": 0,
+    "created_at": "2025-05-07 23:00:13",
+    "config": {
+        "train_dir": "F:/_set_A/__dane_treningowe",
+        "data_dir": "F:/_set_A/__dane_treningowe",
+        "val_dir": "F:/_set_A/__dane_walidacyjne",
+        "model_arch": "efficientnet",
+        "epochs": 50,
+        "batch_size": 64,
+        "learning_rate": 0.001,
+        "optimizer": "AdamW",
+        "scheduler": "cosine",
+        "num_workers": 16,
+        "weight_decay": 0.0001,
+        "gradient_clip": 0.1,
+        "early_stopping": 10,
+        "label_smoothing": 0.1,
+        "drop_connect_rate": 0.3,
+        "momentum": 0.9,
+        "epsilon": 0.0001,
+        "warmup_epochs": 5,
+        "augmentation": {
+            "basic": true,
+            "advanced": true
+        },
+        "use_mixed_precision": true,
+        "monitor_metrics": [
+            "accuracy",
+            null,
+            null
+        ]
+    },
+    "training_time": 601.89,
+    "training_time_str": "0:10:01",
+    "train_accuracy": 0.8221052631578948,
+    "train_loss": 1.217490271727244,
+    "validation_accuracy": 0.6929824561403509,
+    "validation_loss": 1.5972204208374023
+}

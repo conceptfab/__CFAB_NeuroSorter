@@ -37,14 +37,17 @@ def train_model_optimized(
     freeze_backbone=False,
     lr_scheduler_type="plateau",
     early_stopping=True,
-    mixup=False,
-    label_smoothing=0.0,
-    weight_decay=0.01,
+    mixup=True,
+    label_smoothing=0.1,
+    weight_decay=0.03,
     optimizer_type="adamw",
     profiler=None,
-    augmentation_mode="basic",
+    augmentation_mode="extended",
     augmentation_params=None,
     should_stop_callback=None,
+    use_cross_validation=False,
+    k_folds=5,
+    freeze_layers_ratio=0.7,
 ):
     """
     Trenuje model na podanym zbiorze danych z wykorzystaniem optymalnych parametrów sprzętowych.
@@ -201,6 +204,15 @@ def train_model_optimized(
             for param in model.parameters():
                 param.requires_grad = False
             for param in model.heads.parameters():
+                param.requires_grad = True
+    elif freeze_layers_ratio > 0:
+        parameters = list(model.parameters())
+        num_to_freeze = int(len(parameters) * freeze_layers_ratio)
+
+        for i, param in enumerate(parameters):
+            if i < num_to_freeze:
+                param.requires_grad = False
+            else:
                 param.requires_grad = True
 
     # Wybór optymalizatora

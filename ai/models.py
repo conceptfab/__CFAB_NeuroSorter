@@ -9,6 +9,7 @@ def get_model(
     num_classes: Optional[int] = None,
     logger: Optional[Callable] = None,
     drop_connect_rate: float = 0.2,
+    dropout_rate: float = 0.3,
 ) -> nn.Module:
     """
     Tworzy model o podanej architekturze.
@@ -18,6 +19,7 @@ def get_model(
         num_classes: Liczba klas (opcjonalnie)
         logger: Funkcja do logowania (opcjonalnie)
         drop_connect_rate: Wartość drop connect rate dla EfficientNet (opcjonalnie)
+        dropout_rate: Wartość dropout rate dla warstw klasyfikacji (opcjonalnie)
 
     Returns:
         nn.Module: Model PyTorch
@@ -29,6 +31,7 @@ def get_model(
             logger(f"- Liczba klas: {num_classes}")
         if model_arch.startswith("efficientnet"):
             logger(f"- Drop connect rate: {drop_connect_rate}")
+            logger(f"- Dropout rate: {dropout_rate}")
 
     # Mapowanie nazw architektur na funkcje tworzące modele
     model_factories = {
@@ -112,6 +115,18 @@ def get_model(
         "vit_l_32": lambda: models.vit_l_32(
             weights=models.ViT_L_32_Weights.IMAGENET1K_V1
         ),
+        "efficientnetv2_s": lambda: models.efficientnet_v2_s(
+            weights=models.EfficientNet_V2_S_Weights.IMAGENET1K_V1,
+            dropout=dropout_rate,
+        ),
+        "efficientnetv2_m": lambda: models.efficientnet_v2_m(
+            weights=models.EfficientNet_V2_M_Weights.IMAGENET1K_V1,
+            dropout=dropout_rate,
+        ),
+        "efficientnetv2_l": lambda: models.efficientnet_v2_l(
+            weights=models.EfficientNet_V2_L_Weights.IMAGENET1K_V1,
+            dropout=dropout_rate,
+        ),
     }
 
     if model_arch not in model_factories:
@@ -124,16 +139,34 @@ def get_model(
     if num_classes is not None:
         if hasattr(model, "fc"):  # ResNet
             in_features = model.fc.in_features
-            model.fc = nn.Linear(in_features, num_classes)
+            model.fc = nn.Sequential(
+                nn.Dropout(dropout_rate),
+                nn.Linear(in_features, 1024),
+                nn.ReLU(),
+                nn.BatchNorm1d(1024),
+                nn.Dropout(dropout_rate),
+                nn.Linear(1024, num_classes),
+            )
         elif hasattr(model, "classifier"):  # EfficientNet, MobileNet, ConvNeXt
             if isinstance(model.classifier, nn.Sequential):
                 in_features = model.classifier[-1].in_features
-                model.classifier[-1] = nn.Linear(in_features, num_classes)
+                model.classifier[-1] = nn.Sequential(
+                    nn.Dropout(dropout_rate), nn.Linear(in_features, num_classes)
+                )
             else:
                 in_features = model.classifier.in_features
-                model.classifier = nn.Linear(in_features, num_classes)
+                model.classifier = nn.Sequential(
+                    nn.Dropout(dropout_rate),
+                    nn.Linear(in_features, 1024),
+                    nn.ReLU(),
+                    nn.BatchNorm1d(1024),
+                    nn.Dropout(dropout_rate),
+                    nn.Linear(1024, num_classes),
+                )
         elif hasattr(model, "heads"):  # ViT
             in_features = model.heads.head.in_features
-            model.heads.head = nn.Linear(in_features, num_classes)
+            model.heads.head = nn.Sequential(
+                nn.Dropout(dropout_rate), nn.Linear(in_features, num_classes)
+            )
 
     return model

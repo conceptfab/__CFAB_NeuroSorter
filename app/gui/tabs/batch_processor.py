@@ -88,9 +88,12 @@ class BatchProcessor(QWidget, TabInterface):
         self.stop_btn = QPushButton("Przerwij sortowanie")
         self.stop_btn.clicked.connect(self._stop_processing)
         self.stop_btn.setEnabled(False)  # Domyślnie wyłączony
+        self.clear_history_btn = QPushButton("Wyczyść historię")
+        self.clear_history_btn.clicked.connect(self._clear_history)
         self.status_label = QLabel("Gotowy")
         self.control_layout.addWidget(start_btn)
         self.control_layout.addWidget(self.stop_btn)
+        self.control_layout.addWidget(self.clear_history_btn)
         self.control_layout.addStretch()
         self.control_layout.addWidget(self.status_label)
         control_group.setLayout(self.control_layout)
@@ -339,3 +342,18 @@ class BatchProcessor(QWidget, TabInterface):
             QMessageBox.warning(
                 self, "Brak sortowania", "Nie ma aktualnie uruchomionego sortowania."
             )
+
+    def _clear_history(self):
+        """Czyści historię wyników sortowania po potwierdzeniu użytkownika."""
+        reply = QMessageBox.question(
+            self,
+            "Potwierdzenie",
+            "Czy na pewno chcesz wyczyścić historię wyników?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self._clear_results()
+            self.status_label.setText("Historia wyczyszczona")
+            self.logger.info("Historia wyników sortowania została wyczyszczona")

@@ -1,5 +1,7 @@
 Klonowanie modeli!!!
 
+- doszkalanie ; 
+
 - resetowanie sortowania/czyczszczenie
 
 - profile dla modeli - zapisz/wczytaj

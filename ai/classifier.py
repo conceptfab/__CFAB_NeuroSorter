@@ -57,24 +57,36 @@ class ImageClassifier:
         """Tworzenie modelu bazowego z pretrenowanymi wagami"""
         if self.model_type == "resnet50":
             model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
-            model.fc = nn.Sequential(
-                nn.Dropout(0.5),
-                nn.Linear(
-                    model.fc.in_features,
-                    self.num_classes,
-                ),
-            )
         elif self.model_type == "efficientnet":
             model = models.efficientnet_b0(
                 weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1
             )
-            model.classifier = nn.Sequential(
-                nn.Dropout(0.5),
-                nn.Linear(
-                    model.classifier[1].in_features,
-                    self.num_classes,
-                ),
-            )
+
+            # Sprawdź czy model ma już złożoną strukturę klasyfikatora
+            if not isinstance(model.classifier, nn.Sequential):
+                # Jeśli nie, utwórz prostszą strukturę klasyfikatora
+                in_features = model.classifier[1].in_features
+                model.classifier = nn.Sequential(
+                    nn.Dropout(0.2), nn.Linear(in_features, self.num_classes)
+                )
+            else:
+                # Jeśli tak, znajdź warstwę liniową w klasyfikatorze
+                for layer in reversed(model.classifier):
+                    if isinstance(layer, nn.Linear):
+                        in_features = layer.in_features
+                        break
+                else:
+                    # Jeśli nie znaleziono warstwy liniowej, użyj domyślnej wartości
+                    in_features = 1280  # Domyślna wartość dla EfficientNet-B0
+
+                # Utwórz nowy klasyfikator
+                model.classifier = nn.Sequential(
+                    nn.Dropout(0.2), nn.Linear(in_features, self.num_classes)
+                )
+
+            # Zamrożenie warstw bazowych dla lepszej generalizacji
+            for param in list(model.parameters())[:-10]:
+                param.requires_grad = False
         elif self.model_type == "mobilenet":
             model = models.mobilenet_v3_large(
                 weights=models.MobileNet_V3_Large_Weights.IMAGENET1K_V1
@@ -108,8 +120,10 @@ class ImageClassifier:
     def _load_weights(self, weights_path):
         """Ładowanie wag modelu"""
         try:
-            # Załaduj checkpoint bez parametru weights_only
-            checkpoint = torch.load(weights_path, map_location=self.device)
+            # Załaduj checkpoint z parametrem weights_only=True dla bezpieczeństwa
+            checkpoint = torch.load(
+                weights_path, map_location=self.device, weights_only=True
+            )
 
             # Sprawdź, czy checkpoint to słownik czy bezpośrednio stan modelu
             if isinstance(checkpoint, dict):
@@ -119,159 +133,59 @@ class ImageClassifier:
                     and checkpoint["model_type"] != self.model_type
                 ):
                     self.model_type = checkpoint["model_type"]
+                    # Utwórz nowy model z odpowiednim typem
+                    self.model = self._create_model()
 
                 # Aktualizacja liczby klas, jeśli jest dostępna
                 if "num_classes" in checkpoint:
-                    # Jeśli liczba klas jest inna, utwórz nowy model
-                    # z właściwą liczbą klas
                     if checkpoint["num_classes"] != self.num_classes:
                         self.num_classes = checkpoint["num_classes"]
                         self.model = self._create_model()
 
-                if "model_state_dict" in checkpoint:
-                    self.model.load_state_dict(checkpoint["model_state_dict"])
-                elif "state_dict" in checkpoint:
-                    self.model.load_state_dict(checkpoint["state_dict"])
-                else:
-                    # Próba bezpośredniego ładowania
-                    self.model.load_state_dict(checkpoint)
+                # Próba ładowania wag modelu
+                try:
+                    if "model_state_dict" in checkpoint:
+                        self.model.load_state_dict(
+                            checkpoint["model_state_dict"], strict=False
+                        )
+                    elif "state_dict" in checkpoint:
+                        self.model.load_state_dict(
+                            checkpoint["state_dict"], strict=False
+                        )
+                    else:
+                        self.model.load_state_dict(checkpoint, strict=False)
+                except Exception as e:
+                    print(f"UWAGA: Niektóre wagi nie mogły zostać załadowane: {str(e)}")
+                    print("Kontynuuję z częściowo załadowanym modelem...")
 
-                # Załaduj nazwy klas, jeśli istnieją
+                # Załaduj nazwy klas
                 if "class_names" in checkpoint:
                     self.class_names = checkpoint["class_names"]
-                    print(f"Załadowano mapowanie klas: {self.class_names}")
-                # Sprawdź również w metadanych
                 elif (
                     "metadata" in checkpoint and "class_names" in checkpoint["metadata"]
                 ):
                     self.class_names = checkpoint["metadata"]["class_names"]
-                    print(
-                        "Załadowano mapowanie klas z metadanych: " f"{self.class_names}"
-                    )
 
-                # Sprawdź, czy class_names zostały poprawnie załadowane
-                # i czy klucze są stringami
-                if self.class_names and not all(
-                    isinstance(k, str) for k in self.class_names.keys()
-                ):
-                    print(
-                        "OSTRZEŻENIE: Wykryto klucze niebędące stringami w "
-                        "class_names załadowanych z pliku .pt. Konwertowanie..."
-                    )
+                # Konwersja kluczy na stringi
+                if self.class_names:
                     try:
                         self.class_names = {
                             str(k): v for k, v in self.class_names.items()
                         }
-                        print(
-                            "Mapowanie klas po konwersji kluczy: " f"{self.class_names}"
-                        )
                     except Exception as e:
-                        print(f"BŁĄD podczas konwersji kluczy class_names: {e}")
-                        self.class_names = {}  # Resetuj w razie błędu konwersji
-
-                # Jeśli class_names nadal są puste, spróbuj załadować
-                # z pliku _config.json
-                if not self.class_names:
-                    print(
-                        "Nie znaleziono mapowania klas w pliku .pt. "
-                        "Próbuję załadować z pliku _config.json..."
-                    )
-                    config_path = os.path.splitext(weights_path)[0] + "_config.json"
-                    if os.path.exists(config_path):
-                        try:
-                            with open(config_path, "r", encoding="utf-8") as f:
-                                config_data = json.load(f)
-                            if (
-                                "class_names" in config_data
-                                and isinstance(config_data["class_names"], dict)
-                                and config_data["class_names"]
-                            ):
-                                potential_class_names = config_data["class_names"]
-                                # Upewnij się, że klucze są stringami
-                                if not all(
-                                    isinstance(k, str)
-                                    for k in potential_class_names.keys()
-                                ):
-                                    print(
-                                        "OSTRZEŻENIE: Wykryto klucze niebędące "
-                                        "stringami w class_names załadowanych z "
-                                        "pliku _config.json. Konwertowanie..."
-                                    )
-                                    self.class_names = {
-                                        str(k): v
-                                        for k, v in potential_class_names.items()
-                                    }
-                                else:
-                                    self.class_names = potential_class_names
-                                print(
-                                    "Załadowano mapowanie klas z pliku "
-                                    f"{config_path}: {self.class_names}"
-                                )
-                            else:
-                                print(
-                                    f"Plik {config_path} nie zawiera "
-                                    "poprawnego mapowania 'class_names'."
-                                )
-                        except json.JSONDecodeError:
-                            print(
-                                "BŁĄD: Nie można zdekodować pliku JSON: "
-                                f"{config_path}"
-                            )
-                        except Exception as e:
-                            print("BŁĄD podczas ładowania pliku " f"{config_path}: {e}")
-                    else:
-                        print(f"Plik konfiguracyjny {config_path} nie istnieje.")
+                        print(f"UWAGA: Problem z konwersją kluczy class_names: {e}")
+                        self.class_names = {}
 
             else:
                 # Bezpośrednie ładowanie stanu modelu
-                self.model.load_state_dict(checkpoint)
-                # W tym przypadku również spróbuj załadować z JSON
-                print(
-                    "Checkpoint nie jest słownikiem. Ładowanie tylko wag modelu. "
-                    "Próbuję załadować class_names z _config.json..."
-                )
-                config_path = os.path.splitext(weights_path)[0] + "_config.json"
-                if os.path.exists(config_path):
-                    try:
-                        with open(config_path, "r", encoding="utf-8") as f:
-                            config_data = json.load(f)
-                        if (
-                            "class_names" in config_data
-                            and isinstance(config_data["class_names"], dict)
-                            and config_data["class_names"]
-                        ):
-                            potential_class_names = config_data["class_names"]
-                            # Upewnij się, że klucze są stringami
-                            if not all(
-                                isinstance(k, str) for k in potential_class_names.keys()
-                            ):
-                                print(
-                                    "OSTRZEŻENIE: Wykryto klucze niebędące "
-                                    "stringami w class_names załadowanych z "
-                                    "pliku _config.json. Konwertowanie..."
-                                )
-                                self.class_names = {
-                                    str(k): v for k, v in potential_class_names.items()
-                                }
-                            else:
-                                self.class_names = potential_class_names
-                            print(
-                                "Załadowano mapowanie klas z pliku "
-                                f"{config_path}: {self.class_names}"
-                            )
-                        else:
-                            print(
-                                f"Plik {config_path} nie zawiera "
-                                "poprawnego mapowania 'class_names'."
-                            )
-                    except json.JSONDecodeError:
-                        print(
-                            "BŁĄD: Nie można zdekodować pliku JSON: " f"{config_path}"
-                        )
-                    except Exception as e:
-                        print("BŁĄD podczas ładowania pliku " f"{config_path}: {e}")
-                else:
-                    print(f"Plik konfiguracyjny {config_path} nie istnieje.")
+                try:
+                    self.model.load_state_dict(checkpoint, strict=False)
+                except Exception as e:
+                    print(f"UWAGA: Niektóre wagi nie mogły zostać załadowane: {str(e)}")
+                    print("Kontynuuję z częściowo załadowanym modelem...")
+
+            # Ustaw model w tryb ewaluacji
+            self.model.eval()
 
         except Exception as e:
             raise ValueError(f"Nie udało się załadować modelu: {str(e)}")
@@ -286,9 +200,6 @@ class ImageClassifier:
                 "OSTRZEŻENIE: Nie udało się załadować mapowania klas ani z "
                 "pliku .pt, ani z _config.json."
             )
-
-        # Ustaw model w tryb ewaluacji
-        self.model.eval()
 
     def predict(self, image_path):
         """Przewidywanie kategorii dla jednego obrazu"""
@@ -791,7 +702,9 @@ class ImageClassifier:
         Automatycznie wybiera optymalną architekturę modelu.
         Zgodnie z dokumentacją, zawsze zwraca efficientnet jako rekomendowaną architekturę.
         """
-        return "efficientnet"  # Zawsze zwracamy efficientnet jako optymalną architekturę
+        return (
+            "efficientnet"  # Zawsze zwracamy efficientnet jako optymalną architekturę
+        )
 
     def debug_category_mapping(self, directory, top_n=5):
         """

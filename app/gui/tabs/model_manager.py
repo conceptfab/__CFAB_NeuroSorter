@@ -137,6 +137,10 @@ class ModelManager(QWidget, TabInterface):
         self.rename_btn.setFixedHeight(24)
         buttons_layout.addWidget(self.rename_btn)
 
+        self.clone_btn = QPushButton("Klonuj model")
+        self.clone_btn.setFixedHeight(24)
+        buttons_layout.addWidget(self.clone_btn)
+
         self.show_mapping_btn = QPushButton("Pokaż mapowanie")
         self.show_mapping_btn.setFixedHeight(24)
         buttons_layout.addWidget(self.show_mapping_btn)
@@ -164,6 +168,7 @@ class ModelManager(QWidget, TabInterface):
         self.import_config_btn.clicked.connect(self._import_model_config)
         self.delete_btn.clicked.connect(self._delete_selected_model)
         self.rename_btn.clicked.connect(self._rename_selected_model)
+        self.clone_btn.clicked.connect(self._clone_selected_model)
         self.show_mapping_btn.clicked.connect(self._show_class_mapping)
         self.stats_btn.clicked.connect(self._show_model_stats)
         self.compare_btn.clicked.connect(self._compare_models)
@@ -889,6 +894,111 @@ class ModelManager(QWidget, TabInterface):
             self.parent.logger.error(f"Błąd podczas zmiany nazwy modelu: {str(e)}")
             QMessageBox.critical(
                 self, "Błąd", f"Nie udało się zmienić nazwy modelu: {str(e)}"
+            )
+
+    def _clone_selected_model(self):
+        """Klonuje wybrany model."""
+        try:
+            self.parent.logger.info("Rozpoczynam klonowanie modelu...")
+            # Sprawdź, czy jest wybrany wiersz
+            selected_rows = []
+            for i in range(self.models_table.rowCount()):
+                item = self.models_table.item(i, 0)
+                if item and item.checkState() == Qt.CheckState.Checked:
+                    selected_rows.append(i)
+
+            # Jeśli nie wybrano żadnego modelu, wybierz aktualnie zaznaczony wiersz
+            if not selected_rows:
+                current_row = self.models_table.currentRow()
+                if current_row >= 0:
+                    selected_rows = [current_row]
+                    self.parent.logger.info(
+                        f"Wybrano aktualnie zaznaczony wiersz: {current_row}"
+                    )
+
+            # Sprawdź czy wybrano dokładnie jeden model
+            if not selected_rows:
+                self.parent.logger.warning("Nie wybrano modelu do klonowania")
+                QMessageBox.warning(self, "Ostrzeżenie", "Wybierz model do klonowania.")
+                return
+            elif len(selected_rows) > 1:
+                self.parent.logger.warning(
+                    "Wybrano więcej niż jeden model do klonowania"
+                )
+                QMessageBox.warning(
+                    self, "Ostrzeżenie", "Wybierz tylko jeden model do klonowania."
+                )
+                return
+
+            # Pobierz informacje o wybranym modelu
+            row = selected_rows[0]
+            old_name = self.models_table.item(row, 1).text()
+            old_path = os.path.join(self.settings["models_dir"], old_name)
+            self.parent.logger.info(f"Klonowanie modelu: {old_name}")
+
+            # Pobierz nową nazwę
+            base_name = os.path.splitext(old_name)[0]
+            new_name, ok = QInputDialog.getText(
+                self,
+                "Klonowanie modelu",
+                "Nazwa kopii modelu:",
+                text=f"{base_name}_copy",
+            )
+
+            if not ok or not new_name:
+                self.parent.logger.info("Anulowano klonowanie modelu")
+                return
+
+            # Sprawdź czy nowa nazwa kończy się odpowiednim rozszerzeniem
+            if not new_name.endswith((".pt", ".pth")):
+                new_name += os.path.splitext(old_name)[
+                    1
+                ]  # Dodaj oryginalne rozszerzenie
+                self.parent.logger.info(
+                    f"Dodano rozszerzenie do nowej nazwy: {new_name}"
+                )
+
+            # Sprawdź czy plik o nowej nazwie już istnieje
+            new_path = os.path.join(self.settings["models_dir"], new_name)
+            if os.path.exists(new_path):
+                self.parent.logger.warning(
+                    f"Plik o nowej nazwie już istnieje: {new_path}"
+                )
+                QMessageBox.warning(
+                    self, "Ostrzeżenie", f"Plik {new_name} już istnieje."
+                )
+                return
+
+            # Skopiuj plik modelu
+            shutil.copy2(old_path, new_path)
+            self.parent.logger.info(
+                f"Skopiowano plik modelu z {old_path} do {new_path}"
+            )
+
+            # Skopiuj plik konfiguracyjny, jeśli istnieje
+            old_config_path = os.path.splitext(old_path)[0] + "_config.json"
+            if os.path.exists(old_config_path):
+                new_config_path = os.path.splitext(new_path)[0] + "_config.json"
+                shutil.copy2(old_config_path, new_config_path)
+                self.parent.logger.info(
+                    f"Skopiowano plik konfiguracyjny z {old_config_path} do {new_config_path}"
+                )
+
+            # Odśwież listę modeli
+            self.refresh()
+
+            # Wyświetl komunikat o sukcesie
+            QMessageBox.information(
+                self, "Sukces", f"Model został sklonowany jako {new_name}."
+            )
+            self.parent.logger.info(
+                f"Pomyślnie sklonowano model {old_name} jako {new_name}"
+            )
+
+        except Exception as e:
+            self.parent.logger.error(f"Błąd podczas klonowania modelu: {str(e)}")
+            QMessageBox.critical(
+                self, "Błąd", f"Nie udało się sklonować modelu: {str(e)}"
             )
 
     def _show_class_mapping(self):

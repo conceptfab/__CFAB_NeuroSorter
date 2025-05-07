@@ -591,3 +591,107 @@ def _verify_model_categories(model, train_dir):
         print(
             f"{match} {os.path.basename(img_path)} - Oczekiwano: {expected_category}, Przewidziano: {predicted}"
         )
+
+
+def cross_validation_train(
+    model_arch: str,
+    train_dir: str,
+    epochs: int = 50,
+    batch_size: int = 64,
+    learning_rate: float = 0.0005,  # Zmniejszony learning rate
+    optimizer: str = "adamw",  # Zmiana na AdamW
+    scheduler: Optional[str] = "cosine",
+    n_folds: int = 5,
+    **kwargs,
+):
+    """
+    Trenuje model używając walidacji krzyżowej.
+
+    Args:
+        model_arch: Architektura modelu (np. 'efficientnet_b0')
+        train_dir: Ścieżka do katalogu z danymi treningowymi
+        epochs: Liczba epok treningu
+        batch_size: Rozmiar batcha
+        learning_rate: Współczynnik uczenia
+        optimizer: Nazwa optymalizatora
+        scheduler: Nazwa schedulera (opcjonalnie)
+        n_folds: Liczba foldów dla walidacji krzyżowej
+        **kwargs: Dodatkowe parametry dla funkcji train_model
+
+    Returns:
+        Dict: Wyniki treningu z walidacją krzyżową
+    """
+    import numpy as np
+    from sklearn.model_selection import KFold
+
+    # Wczytanie wszystkich danych
+    all_data = ImageDataset(train_dir, transform=get_default_transforms())
+    indices = np.arange(len(all_data))
+
+    # Implementacja KFold
+    kfold = KFold(n_splits=n_folds, shuffle=True, random_state=42)
+
+    fold_results = []
+    best_val_loss = float("inf")
+    best_model = None
+
+    for fold, (train_idx, val_idx) in enumerate(kfold.split(indices)):
+        print(f"\n--- Fold {fold+1}/{n_folds} ---")
+
+        # Przygotowanie dataloaderów
+        from torch.utils.data import Subset
+
+        train_subset = Subset(all_data, train_idx)
+        val_subset = Subset(all_data, val_idx)
+
+        # Zastosowanie augmentacji tylko do zbioru treningowego
+        train_subset.dataset.transform = get_augmentation_transforms()
+
+        # Utwórz nowy model dla każdego foldu
+        from .models import get_model
+
+        model = get_model(
+            model_arch,
+            num_classes=len(all_data.classes),
+            drop_connect_rate=0.3,  # Zwiększony drop connect
+            dropout_rate=0.3,  # Wyższy dropout
+        )
+
+        # Trenuj model
+        result = train_model(
+            model=model,
+            train_dir=train_dir,
+            val_dir=train_dir,
+            epochs=epochs,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            **kwargs,
+        )
+
+        fold_results.append(result)
+
+        # Zapisz najlepszy model
+        if result["best_val_loss"] < best_val_loss:
+            best_val_loss = result["best_val_loss"]
+            best_model = model
+
+    # Oblicz średnie metryki
+    avg_metrics = {
+        "val_acc": np.mean([r["history"]["val_acc"][-1] for r in fold_results]),
+        "val_loss": np.mean([r["history"]["val_loss"][-1] for r in fold_results]),
+        "train_acc": np.mean([r["history"]["train_acc"][-1] for r in fold_results]),
+        "train_loss": np.mean([r["history"]["train_loss"][-1] for r in fold_results]),
+    }
+
+    print("\n--- Podsumowanie walidacji krzyżowej ---")
+    print(f"Średnia dokładność walidacyjna: {avg_metrics['val_acc']:.4f}")
+    print(f"Średnia strata walidacyjna: {avg_metrics['val_loss']:.4f}")
+
+    return {
+        "best_model": best_model,
+        "fold_results": fold_results,
+        "avg_metrics": avg_metrics,
+        "class_names": {str(i): cls for i, cls in enumerate(all_data.classes)},
+    }
