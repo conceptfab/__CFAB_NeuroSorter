@@ -4,7 +4,7 @@ import shutil
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from ai.classifier import ImageClassifier
 from app.core.logger import Logger
@@ -58,6 +58,15 @@ class ImageSorter:
                 logger.warning("Wartości w mapowaniu klas nie są typu string!")
                 return False
 
+            # Sprawdź czy mapowanie jest spójne (klucze i wartości są unikalne)
+            if len(set(class_mapping.keys())) != len(class_mapping):
+                logger.warning("Wykryto zduplikowane klucze w mapowaniu klas!")
+                return False
+
+            if len(set(class_mapping.values())) != len(class_mapping):
+                logger.warning("Wykryto zduplikowane wartości w mapowaniu klas!")
+                return False
+
             logger.info(f"Mapowanie klas zweryfikowane: {len(class_mapping)} kategorii")
             return True
 
@@ -65,111 +74,82 @@ class ImageSorter:
             logger.error(f"Błąd podczas weryfikacji modelu: {str(e)}")
             return False
 
-    def _process_image(
-        self, image_path, output_dir, created_dirs, confidence_threshold=0.5
-    ):
+    def _process_image(self, image_path: str) -> Dict[str, Any]:
         """
-        Przetwarza pojedynczy obraz - klasyfikuje i przenosi/kopiuje do odpowiedniego folderu.
+        Przetwarza pojedynczy obraz.
 
         Args:
             image_path: Ścieżka do obrazu
-            output_dir: Katalog wyjściowy
-            created_dirs: Słownik z utworzonymi już katalogami
-            confidence_threshold: Minimalny próg pewności klasyfikacji
 
         Returns:
-            dict: Wynik przetwarzania z informacją o kategorii i statusie
+            Dict[str, Any]: Słownik z wynikami przetwarzania
         """
-        result = {"status": "skipped", "category": None, "confidence": 0, "error": None}
-        start_time = datetime.now()
+        result = {
+            "status": "error",
+            "message": "",
+            "image_path": image_path,
+            "category": None,
+            "confidence": None,
+        }
 
         try:
-            logger.info(f"Rozpoczęcie przetwarzania obrazu: {image_path}")
-            logger.debug(f"Sprawdzanie istnienia pliku: {image_path}")
-
+            # Sprawdź czy plik istnieje i ma uprawnienia do odczytu
             if not os.path.exists(image_path):
-                raise FileNotFoundError(f"Plik nie istnieje: {image_path}")
-
-            logger.debug(f"Sprawdzanie uprawnień do pliku: {image_path}")
-            if not os.access(image_path, os.R_OK):
-                raise PermissionError(f"Brak uprawnień do odczytu pliku: {image_path}")
-
-            logger.debug(f"Próba klasyfikacji obrazu: {image_path}")
-            # Klasyfikuj obraz
-            classification = self.classifier.predict(image_path)
-            logger.debug(f"Wynik klasyfikacji: {classification}")
-
-            # Sprawdź czy wynik klasyfikacji ma wymagane pola
-            if (
-                not isinstance(classification, dict)
-                or "class_name" not in classification
-                or "confidence" not in classification
-            ):
-                raise ValueError("Nieprawidłowy format wyniku klasyfikacji")
-
-            category = classification["class_name"]
-            confidence = classification["confidence"]
-
-            # Sprawdź czy kategoria jest w mapowaniu klas
-            class_mapping = self.classifier.get_class_mapping()
-
-            # Sprawdzenie czy kategoria jest wartością w słowniku class_mapping
-            if category is not None and class_mapping:
-                category_exists = category in class_mapping.values()
-                if not category_exists:
-                    logger.warning(f"Wykryto nieznaną kategorię: {category}")
-                    category = "nieskategoryzowane"
-
-            logger.info(f"Klasyfikacja: {category} (pewność: {confidence:.2f})")
-
-            # Aktualizuj wynik
-            result["category"] = category
-            result["confidence"] = confidence
-
-            # Sprawdź czy klasyfikacja jest wystarczająco pewna
-            if confidence < confidence_threshold:
-                logger.warning(
-                    f"Pominięto obraz - zbyt niska pewność: {confidence:.2f} < {confidence_threshold}"
-                )
+                result["message"] = f"Plik nie istnieje: {image_path}"
                 return result
 
-            # Przygotuj ścieżkę docelową
-            dest_dir = self._ensure_category_dir(category, output_dir, created_dirs)
-            dest_path = self._get_unique_dest_path(dest_dir, image_path)
+            if not os.access(image_path, os.R_OK):
+                result["message"] = f"Brak uprawnień do odczytu pliku: {image_path}"
+                return result
 
-            logger.debug(f"Ścieżka docelowa: {dest_path}")
+            # Klasyfikuj obraz
+            logger.info(f"Klasyfikacja obrazu: {image_path}")
+            classification_result = self.classifier.predict(image_path)
 
-            # Dodaj metadane o kategorii do obrazu
-            metadata = {
-                "category": category,
-                "confidence": confidence,
-                "sorted_at": datetime.now().isoformat(),
-                "model_type": self.classifier.model_type,
-                "class_mapping": class_mapping,
-            }
-            self.metadata_manager.add_category_to_image(image_path, metadata)
-            logger.debug("Dodano metadane do obrazu")
+            # Sprawdź czy klasyfikacja się powiodła
+            if classification_result is None:
+                result["message"] = "Nie można sklasyfikować obrazu."
+                logger.info("Nie można sklasyfikować obrazu.")
+                return result
 
-            # Kopiuj lub przenieś plik w zależności od ustawienia
-            if self.copy_files:
-                shutil.copy2(image_path, dest_path)
-                logger.info(f"Skopiowano plik do: {dest_path}")
-            else:
-                shutil.move(image_path, dest_path)
-                logger.info(f"Przeniesiono plik do: {dest_path}")
+            # Sprawdź czy wynik zawiera wymagane pola
+            if not all(
+                key in classification_result for key in ["class_name", "confidence"]
+            ):
+                result["message"] = "Nieprawidłowy format wyniku klasyfikacji"
+                logger.warning(f"Nieprawidłowy format wyniku: {classification_result}")
+                return result
 
-            result["status"] = "processed"
+            # Pobierz mapowanie klas
+            class_mapping = self.classifier.get_class_mapping()
 
-            processing_time = (datetime.now() - start_time).total_seconds()
-            logger.debug(f"Czas przetwarzania: {processing_time:.2f}s")
+            # Sprawdź czy kategoria istnieje w mapowaniu (jako klucz lub wartość)
+            category = classification_result["class_name"]
+            if (
+                category not in class_mapping.values()
+                and category not in class_mapping.keys()
+            ):
+                result["message"] = f"Nieznana kategoria: {category}"
+                logger.warning(f"Nieznana kategoria: {category}")
+                return result
+
+            # Aktualizuj wynik
+            result.update(
+                {
+                    "status": "success",
+                    "category": category,
+                    "confidence": classification_result["confidence"],
+                }
+            )
+
+            logger.info(
+                f"Obraz sklasyfikowany jako {category} "
+                f"(pewność: {classification_result['confidence']:.2f})"
+            )
 
         except Exception as e:
-            result["status"] = "error"
-            result["error"] = str(e)
-            logger.error(
-                f"Błąd podczas przetwarzania obrazu {image_path}: {str(e)}",
-                exc_info=True,
-            )
+            result["message"] = f"Błąd klasyfikacji: {str(e)}"
+            logger.error(f"Błąd podczas przetwarzania obrazu {image_path}: {e}")
 
         return result
 
@@ -337,17 +317,15 @@ class ImageSorter:
                     )
 
                     # Klasyfikacja obrazu
-                    result = self.classifier.predict(image_path)
+                    result = self._process_image(image_path)
 
-                    if result and result["confidence"] >= confidence_threshold:
-                        category = result["class_name"]
+                    if result["status"] == "success":
+                        category = result["category"]
                         target_dir = os.path.join(output_dir, category)
                         os.makedirs(target_dir, exist_ok=True)
 
                         # Kopiuj lub przenieś plik
-                        target_path = os.path.join(
-                            target_dir, os.path.basename(image_path)
-                        )
+                        target_path = self._get_unique_dest_path(target_dir, image_path)
                         if self.copy_files:
                             shutil.copy2(image_path, target_path)
                         else:
@@ -438,12 +416,10 @@ class ImageSorter:
                 )
 
                 # Przetwarzanie obrazu
-                result = self._process_image(
-                    image_path, output_dir, created_dirs, confidence_threshold
-                )
+                result = self._process_image(image_path)
 
                 # Aktualizuj statystyki
-                if result["status"] == "processed":
+                if result["status"] == "success":
                     stats["categories"][result["category"]] = (
                         stats["categories"].get(result["category"], 0) + 1
                     )
@@ -455,7 +431,9 @@ class ImageSorter:
                     stats["skipped"] += 1
                     logger.warning(f"Pominięto plik - zbyt niska pewność klasyfikacji")
                 elif result["status"] == "error":
-                    logger.error(f"Błąd podczas przetwarzania pliku: {result['error']}")
+                    logger.error(
+                        f"Błąd podczas przetwarzania pliku: {result['message']}"
+                    )
 
                 # Wywołaj callback z postępem
                 if callback:

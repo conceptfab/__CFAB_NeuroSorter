@@ -298,45 +298,69 @@ class ImageClassifier:
             image_path: Ścieżka do pliku obrazu
 
         Returns:
-            Słownik z wynikami klasyfikacji
+            Słownik z wynikami klasyfikacji lub None w przypadku błędu
         """
         try:
+            # Sprawdź czy plik istnieje
+            if not os.path.exists(image_path):
+                print(f"Błąd: Plik nie istnieje: {image_path}")
+                return None
+
+            # Sprawdź czy plik jest obrazem
+            try:
+                image = Image.open(image_path).convert("RGB")
+            except Exception as e:
+                print(f"Błąd podczas otwierania obrazu {image_path}: {e}")
+                return None
+
             # Wczytaj i przekształć obraz
-            image = Image.open(image_path).convert("RGB")
-            image_tensor = self.transform(image).unsqueeze(0)
-            image_tensor = image_tensor.to(self.device)
+            try:
+                image_tensor = self.transform(image).unsqueeze(0)
+                image_tensor = image_tensor.to(self.device)
+            except Exception as e:
+                print(f"Błąd podczas przetwarzania obrazu {image_path}: {e}")
+                return None
 
             # Przełącz model w tryb ewaluacji
             self.model.eval()
 
             # Wykonaj predykcję
-            with torch.no_grad():
-                if self.precision == "half" and self.device.type == "cuda":
-                    image_tensor = image_tensor.half()
-                outputs = self.model(image_tensor)
-                probabilities = torch.nn.functional.softmax(outputs, dim=1)
-                predicted_class = torch.argmax(probabilities, dim=1).item()
-                confidence = probabilities[0][predicted_class].item()
+            try:
+                with torch.no_grad():
+                    if self.precision == "half" and self.device.type == "cuda":
+                        image_tensor = image_tensor.half()
+                    outputs = self.model(image_tensor)
+                    probabilities = torch.nn.functional.softmax(outputs, dim=1)
+                    predicted_class = torch.argmax(probabilities, dim=1).item()
+                    confidence = probabilities[0][predicted_class].item()
+            except Exception as e:
+                print(f"Błąd podczas predykcji dla obrazu {image_path}: {e}")
+                return None
 
             # Konwertuj indeks klasy na nazwę
             key_to_find = str(predicted_class)  # Klucz, którego szukamy
             class_name = None
 
-            # Najpierw szukaj dokładnie
-            if key_to_find in self.class_names:
-                class_name = self.class_names[key_to_find]
-            else:
-                # Próba konwersji kluczy
-                for k, v in self.class_names.items():
-                    try:
-                        if str(k) == key_to_find:
-                            class_name = v
-                            break
-                    except:
-                        continue
-
-            if class_name is None:
+            # Sprawdź czy mamy mapowanie klas
+            if not self.class_names:
+                print("OSTRZEŻENIE: Brak mapowania klas w modelu!")
                 class_name = f"Klasa_{predicted_class}"
+            else:
+                # Najpierw szukaj dokładnie
+                if key_to_find in self.class_names:
+                    class_name = self.class_names[key_to_find]
+                else:
+                    # Próba konwersji kluczy
+                    for k, v in self.class_names.items():
+                        try:
+                            if str(k) == key_to_find:
+                                class_name = v
+                                break
+                        except:
+                            continue
+
+                if class_name is None:
+                    class_name = f"Klasa_{predicted_class}"
 
             return {
                 "class_name": class_name,
