@@ -142,7 +142,7 @@ class TrainingVisualization(QWidget):
                 "name": "F1-score",
                 "symbol": "t",
                 "symbol_size": 3,
-                "dash": [5, 3],  # Dłuższe kreski, krótsze odstępy
+                "dash": [10, 5],  # Długie kreski, średnie odstępy
             },
             {
                 "data": self.val_auc_data,
@@ -152,6 +152,7 @@ class TrainingVisualization(QWidget):
                 "name": "AUC",
                 "symbol": "t",
                 "symbol_size": 3,
+                "dash": [2, 4],  # Krótkie kropki, większe odstępy
             },
             # Metryki specjalistyczne - najcieńsze linie, różne style
             {
@@ -162,7 +163,12 @@ class TrainingVisualization(QWidget):
                 "name": "Precyzja",
                 "symbol": "s",
                 "symbol_size": 2,
-                "dash": [4, 2, 1, 2],  # Kreska-kropka z krótszymi odstępami
+                "dash": [
+                    8,
+                    4,
+                    2,
+                    4,
+                ],  # Długa kreska, średni odstęp, krótka kreska, średni odstęp
             },
             {
                 "data": self.val_recall_data,
@@ -173,13 +179,13 @@ class TrainingVisualization(QWidget):
                 "symbol": "s",
                 "symbol_size": 2,
                 "dash": [
+                    8,
                     4,
                     2,
-                    1,
+                    4,
                     2,
-                    1,
-                    2,
-                ],  # Kreska-kropka-kropka z krótszymi odstępami
+                    4,
+                ],  # Długa kreska, średni odstęp, dwie krótkie kreski, średni odstęp
             },
             {
                 "data": self.val_top3_data,
@@ -189,7 +195,12 @@ class TrainingVisualization(QWidget):
                 "name": "Top-3 dokładność",
                 "symbol": "t",
                 "symbol_size": 2,
-                "dash": [3, 2, 1, 2],  # Krótsze kreski i odstępy
+                "dash": [
+                    6,
+                    3,
+                    2,
+                    3,
+                ],  # Średnia kreska, krótki odstęp, krótka kreska, krótki odstęp
             },
             {
                 "data": self.val_top5_data,
@@ -199,7 +210,14 @@ class TrainingVisualization(QWidget):
                 "name": "Top-5 dokładność",
                 "symbol": "t",
                 "symbol_size": 2,
-                "dash": [3, 2, 1, 2, 1, 2],  # Krótsze kreski i odstępy
+                "dash": [
+                    6,
+                    3,
+                    2,
+                    3,
+                    2,
+                    3,
+                ],  # Średnia kreska, krótki odstęp, dwie krótkie kreski, krótki odstęp
             },
         ]
 
