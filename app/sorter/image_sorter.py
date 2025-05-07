@@ -32,9 +32,34 @@ class ImageSorter:
         self.metadata_manager = MetadataManager()
         self.copy_files = copy_files
         self.uncategorized_dir = "__pliki_bez_kategorii"
+
+        # Weryfikacja modelu i mapowania klas
+        self._verify_model_and_mapping()
+
         logger.info(
             f"Inicjalizacja ImageSorter - tryb: {'kopiowanie' if copy_files else 'przenoszenie'}"
         )
+
+    def _verify_model_and_mapping(self):
+        """Weryfikuje czy model i mapowanie klas są poprawnie skonfigurowane."""
+        try:
+            # Sprawdź czy model ma zdefiniowane mapowanie klas
+            class_mapping = self.classifier.get_class_mapping()
+            if not class_mapping:
+                logger.warning("Model nie ma zdefiniowanego mapowania klas!")
+                return False
+
+            # Sprawdź czy mapowanie klas jest poprawne
+            if not self.classifier.verify_class_mapping():
+                logger.error("Wykryto problemy z mapowaniem klas!")
+                return False
+
+            logger.info(f"Mapowanie klas zweryfikowane: {len(class_mapping)} kategorii")
+            return True
+
+        except Exception as e:
+            logger.error(f"Błąd podczas weryfikacji modelu: {str(e)}")
+            return False
 
     def _process_image(
         self, image_path, output_dir, created_dirs, confidence_threshold=0.5
@@ -70,8 +95,22 @@ class ImageSorter:
             classification = self.classifier.predict(image_path)
             logger.debug(f"Wynik klasyfikacji: {classification}")
 
+            # Sprawdź czy wynik klasyfikacji ma wymagane pola
+            if (
+                not isinstance(classification, dict)
+                or "class_name" not in classification
+                or "confidence" not in classification
+            ):
+                raise ValueError("Nieprawidłowy format wyniku klasyfikacji")
+
             category = classification["class_name"]
             confidence = classification["confidence"]
+
+            # Sprawdź czy kategoria jest w mapowaniu klas
+            class_mapping = self.classifier.get_class_mapping()
+            if category not in class_mapping:
+                logger.warning(f"Wykryto nieznaną kategorię: {category}")
+                category = "nieskategoryzowane"
 
             logger.info(f"Klasyfikacja: {category} (pewność: {confidence:.2f})")
 
@@ -97,6 +136,8 @@ class ImageSorter:
                 "category": category,
                 "confidence": confidence,
                 "sorted_at": datetime.now().isoformat(),
+                "model_type": self.classifier.model_type,
+                "class_mapping": class_mapping,
             }
             self.metadata_manager.add_category_to_image(image_path, metadata)
             logger.debug("Dodano metadane do obrazu")

@@ -1,9 +1,10 @@
-Poprawic sorter!!!
-settings - ładowanie ustwien!!!!
-By dopasować kolorystykę wykresu do kolorystyki aplikacji
-
 AI 2.0 - poprawic kod
-dodac zatrzymanie sortowania!!!
+CORE - poprawic
+
+Klonowanie modeli!!!
+
+Poprawic sorter!!! - dodac zatrzymanie sortowania!!!
+settings - ładowanie ustwien!!!!
 
 - validator do poprawy -
 - tools do ujednolicenia

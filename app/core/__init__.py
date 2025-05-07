@@ -6,10 +6,12 @@ from .workers import (
     BatchClassificationThread,
     BatchTrainingThread,
     ClassificationThread,
+    SingleTrainingThread,
 )
 
 __all__ = [
     "ClassificationThread",
     "BatchClassificationThread",
     "BatchTrainingThread",
+    "SingleTrainingThread",
 ]

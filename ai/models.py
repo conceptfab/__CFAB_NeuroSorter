@@ -28,30 +28,78 @@ def get_model(
 
     # Mapowanie nazw architektur na funkcje tworzące modele
     model_factories = {
-        "efficientnet_b0": lambda: models.efficientnet_b0(pretrained=True),
-        "efficientnet_b1": lambda: models.efficientnet_b1(pretrained=True),
-        "efficientnet_b2": lambda: models.efficientnet_b2(pretrained=True),
-        "efficientnet_b3": lambda: models.efficientnet_b3(pretrained=True),
-        "efficientnet_b4": lambda: models.efficientnet_b4(pretrained=True),
-        "efficientnet_b5": lambda: models.efficientnet_b5(pretrained=True),
-        "efficientnet_b6": lambda: models.efficientnet_b6(pretrained=True),
-        "efficientnet_b7": lambda: models.efficientnet_b7(pretrained=True),
-        "resnet18": lambda: models.resnet18(pretrained=True),
-        "resnet34": lambda: models.resnet34(pretrained=True),
-        "resnet50": lambda: models.resnet50(pretrained=True),
-        "resnet101": lambda: models.resnet101(pretrained=True),
-        "resnet152": lambda: models.resnet152(pretrained=True),
-        "mobilenet_v2": lambda: models.mobilenet_v2(pretrained=True),
-        "mobilenet_v3_large": lambda: models.mobilenet_v3_large(pretrained=True),
-        "mobilenet_v3_small": lambda: models.mobilenet_v3_small(pretrained=True),
-        "convnext_tiny": lambda: models.convnext_tiny(pretrained=True),
-        "convnext_small": lambda: models.convnext_small(pretrained=True),
-        "convnext_base": lambda: models.convnext_base(pretrained=True),
-        "convnext_large": lambda: models.convnext_large(pretrained=True),
-        "vit_b_16": lambda: models.vit_b_16(pretrained=True),
-        "vit_b_32": lambda: models.vit_b_32(pretrained=True),
-        "vit_l_16": lambda: models.vit_l_16(pretrained=True),
-        "vit_l_32": lambda: models.vit_l_32(pretrained=True),
+        "efficientnet_b0": lambda: models.efficientnet_b0(
+            weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1
+        ),
+        "efficientnet_b1": lambda: models.efficientnet_b1(
+            weights=models.EfficientNet_B1_Weights.IMAGENET1K_V1
+        ),
+        "efficientnet_b2": lambda: models.efficientnet_b2(
+            weights=models.EfficientNet_B2_Weights.IMAGENET1K_V1
+        ),
+        "efficientnet_b3": lambda: models.efficientnet_b3(
+            weights=models.EfficientNet_B3_Weights.IMAGENET1K_V1
+        ),
+        "efficientnet_b4": lambda: models.efficientnet_b4(
+            weights=models.EfficientNet_B4_Weights.IMAGENET1K_V1
+        ),
+        "efficientnet_b5": lambda: models.efficientnet_b5(
+            weights=models.EfficientNet_B5_Weights.IMAGENET1K_V1
+        ),
+        "efficientnet_b6": lambda: models.efficientnet_b6(
+            weights=models.EfficientNet_B6_Weights.IMAGENET1K_V1
+        ),
+        "efficientnet_b7": lambda: models.efficientnet_b7(
+            weights=models.EfficientNet_B7_Weights.IMAGENET1K_V1
+        ),
+        "resnet18": lambda: models.resnet18(
+            weights=models.ResNet18_Weights.IMAGENET1K_V1
+        ),
+        "resnet34": lambda: models.resnet34(
+            weights=models.ResNet34_Weights.IMAGENET1K_V1
+        ),
+        "resnet50": lambda: models.resnet50(
+            weights=models.ResNet50_Weights.IMAGENET1K_V1
+        ),
+        "resnet101": lambda: models.resnet101(
+            weights=models.ResNet101_Weights.IMAGENET1K_V1
+        ),
+        "resnet152": lambda: models.resnet152(
+            weights=models.ResNet152_Weights.IMAGENET1K_V1
+        ),
+        "mobilenet_v2": lambda: models.mobilenet_v2(
+            weights=models.MobileNet_V2_Weights.IMAGENET1K_V1
+        ),
+        "mobilenet_v3_large": lambda: models.mobilenet_v3_large(
+            weights=models.MobileNet_V3_Large_Weights.IMAGENET1K_V1
+        ),
+        "mobilenet_v3_small": lambda: models.mobilenet_v3_small(
+            weights=models.MobileNet_V3_Small_Weights.IMAGENET1K_V1
+        ),
+        "convnext_tiny": lambda: models.convnext_tiny(
+            weights=models.ConvNeXt_Tiny_Weights.IMAGENET1K_V1
+        ),
+        "convnext_small": lambda: models.convnext_small(
+            weights=models.ConvNeXt_Small_Weights.IMAGENET1K_V1
+        ),
+        "convnext_base": lambda: models.convnext_base(
+            weights=models.ConvNeXt_Base_Weights.IMAGENET1K_V1
+        ),
+        "convnext_large": lambda: models.convnext_large(
+            weights=models.ConvNeXt_Large_Weights.IMAGENET1K_V1
+        ),
+        "vit_b_16": lambda: models.vit_b_16(
+            weights=models.ViT_B_16_Weights.IMAGENET1K_V1
+        ),
+        "vit_b_32": lambda: models.vit_b_32(
+            weights=models.ViT_B_32_Weights.IMAGENET1K_V1
+        ),
+        "vit_l_16": lambda: models.vit_l_16(
+            weights=models.ViT_L_16_Weights.IMAGENET1K_V1
+        ),
+        "vit_l_32": lambda: models.vit_l_32(
+            weights=models.ViT_L_32_Weights.IMAGENET1K_V1
+        ),
     }
 
     if model_arch not in model_factories:

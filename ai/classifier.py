@@ -291,88 +291,62 @@ class ImageClassifier:
         self.model.eval()
 
     def predict(self, image_path):
-        """Przewidywanie kategorii dla jednego obrazu"""
+        """
+        Klasyfikuje pojedynczy obraz.
+
+        Args:
+            image_path: Ścieżka do pliku obrazu
+
+        Returns:
+            Słownik z wynikami klasyfikacji
+        """
         try:
-            print(f"DEBUG: Rozpoczynam klasyfikację obrazu: {image_path}")
-
-            # Dodana weryfikacja czy słownik class_names istnieje
-            if not hasattr(self, "class_names") or not self.class_names:
-                print("DEBUG: Brak słownika class_names, inicjalizuję pusty słownik")
-                self.class_names = {}
-
-            print(f"DEBUG: Próba otwarcia obrazu: {image_path}")
+            # Wczytaj i przekształć obraz
             image = Image.open(image_path).convert("RGB")
-            print(
-                f"DEBUG: Obraz otwarty pomyślnie, rozmiar: {image.size}, tryb: {image.mode}"
-            )
-
-            # Poprawka: Oddzielamy transformację od przeniesienia na urządzenie
-            print("DEBUG: Rozpoczynam transformację obrazu")
             image_tensor = self.transform(image).unsqueeze(0)
-            print(
-                f"DEBUG: Transformacja zakończona, kształt tensora: {image_tensor.shape}"
-            )
+            image_tensor = image_tensor.to(self.device)
 
-            # Dodajemy obsługę half precision z jawnie określonym typem
-            if self.precision == "half" and torch.cuda.is_available():
-                print("DEBUG: Używam half precision na CUDA")
-                image_tensor = image_tensor.to(self.device, dtype=torch.float16)
-            else:
-                print("DEBUG: Używam full precision")
-                image_tensor = image_tensor.to(self.device, dtype=torch.float32)
+            # Przełącz model w tryb ewaluacji
+            self.model.eval()
 
-            print("DEBUG: Rozpoczynam predykcję modelu")
+            # Wykonaj predykcję
             with torch.no_grad():
-                # Dodajemy autocast dla spójności z resztą kodu
-                if self.precision == "half" and torch.cuda.is_available():
-                    with torch.amp.autocast(device_type="cuda", enabled=True):
-                        outputs = self.model(image_tensor)
-                else:
-                    outputs = self.model(image_tensor)
-
+                if self.precision == "half" and self.device.type == "cuda":
+                    image_tensor = image_tensor.half()
+                outputs = self.model(image_tensor)
                 probabilities = torch.nn.functional.softmax(outputs, dim=1)
-                _, predicted_idx = torch.max(outputs, 1)
-                confidence = probabilities[0][predicted_idx].item()
+                predicted_class = torch.argmax(probabilities, dim=1).item()
+                confidence = probabilities[0][predicted_class].item()
 
-            predicted_class = predicted_idx.item()
-            print(
-                f"DEBUG: Predykcja zakończona - klasa: {predicted_class}, pewność: {confidence:.4f}"
-            )
-
-            # ---> START DODANEGO KODU <---
+            # Konwertuj indeks klasy na nazwę
             key_to_find = str(predicted_class)  # Klucz, którego szukamy
-            print(f"DEBUG: Szukam klucza: '{key_to_find}' (typ: {type(key_to_find)})")
-            print(f"DEBUG: Dostępny słownik class_names: {self.class_names}")
-            if self.class_names:
-                print(
-                    f"DEBUG: Typy kluczy w class_names: {[type(k) for k in self.class_names.keys()]}"
-                )
-            # ---> KONIEC DODANEGO KODU <---
+            class_name = None
 
-            class_name = self.class_names.get(key_to_find)
+            # Najpierw szukaj dokładnie
+            if key_to_find in self.class_names:
+                class_name = self.class_names[key_to_find]
+            else:
+                # Próba konwersji kluczy
+                for k, v in self.class_names.items():
+                    try:
+                        if str(k) == key_to_find:
+                            class_name = v
+                            break
+                    except:
+                        continue
+
             if class_name is None:
-                print(
-                    f"UWAGA: Nie znaleziono nazwy dla klasy {predicted_class} w słowniku class_names"
-                )
-                print(
-                    f"DEBUG: Słownik class_names w momencie błędu: {self.class_names}"
-                )
-                class_name = f"Kategoria_{predicted_class}"
-
-            print(
-                f"DEBUG: Końcowy wynik - klasa: {class_name}, pewność: {confidence:.4f}"
-            )
+                class_name = f"Klasa_{predicted_class}"
 
             return {
-                "class_id": predicted_class,
                 "class_name": class_name,
+                "class_id": predicted_class,
                 "confidence": confidence,
             }
+
         except Exception as e:
-            error_msg = f"Błąd w ai.classifier.predict: {str(e)}"
-            print(f"DEBUG: Wystąpił błąd: {error_msg}")
-            print(f"DEBUG: Traceback: {traceback.format_exc()}")
-            raise ValueError(error_msg)
+            print(f"Błąd podczas klasyfikacji obrazu {image_path}: {e}")
+            return None
 
     def batch_predict(self, image_paths, batch_size=16):
         """Przewidywanie kategorii dla wielu obrazów w trybie wsadowym."""
