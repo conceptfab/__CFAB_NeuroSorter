@@ -12,23 +12,29 @@ REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 CONFIG_DIR = os.path.join(BASE_DIR, "config")
 
 # Konfiguracja modelu
-DEFAULT_MODEL_TYPE = "resnet50"
+DEFAULT_MODEL_TYPE = "efficientnet"
 DEFAULT_NUM_CLASSES = 10
 IMAGE_SIZE = (224, 224)
 
 # Domyślne parametry treningu
 DEFAULT_TRAINING_PARAMS = {
+    "model": "efficientnet",
     "batch_size": 32,
-    "num_workers": 4,
+    "num_workers": 16,
+    "max_epochs": 50,
     "learning_rate": 0.001,
-    "optimizer": "Adam",
-    "scheduler": "ReduceLROnPlateau",
-    "weight_decay": 1e-3,
+    "optimizer": "RMSprop",
+    "scheduler": "cosine",
+    "weight_decay": 1e-4,
     "gradient_clip_val": 0.1,
     "early_stopping_patience": 5,
-    "max_epochs": 50,
     "validation_split": 0.2,
-    "use_mixed_precision": False,
+    "use_mixed_precision": True,
+    "label_smoothing": 0.1,
+    "drop_connect_rate": 0.2,
+    "momentum": 0.9,
+    "epsilon": 0.001,
+    "warmup_epochs": 5,
 }
 
 # Domyślne parametry augmentacji
@@ -125,7 +131,7 @@ def load_default_settings():
         "scheduler": DEFAULT_TRAINING_PARAMS["scheduler"],
         "weight_decay": DEFAULT_TRAINING_PARAMS["weight_decay"],
         "gradient_clip_val": DEFAULT_TRAINING_PARAMS["gradient_clip_val"],
-        "early_stopping_patience": (DEFAULT_TRAINING_PARAMS["early_stopping_patience"]),
+        "early_stopping_patience": DEFAULT_TRAINING_PARAMS["early_stopping_patience"],
         "validation_split": DEFAULT_TRAINING_PARAMS["validation_split"],
         "use_mixed_precision": DEFAULT_TRAINING_PARAMS["use_mixed_precision"],
         # Ustawienia augmentacji

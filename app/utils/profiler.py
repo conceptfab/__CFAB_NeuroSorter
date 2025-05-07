@@ -1201,34 +1201,8 @@ class HardwareProfiler:
     def _recommend_model_architecture(self, gpu_memory, overall_score):
         """Rekomenduje architekturę modelu na podstawie sprzętu."""
         logger.info("=== REKOMENDACJA ARCHITEKTURY MODELU ===")
-        logger.info(
-            "GPU Memory: %.1f GB, Overall Score: %.1f", gpu_memory, overall_score
-        )
-
-        if gpu_memory >= 8 and overall_score > 800:
-            recommendation = "convnext"  # Nowoczesny model dla wysokiej wydajności
-            logger.info(
-                "Rekomendowana architektura: %s (wysoka wydajność)", recommendation
-            )
-        elif gpu_memory >= 4 and overall_score > 500:
-            recommendation = "resnet50"  # Standardowy model dla średniej wydajności
-            logger.info(
-                "Rekomendowana architektura: %s (średnia wydajność)", recommendation
-            )
-        elif gpu_memory >= 2 and overall_score > 300:
-            recommendation = (
-                "efficientnet"  # Dobry balans między wydajnością a rozmiarem
-            )
-            logger.info(
-                "Rekomendowana architektura: %s (balans wydajności)", recommendation
-            )
-        else:
-            recommendation = "mobilenet"  # Lekki model dla słabszego sprzętu
-            logger.info(
-                "Rekomendowana architektura: %s (podstawowa wydajność)", recommendation
-            )
-
-        return recommendation
+        logger.info("Zgodnie z dokumentacją, zawsze zwracamy efficientnet")
+        return "efficientnet"
 
     def _recommend_augmentation_level(self, overall_score):
         """Rekomenduje poziom augmentacji na podstawie wydajności."""

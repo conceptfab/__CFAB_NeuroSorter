@@ -324,8 +324,11 @@ class TrainingManager(QWidget, TabInterface):
         # Model architektury
         self.model_arch_combo = QComboBox()
         self.model_arch_combo.addItems(
-            ["resnet50", "efficientnet", "mobilenet", "vit", "convnext"]
+            ["efficientnet", "resnet50", "mobilenet", "vit", "convnext"]
         )
+        self.model_arch_combo.setCurrentText(
+            "efficientnet"
+        )  # Ustawiam efficientnet jako domyślny
 
         # Liczba epok
         self.epochs_spin = QSpinBox()
@@ -510,8 +513,11 @@ class TrainingManager(QWidget, TabInterface):
             # 3. Architektura modelu
             model_arch_combo = QComboBox()
             model_arch_combo.addItems(
-                ["resnet50", "efficientnet", "mobilenet", "vit", "convnext"]
+                ["efficientnet", "resnet50", "mobilenet", "vit", "convnext"]
             )
+            model_arch_combo.setCurrentText(
+                "efficientnet"
+            )  # Ustawiam efficientnet jako domyślny
 
             # Sprawdź rekomendowany model z profilu
             if (
@@ -574,10 +580,10 @@ class TrainingManager(QWidget, TabInterface):
 
             # 8. Harmonogram uczenia
             scheduler_combo = QComboBox()
-            scheduler_combo.addItems(
-                ["None", "StepLR", "CosineAnnealingLR", "ReduceLROnPlateau"]
-            )
-            scheduler_combo.setCurrentText(optimal_scheduler)
+            scheduler_combo.addItems(["None", "cosine", "StepLR", "ReduceLROnPlateau"])
+            scheduler_combo.setCurrentText(
+                optimal_scheduler
+            )  # Ustawiam cosine jako domyślny
             form_layout.addRow("Harmonogram uczenia:", scheduler_combo)
 
             # 9. Liczba wątków do ładowania danych
@@ -627,6 +633,44 @@ class TrainingManager(QWidget, TabInterface):
                 "Liczba epok bez poprawy przed zatrzymaniem:", early_stopping_spin
             )
 
+            # 13. Label Smoothing
+            label_smoothing_spin = QDoubleSpinBox()
+            label_smoothing_spin.setRange(0.0, 0.5)
+            label_smoothing_spin.setValue(0.1)
+            label_smoothing_spin.setDecimals(2)
+            label_smoothing_spin.setSingleStep(0.01)
+            form_layout.addRow("Label Smoothing:", label_smoothing_spin)
+
+            # 14. Drop Connect Rate
+            drop_connect_spin = QDoubleSpinBox()
+            drop_connect_spin.setRange(0.0, 0.5)
+            drop_connect_spin.setValue(0.2)
+            drop_connect_spin.setDecimals(2)
+            drop_connect_spin.setSingleStep(0.01)
+            form_layout.addRow("Drop Connect Rate:", drop_connect_spin)
+
+            # 15. Momentum
+            momentum_spin = QDoubleSpinBox()
+            momentum_spin.setRange(0.0, 1.0)
+            momentum_spin.setValue(0.9)
+            momentum_spin.setDecimals(2)
+            momentum_spin.setSingleStep(0.01)
+            form_layout.addRow("Momentum:", momentum_spin)
+
+            # 16. Epsilon
+            epsilon_spin = QDoubleSpinBox()
+            epsilon_spin.setRange(0.0001, 0.01)
+            epsilon_spin.setValue(0.001)
+            epsilon_spin.setDecimals(4)
+            epsilon_spin.setSingleStep(0.0001)
+            form_layout.addRow("Epsilon:", epsilon_spin)
+
+            # 17. Warmup Epochs
+            warmup_epochs_spin = QSpinBox()
+            warmup_epochs_spin.setRange(0, 10)
+            warmup_epochs_spin.setValue(5)
+            form_layout.addRow("Liczba epok warmup:", warmup_epochs_spin)
+
             # Augmentacja danych
             augmentation_group = QGroupBox("Augmentacja danych")
             augmentation_layout = QFormLayout(augmentation_group)
@@ -669,11 +713,25 @@ class TrainingManager(QWidget, TabInterface):
             augmentation_layout.addRow("", basic_aug_check)
             augmentation_layout.addRow("", advanced_aug_check)
 
-            # 14. Mixed Precision
+            # 18. Mixed Precision
             mixed_precision_check = QCheckBox("Używaj mixed precision")
             mixed_precision_check.setChecked(optimal_mixed_precision)
             mixed_precision_check.setEnabled(torch.cuda.is_available())
             form_layout.addRow("", mixed_precision_check)
+
+            # 18. Wybór metryk monitorowania
+            metrics_group = QGroupBox("Metryki monitorowania")
+            metrics_layout = QHBoxLayout(metrics_group)
+            metric_accuracy = QCheckBox("accuracy")
+            metric_accuracy.setChecked(True)
+            metric_precision = QCheckBox("precision")
+            metric_precision.setChecked(False)
+            metric_recall = QCheckBox("recall")
+            metric_recall.setChecked(False)
+            metrics_layout.addWidget(metric_accuracy)
+            metrics_layout.addWidget(metric_precision)
+            metrics_layout.addWidget(metric_recall)
+            layout.addWidget(metrics_group)
 
             # Dodaj wszystkie elementy do głównego layoutu
             layout.addLayout(form_layout)
@@ -705,9 +763,17 @@ class TrainingManager(QWidget, TabInterface):
                     weight_decay_combo,
                     gradient_clip_spin,
                     early_stopping_spin,
+                    label_smoothing_spin,
+                    drop_connect_spin,
+                    momentum_spin,
+                    epsilon_spin,
+                    warmup_epochs_spin,
                     basic_aug_check,
                     advanced_aug_check,
                     mixed_precision_check,
+                    metric_accuracy,
+                    metric_precision,
+                    metric_recall,
                 )
             )
 
@@ -742,135 +808,115 @@ class TrainingManager(QWidget, TabInterface):
         weight_decay_combo,
         gradient_clip_spin,
         early_stopping_spin,
+        label_smoothing_spin,
+        drop_connect_spin,
+        momentum_spin,
+        epsilon_spin,
+        warmup_epochs_spin,
         basic_aug_check,
         advanced_aug_check,
         mixed_precision_check,
+        metric_accuracy,
+        metric_precision,
+        metric_recall,
     ):
-        """Obsługuje akceptację dialogu bez ryzyka podwójnego wywołania."""
-        self.parent.logger.info("Użytkownik zaakceptował konfigurację zadania")
-
-        # Pobierz wartości z formularza
-        data_dir = data_dir_edit.text()
-        val_dir = val_dir_edit.text()
-        model_arch = model_arch_combo.currentText()
-        epochs = epochs_spin.value()
-        batch_size = batch_size_spin.value()
-
-        # Loguj konfigurację
-        self.parent.logger.info(f"Konfiguracja zadania treningu:")
-        self.parent.logger.info(f"- Architektura modelu: {model_arch}")
-        self.parent.logger.info(f"- Liczba epok: {epochs}")
-        self.parent.logger.info(f"- Katalog treningowy: {data_dir}")
-        self.parent.logger.info(f"- Katalog walidacyjny: {val_dir}")
-
-        # Generuj nazwę pliku zadania
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-        task_name = f"{model_arch}_{epochs}epok_{timestamp}.json"
-
-        # Przygotuj konfigurację zadania
-        task_config = {
-            "name": task_name,
-            "type": "Trening",
-            "status": "Nowy",
-            "priority": 0,
-            "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "config": {
-                "model_arch": model_arch,
-                "data_dir": data_dir,
-                "val_dir": val_dir,
-                "epochs": epochs,
-                "batch_size": batch_size,
-                "learning_rate": float(learning_rate_combo.currentText()),
-                "optimizer": optimizer_combo.currentText(),
-                "scheduler": scheduler_combo.currentText(),
-                "use_mixed_precision": mixed_precision_check.isChecked(),
-                "num_workers": num_workers_spin.value(),
-                "weight_decay": float(weight_decay_combo.currentText()),
-                "gradient_clip": gradient_clip_spin.value(),
-                "early_stopping": early_stopping_spin.value(),
-                "augmentation": {
-                    "basic": basic_aug_check.isChecked(),
-                    "advanced": advanced_aug_check.isChecked(),
-                },
-            },
-        }
-
-        # Loguj pełną konfigurację
-        self.parent.logger.info(
-            f"Pełna konfiguracja zadania: {json.dumps(task_config, indent=2)}"
-        )
-
-        # Zapisz konfigurację zadania
-        tasks_dir = os.path.join("data", "tasks")
-        os.makedirs(tasks_dir, exist_ok=True)
-        task_file = os.path.join(tasks_dir, task_name)
-
-        self.parent.logger.info(f"Zapisywanie pliku zadania: {task_file}")
+        """Obsługuje akceptację dialogu konfiguracji."""
         try:
-            # Sprawdź czy katalog istnieje
-            os.makedirs(os.path.dirname(task_file), exist_ok=True)
+            # Pobierz wartości z pól
+            train_dir = data_dir_edit.text()
+            val_dir = val_dir_edit.text()
+            model_arch = model_arch_combo.currentText()
+            epochs = epochs_spin.value()
+            batch_size = batch_size_spin.value()
+            learning_rate = float(learning_rate_combo.currentText())
+            optimizer = optimizer_combo.currentText()
+            scheduler = scheduler_combo.currentText()
+            num_workers = num_workers_spin.value()
+            weight_decay = float(weight_decay_combo.currentText())
+            gradient_clip = gradient_clip_spin.value()
+            early_stopping = early_stopping_spin.value()
+            label_smoothing = label_smoothing_spin.value()
+            drop_connect_rate = drop_connect_spin.value()
+            momentum = momentum_spin.value()
+            epsilon = epsilon_spin.value()
+            warmup_epochs = warmup_epochs_spin.value()
 
-            # Zapisz plik
-            with open(task_file, "w", encoding="utf-8") as f:
-                json.dump(task_config, f, indent=4, ensure_ascii=False)
-
-            # Sprawdź czy plik został poprawnie zapisany
-            if not os.path.exists(task_file) or os.path.getsize(task_file) == 0:
-                raise IOError("Plik zadania nie został poprawnie zapisany")
-
-            # Walidacja zapisanego pliku
-            is_valid, error_msg = validate_task_file(task_file)
-            if not is_valid:
-                self.parent.logger.error(f"Błąd walidacji pliku zadania: {error_msg}")
-                os.remove(task_file)  # Usuń nieprawidłowy plik
+            # WALIDACJA: ścieżka do katalogu treningowego nie może być pusta
+            if not train_dir.strip():
                 QMessageBox.critical(
-                    self,
-                    "Błąd walidacji",
-                    f"Plik zadania nie przeszedł walidacji: {error_msg}",
+                    self, "Błąd", "Musisz wybrać katalog danych treningowych!"
                 )
-                return None
+                return
 
-            self.parent.logger.info(f"Zapisano plik zadania: {task_file}")
+            # Sprawdź czy katalog treningowy istnieje
+            if not validate_training_directory(train_dir):
+                return
+
+            # Sprawdź czy katalog walidacyjny istnieje (jeśli podano)
+            if val_dir and not validate_validation_directory(val_dir):
+                return
+
+            # Generuj nazwę zadania
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            task_name = f"{model_arch}_{epochs}epok_{timestamp}.json"
+
+            # Przygotuj konfigurację zadania
+            task_config = {
+                "name": task_name,
+                "type": "Trening",
+                "status": "Nowy",
+                "priority": 0,
+                "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "config": {
+                    "train_dir": train_dir,
+                    "data_dir": train_dir,  # Wymuszenie zgodności
+                    "val_dir": val_dir,
+                    "model_arch": model_arch,
+                    "epochs": epochs,
+                    "batch_size": batch_size,
+                    "learning_rate": learning_rate,
+                    "optimizer": optimizer,
+                    "scheduler": scheduler,
+                    "num_workers": num_workers,
+                    "weight_decay": weight_decay,
+                    "gradient_clip": gradient_clip,
+                    "early_stopping": early_stopping,
+                    "label_smoothing": label_smoothing,
+                    "drop_connect_rate": drop_connect_rate,
+                    "momentum": momentum,
+                    "epsilon": epsilon,
+                    "warmup_epochs": warmup_epochs,
+                    "augmentation": {
+                        "basic": basic_aug_check.isChecked(),
+                        "advanced": advanced_aug_check.isChecked(),
+                    },
+                    "use_mixed_precision": mixed_precision_check.isChecked(),
+                    "monitor_metrics": [
+                        "accuracy" if metric_accuracy.isChecked() else None,
+                        "precision" if metric_precision.isChecked() else None,
+                        "recall" if metric_recall.isChecked() else None,
+                    ],
+                },
+            }
+
+            # Zapisz konfigurację zadania
+            task_file = os.path.join("data", "tasks", task_name)
+            os.makedirs(os.path.dirname(task_file), exist_ok=True)
+            with open(task_file, "w", encoding="utf-8") as f:
+                json.dump(task_config, f, indent=4)
+
+            # Odśwież listę zadań
+            self.refresh()
+
+            # Zamknij dialog
+            dialog.accept()
 
         except Exception as e:
-            self.parent.logger.error(
-                f"Błąd podczas zapisywania pliku zadania: {str(e)}"
-            )
-            if os.path.exists(task_file):
-                os.remove(task_file)  # Usuń uszkodzony plik
             QMessageBox.critical(
-                self, "Błąd zapisu", f"Nie udało się zapisać pliku zadania: {str(e)}"
+                self,
+                "Błąd",
+                f"Nie udało się utworzyć zadania treningowego: {str(e)}",
             )
-            return None
-
-        # Wyświetl potwierdzenie
-        QMessageBox.information(
-            self,
-            "Zadanie utworzone",
-            f"Zadanie treningowe '{task_name}' zostało dodane do kolejki.",
-        )
-
-        # Odśwież listę zadań po zapisaniu
-        self.refresh()
-
-        # Zamknij dialog
-        dialog.accept()
-
-    def _select_directory(self, line_edit_widget):
-        """Otwiera dialog wyboru katalogu i ustawia ścieżkę w QLineEdit."""
-        directory = QFileDialog.getExistingDirectory(
-            self,
-            "Wybierz katalog",
-            # Użyj bieżącej ścieżki z QLineEdit jako startowej, jeśli istnieje
-            (
-                line_edit_widget.text()
-                if line_edit_widget.text()
-                else os.path.expanduser("~")
-            ),
-            QFileDialog.Option.ShowDirsOnly,
-        )
-        if directory:
-            line_edit_widget.setText(directory)
 
     def _configure_finetuning_task(self):
         """Konfiguruje zadanie doszkalania istniejącego modelu."""
@@ -935,8 +981,11 @@ class TrainingManager(QWidget, TabInterface):
             # Typ modelu (architektura)
             model_arch_combo = QComboBox()
             model_arch_combo.addItems(
-                ["resnet50", "efficientnet", "mobilenet", "vit", "convnext"]
+                ["efficientnet", "resnet50", "mobilenet", "vit", "convnext"]
             )
+            model_arch_combo.setCurrentText(
+                "efficientnet"
+            )  # Ustawiam efficientnet jako domyślny
             form_layout.addRow("Typ modelu:", model_arch_combo)
 
             # Rozmiar wsadu
@@ -981,6 +1030,44 @@ class TrainingManager(QWidget, TabInterface):
             weight_decay_combo.addItems(["1e-3", "1e-4", "1e-5", "1e-6"])
             weight_decay_combo.setCurrentText("1e-4")  # Domyślna wartość
             form_layout.addRow("Współczynnik regularyzacji L2:", weight_decay_combo)
+
+            # Label Smoothing
+            label_smoothing_spin = QDoubleSpinBox()
+            label_smoothing_spin.setRange(0.0, 0.5)
+            label_smoothing_spin.setValue(0.1)
+            label_smoothing_spin.setDecimals(2)
+            label_smoothing_spin.setSingleStep(0.01)
+            form_layout.addRow("Label Smoothing:", label_smoothing_spin)
+
+            # Drop Connect Rate
+            drop_connect_spin = QDoubleSpinBox()
+            drop_connect_spin.setRange(0.0, 0.5)
+            drop_connect_spin.setValue(0.2)
+            drop_connect_spin.setDecimals(2)
+            drop_connect_spin.setSingleStep(0.01)
+            form_layout.addRow("Drop Connect Rate:", drop_connect_spin)
+
+            # Momentum
+            momentum_spin = QDoubleSpinBox()
+            momentum_spin.setRange(0.0, 1.0)
+            momentum_spin.setValue(0.9)
+            momentum_spin.setDecimals(2)
+            momentum_spin.setSingleStep(0.01)
+            form_layout.addRow("Momentum:", momentum_spin)
+
+            # Epsilon
+            epsilon_spin = QDoubleSpinBox()
+            epsilon_spin.setRange(0.0001, 0.01)
+            epsilon_spin.setValue(0.001)
+            epsilon_spin.setDecimals(4)
+            epsilon_spin.setSingleStep(0.0001)
+            form_layout.addRow("Epsilon:", epsilon_spin)
+
+            # Warmup Epochs
+            warmup_epochs_spin = QSpinBox()
+            warmup_epochs_spin.setRange(0, 10)
+            warmup_epochs_spin.setValue(5)
+            form_layout.addRow("Liczba epok warmup:", warmup_epochs_spin)
 
             # Wartość przycinania gradientów
             gradient_clip_spin = QDoubleSpinBox()
@@ -1131,6 +1218,11 @@ class TrainingManager(QWidget, TabInterface):
                                 "rotation": rotation_spin.value(),
                                 "brightness": brightness_spin.value(),
                             },
+                            "monitor_metrics": [
+                                "accuracy" if metric_accuracy.isChecked() else None,
+                                "precision" if metric_precision.isChecked() else None,
+                                "recall" if metric_recall.isChecked() else None,
+                            ],
                         },
                     }
 
@@ -1849,4 +1941,23 @@ class TrainingManager(QWidget, TabInterface):
             )
             self.parent.logger.error(
                 f"Błąd podczas uruchamiania wsadowego treningu: {str(e)}"
+            )
+
+    def _select_directory(self, line_edit):
+        """Otwiera dialog wyboru katalogu i aktualizuje pole tekstowe."""
+        try:
+            directory = QFileDialog.getExistingDirectory(
+                self,
+                "Wybierz katalog",
+                os.path.join("data"),
+                QFileDialog.Option.ShowDirsOnly
+                | QFileDialog.Option.DontResolveSymlinks,
+            )
+            if directory:
+                line_edit.setText(directory)
+                self.parent.logger.info(f"Wybrano katalog: {directory}")
+        except Exception as e:
+            self.parent.logger.error(f"Błąd podczas wyboru katalogu: {str(e)}")
+            QMessageBox.critical(
+                self, "Błąd", f"Wystąpił błąd podczas wyboru katalogu: {str(e)}"
             )

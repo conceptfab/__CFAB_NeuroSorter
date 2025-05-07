@@ -215,16 +215,16 @@ class BatchTrainingThread(QThread):
             # Pobierz parametry zadania z sekcji config
             model_type = config.get("model_arch", "resnet18")
             training_dir = config.get("data_dir", "")
-            validation_dir = config.get("val_dir", None)
-            epochs = config.get("epochs", 10)
-            batch_size = config.get("batch_size", 32)
-            learning_rate = config.get("learning_rate", 0.001)
-
-            # Sprawdź czy ścieżka treningowa nie jest pusta lub None
+            if not training_dir:
+                training_dir = config.get("train_dir", "")
             if not training_dir or training_dir.strip() == "":
                 error_msg = "Ścieżka do katalogu treningowego jest pusta"
                 self.logger.error(f"BŁĄD w _run_training_task: {error_msg}")
                 raise ValueError(error_msg)
+            validation_dir = config.get("val_dir", None)
+            epochs = config.get("epochs", 10)
+            batch_size = config.get("batch_size", 32)
+            learning_rate = config.get("learning_rate", 0.001)
 
             # Walidacja ścieżek
             is_valid, error_msg = validate_training_directory(training_dir)

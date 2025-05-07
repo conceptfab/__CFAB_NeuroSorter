@@ -215,17 +215,22 @@ def train_model(
     train_dir: str,
     val_dir: Optional[str] = None,
     epochs: int = 50,
-    batch_size: int = 32,
+    batch_size: int = 64,
     learning_rate: float = 0.001,
-    optimizer: str = "Adam",
-    scheduler: Optional[str] = None,
+    optimizer: str = "RMSprop",
+    scheduler: Optional[str] = "cosine",
     use_mixed_precision: bool = True,
-    num_workers: int = 4,
+    num_workers: int = 16,
     weight_decay: float = 0.0001,
     gradient_clip: float = 0.1,
     early_stopping: int = 5,
     augmentation: Optional[Dict[str, bool]] = None,
     logger: Optional[Callable] = None,
+    label_smoothing: float = 0.1,
+    drop_connect_rate: float = 0.2,
+    momentum: float = 0.9,
+    epsilon: float = 0.001,
+    warmup_epochs: int = 5,
 ) -> Tuple[str, Dict[str, float]]:
     """
     Trenuje model na podstawie podanych parametrów.
@@ -246,6 +251,11 @@ def train_model(
         early_stopping: Liczba epok bez poprawy przed zatrzymaniem
         augmentation: Konfiguracja augmentacji
         logger: Funkcja do logowania (opcjonalnie)
+        label_smoothing: Wartość label smoothing
+        drop_connect_rate: Wartość drop connect rate
+        momentum: Wartość momentum
+        epsilon: Wartość epsilon
+        warmup_epochs: Liczba epok warmup
 
     Returns:
         Tuple[str, Dict[str, float]]: Ścieżka do zapisanego modelu i metryki
@@ -277,7 +287,7 @@ def train_model(
 
     print(f"Trening na urządzeniu: {device}")
 
-    model = models.get_model(model_arch)
+    model = models.get_model(model_arch, drop_connect_rate=drop_connect_rate)
     model = model.to(device)
 
     folder_class_names = get_folder_classes(train_dir)
@@ -318,14 +328,38 @@ def train_model(
         )
 
     # Użyj odpowiedniego kryterium straty
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
 
     # Optymalizator z regularyzacją L2
-    optimizer = optim.AdamW(
-        [p for p in model.parameters() if p.requires_grad],
-        lr=learning_rate,
-        weight_decay=weight_decay,
-    )
+    if optimizer.lower() == "rmsprop":
+        optimizer = optim.RMSprop(
+            [p for p in model.parameters() if p.requires_grad],
+            lr=learning_rate,
+            weight_decay=weight_decay,
+            momentum=momentum,
+            eps=epsilon,
+        )
+    elif optimizer.lower() == "adamw":
+        optimizer = optim.AdamW(
+            [p for p in model.parameters() if p.requires_grad],
+            lr=learning_rate,
+            weight_decay=weight_decay,
+            eps=epsilon,
+        )
+    elif optimizer.lower() == "sgd":
+        optimizer = optim.SGD(
+            [p for p in model.parameters() if p.requires_grad],
+            lr=learning_rate,
+            weight_decay=weight_decay,
+            momentum=momentum,
+        )
+    else:  # Adam jako domyślny
+        optimizer = optim.Adam(
+            [p for p in model.parameters() if p.requires_grad],
+            lr=learning_rate,
+            weight_decay=weight_decay,
+            eps=epsilon,
+        )
 
     # Wybierz scheduler learning rate
     if scheduler == "plateau":
@@ -333,11 +367,24 @@ def train_model(
             optimizer, mode="min", factor=0.5, patience=2
         )
     elif scheduler == "cosine":
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=epochs, eta_min=1e-6
+        )
     elif scheduler == "step":
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
     else:
         scheduler = None
+
+    # Dodaj warmup scheduler jeśli warmup_epochs > 0
+    if warmup_epochs > 0:
+        warmup_scheduler = optim.lr_scheduler.LinearLR(
+            optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_epochs
+        )
+        scheduler = optim.lr_scheduler.SequentialLR(
+            optimizer,
+            schedulers=[warmup_scheduler, scheduler],
+            milestones=[warmup_epochs],
+        )
 
     # Implementacja Early Stopping
     patience = early_stopping if early_stopping != float("inf") else float("inf")

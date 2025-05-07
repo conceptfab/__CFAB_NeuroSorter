@@ -10,7 +10,7 @@ from PIL import Image
 
 
 class ImageClassifier:
-    def __init__(self, model_type="resnet50", num_classes=10, weights_path=None):
+    def __init__(self, model_type="efficientnet", num_classes=10, weights_path=None):
         self.model_type = model_type
         self.num_classes = num_classes
         self.class_names = {}
@@ -788,66 +788,10 @@ class ImageClassifier:
         cpu_cores=None,
     ):
         """
-        Automatycznie wybiera optymalną architekturę modelu na podstawie:
-        - wielkości zbioru danych
-        - liczby klas
-        - dostępności CUDA
-        - ilości pamięci GPU
-        - liczby rdzeni CPU
+        Automatycznie wybiera optymalną architekturę modelu.
+        Zgodnie z dokumentacją, zawsze zwraca efficientnet jako rekomendowaną architekturę.
         """
-        import os
-
-        import psutil
-
-        # Automatyczne wykrywanie parametrów, jeśli nie zostały podane
-        if cuda_available is None:
-            cuda_available = torch.cuda.is_available()
-
-        if gpu_memory is None and cuda_available:
-            gpu_memory = torch.cuda.get_device_properties(0).total_memory / (
-                1024**3
-            )  # w GB
-
-        if cpu_cores is None:
-            cpu_cores = os.cpu_count() or 4
-
-        # Domyślne wartości
-        if dataset_size is None:
-            dataset_size = 1000  # Założenie średniej wielkości datasetu
-
-        if num_classes is None:
-            num_classes = 10  # Założenie standardowej liczby klas
-
-        # Logika wyboru architektury
-        # 1. Dla małych urządzeń lub bez CUDA - lekkie modele
-        if not cuda_available or (gpu_memory is not None and gpu_memory < 4):
-            return "mobilenet"  # Najlżejszy model
-
-        # 2. Dla średnich zasobów
-        if gpu_memory is not None and 4 <= gpu_memory < 8:
-            if dataset_size < 5000:
-                return "efficientnet"  # Dobry kompromis wydajność/jakość
-            else:
-                return "mobilenet"  # Szybszy trening dla większych zbiorów
-
-        # 3. Dla dużych zasobów obliczeniowych
-        if dataset_size < 3000:
-            # Dla mniejszych zbiorów danych
-            if num_classes > 50:
-                return "convnext"  # Lepszy dla wielu klas
-            else:
-                return "vit"  # Dobry dla mniejszych zbiorów z umiarkowaną liczbą klas
-        elif dataset_size < 10000:
-            return "resnet50"  # Sprawdzony model dla średnich zbiorów
-        else:
-            # Dla bardzo dużych zbiorów danych
-            if gpu_memory is not None and gpu_memory > 12:
-                return "convnext"  # Zaawansowany model dla dużych zbiorów
-            else:
-                return "resnet50"  # Standardowy wybór dla dużych zbiorów
-
-        # Domyślnie używamy ResNet50 jako sprawdzonego modelu
-        return "resnet50"
+        return "efficientnet"  # Zawsze zwracamy efficientnet jako optymalną architekturę
 
     def debug_category_mapping(self, directory, top_n=5):
         """

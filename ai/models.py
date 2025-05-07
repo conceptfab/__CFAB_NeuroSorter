@@ -8,6 +8,7 @@ def get_model(
     model_arch: str,
     num_classes: Optional[int] = None,
     logger: Optional[Callable] = None,
+    drop_connect_rate: float = 0.2,
 ) -> nn.Module:
     """
     Tworzy model o podanej architekturze.
@@ -16,6 +17,7 @@ def get_model(
         model_arch: Architektura modelu (np. 'efficientnet_b0')
         num_classes: Liczba klas (opcjonalnie)
         logger: Funkcja do logowania (opcjonalnie)
+        drop_connect_rate: Wartość drop connect rate dla EfficientNet (opcjonalnie)
 
     Returns:
         nn.Module: Model PyTorch
@@ -25,32 +27,42 @@ def get_model(
         logger(f"- Architektura: {model_arch}")
         if num_classes:
             logger(f"- Liczba klas: {num_classes}")
+        if model_arch.startswith("efficientnet"):
+            logger(f"- Drop connect rate: {drop_connect_rate}")
 
     # Mapowanie nazw architektur na funkcje tworzące modele
     model_factories = {
         "efficientnet_b0": lambda: models.efficientnet_b0(
-            weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1
+            weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1,
+            drop_rate=drop_connect_rate,
         ),
         "efficientnet_b1": lambda: models.efficientnet_b1(
-            weights=models.EfficientNet_B1_Weights.IMAGENET1K_V1
+            weights=models.EfficientNet_B1_Weights.IMAGENET1K_V1,
+            drop_rate=drop_connect_rate,
         ),
         "efficientnet_b2": lambda: models.efficientnet_b2(
-            weights=models.EfficientNet_B2_Weights.IMAGENET1K_V1
+            weights=models.EfficientNet_B2_Weights.IMAGENET1K_V1,
+            drop_rate=drop_connect_rate,
         ),
         "efficientnet_b3": lambda: models.efficientnet_b3(
-            weights=models.EfficientNet_B3_Weights.IMAGENET1K_V1
+            weights=models.EfficientNet_B3_Weights.IMAGENET1K_V1,
+            drop_rate=drop_connect_rate,
         ),
         "efficientnet_b4": lambda: models.efficientnet_b4(
-            weights=models.EfficientNet_B4_Weights.IMAGENET1K_V1
+            weights=models.EfficientNet_B4_Weights.IMAGENET1K_V1,
+            drop_rate=drop_connect_rate,
         ),
         "efficientnet_b5": lambda: models.efficientnet_b5(
-            weights=models.EfficientNet_B5_Weights.IMAGENET1K_V1
+            weights=models.EfficientNet_B5_Weights.IMAGENET1K_V1,
+            drop_rate=drop_connect_rate,
         ),
         "efficientnet_b6": lambda: models.efficientnet_b6(
-            weights=models.EfficientNet_B6_Weights.IMAGENET1K_V1
+            weights=models.EfficientNet_B6_Weights.IMAGENET1K_V1,
+            drop_rate=drop_connect_rate,
         ),
         "efficientnet_b7": lambda: models.efficientnet_b7(
-            weights=models.EfficientNet_B7_Weights.IMAGENET1K_V1
+            weights=models.EfficientNet_B7_Weights.IMAGENET1K_V1,
+            drop_rate=drop_connect_rate,
         ),
         "resnet18": lambda: models.resnet18(
             weights=models.ResNet18_Weights.IMAGENET1K_V1
