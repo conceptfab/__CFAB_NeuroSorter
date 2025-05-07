@@ -191,32 +191,7 @@ def train_model_optimized(
                 param.requires_grad = True
 
     # Wybór optymalizatora
-    if optimizer_type.lower() == "adamw":
-        optimizer = optim.AdamW(
-            [p for p in model.parameters() if p.requires_grad],
-            lr=learning_rate,
-            weight_decay=weight_decay,
-        )
-        # print(
-        #     f"Użyto optymalizatora AdamW z learning_rate={learning_rate}, weight_decay={weight_decay}"
-        # )
-    elif optimizer_type.lower() == "sgd":
-        optimizer = optim.SGD(
-            [p for p in model.parameters() if p.requires_grad],
-            lr=learning_rate,
-            momentum=0.9,
-            weight_decay=weight_decay,
-        )
-        # print(f"Użyto optymalizatora SGD z learning_rate={learning_rate}, momentum=0.9")
-    else:  # domyślnie Adam
-        optimizer = optim.Adam(
-            [p for p in model.parameters() if p.requires_grad],
-            lr=learning_rate,
-            weight_decay=weight_decay,
-        )
-        # print(
-        #     f"Użyto optymalizatora Adam z learning_rate={learning_rate}, weight_decay={weight_decay}"
-        # )
+    optimizer = configure_optimizer(model, optimizer_type, learning_rate, weight_decay)
 
     # Konfiguracja kryterium straty
     if label_smoothing > 0:
@@ -227,18 +202,7 @@ def train_model_optimized(
         # print("Użyto standardowego CrossEntropyLoss")
 
     # Konfiguracja schedulera
-    scheduler = None
-    if lr_scheduler_type == "plateau":
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.5, patience=2
-        )
-        # print("Użyto schedulera ReduceLROnPlateau")
-    elif lr_scheduler_type == "cosine":
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
-        # print("Użyto schedulera CosineAnnealingLR")
-    elif lr_scheduler_type == "step":
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
-        # print("Użyto schedulera StepLR")
+    scheduler = configure_scheduler(optimizer, lr_scheduler_type, num_epochs, patience)
 
     # Konfiguracja scaler dla mixed precision
     scaler = None
@@ -471,61 +435,119 @@ def train_model_optimized(
     return result
 
 
+def configure_optimizer(model, optimizer_type, learning_rate, weight_decay):
+    """Konfiguruje optymalizator z parametrami dostosowanymi do modelu."""
+    # Policz liczbę parametrów modelu
+    param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    # Dopasuj learning rate do wielkości modelu
+    adjusted_lr = learning_rate
+    if param_count > 50_000_000:  # Bardzo duży model (>50M parametrów)
+        adjusted_lr = learning_rate * 0.5
+    elif param_count < 5_000_000:  # Mały model (<5M parametrów)
+        adjusted_lr = learning_rate * 2.0
+
+    # Dopasuj weight_decay
+    adjusted_wd = weight_decay
+    if param_count > 20_000_000:  # Większy model potrzebuje silniejszej regularyzacji
+        adjusted_wd = max(weight_decay, 0.03)
+
+    # Wybierz i skonfiguruj optymalizator
+    if optimizer_type.lower() == "adamw":
+        return optim.AdamW(
+            model.parameters(), lr=adjusted_lr, weight_decay=adjusted_wd, eps=1e-8
+        )
+    elif optimizer_type.lower() == "sgd":
+        return optim.SGD(
+            model.parameters(),
+            lr=adjusted_lr,
+            momentum=0.9,
+            weight_decay=adjusted_wd,
+            nesterov=True,
+        )
+    else:  # Adam jako domyślny
+        return optim.Adam(
+            model.parameters(), lr=adjusted_lr, weight_decay=adjusted_wd, eps=1e-8
+        )
+
+
+def configure_scheduler(optimizer, scheduler_type, epochs, patience=3):
+    """Konfiguruje scheduler learning rate odpowiedni do typu optymalizatora i długości treningu."""
+    if scheduler_type == "plateau":
+        # ReduceLROnPlateau z lepszymi parametrami
+        return optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=0.5,  # Zmniejsz learning rate o połowę
+            patience=patience,
+            verbose=True,
+            min_lr=1e-7,
+        )
+    elif scheduler_type == "cosine":
+        # CosineAnnealingLR z odpowiednim T_max
+        return optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=epochs, eta_min=1e-7, verbose=True
+        )
+    elif scheduler_type == "onecycle":
+        # OneCycleLR - często najlepszy wybór dla krótszych treningów
+        return optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=optimizer.param_groups[0]["lr"] * 10,
+            epochs=epochs,
+            steps_per_epoch=len(train_loader),
+            pct_start=0.3,
+            anneal_strategy="cos",
+            div_factor=25.0,
+            final_div_factor=10000.0,
+            verbose=True,
+        )
+    elif scheduler_type == "step":
+        # StepLR z odpowiednią częstotliwością kroków
+        step_size = max(5, epochs // 4)  # Co najmniej 5 epok lub 1/4 całkowitej liczby
+        return optim.lr_scheduler.StepLR(
+            optimizer, step_size=step_size, gamma=0.5, verbose=True
+        )
+    else:
+        # Brak schedulera
+        return None
+
+
 def mixup_data(x, y, alpha=0.2, device=None):
     """
     Wykonuje mixup na danych wejściowych i etykietach.
     Bezpieczna implementacja unikająca problemów z urządzeniami.
     """
-    print(
-        f"DEBUG MIXUP: Wejście x typu: {type(x)}, kształt: {x.shape if hasattr(x, 'shape') else 'brak'}"
-    )
-    print(
-        f"DEBUG MIXUP: Wejście y typu: {type(y)}, kształt: {y.shape if hasattr(y, 'shape') else 'brak'}"
-    )
-    print(f"DEBUG MIXUP: Alpha: {alpha}, Device: {device}")
-
     # Jeśli nie podano urządzenia, użyj urządzenia x
     if device is None:
         device = x.device
-        print(f"DEBUG MIXUP: Użycie urządzenia z tensora x: {device}")
 
     # Bezpieczne sprawdzenie CUDA
     if device.type == "cuda" and not torch.cuda.is_available():
-        print("Ostrzeżenie: Urządzenie ustawione na CUDA, ale CUDA nie jest dostępne.")
         device = torch.device("cpu")
-        print(f"DEBUG MIXUP: Zmiana urządzenia na CPU")
 
     # Parametr mixup
     if alpha > 0:
-        lam = np.random.beta(alpha, alpha)
+        lam = float(np.random.beta(alpha, alpha))
     else:
-        lam = 1
-    print(f"DEBUG MIXUP: Lambda: {lam}")
+        lam = 1.0
 
     batch_size = x.size()[0]
-    print(f"DEBUG MIXUP: Rozmiar batcha: {batch_size}")
 
-    # Bezpieczne tworzenie permutacji
+    # Bezpieczne tworzenie permutacji (zawsze na CPU)
     try:
-        print(f"DEBUG MIXUP: Próba tworzenia permutacji dla batch_size={batch_size}")
-        # Najlepsze podejście - tworzenie na CPU a potem przeniesienie
-        # Używamy jawnie określonych typów
-        index = torch.randperm(batch_size, dtype=torch.long, device="cpu")
-        print(f"DEBUG MIXUP: Permutacja utworzona na CPU, kształt: {index.shape}")
+        index = torch.randperm(batch_size, device="cpu")
+        # Przenieś indeksy na odpowiednie urządzenie
         index = index.to(device)
-        print(f"DEBUG MIXUP: Permutacja przeniesiona na {device}")
 
-        # Mixup
-        print(f"DEBUG MIXUP: Wykonywanie mixup")
-        mixed_x = lam * x + (1 - lam) * x[index, :]
+        # Wykonaj mixup
+        mixed_x = lam * x + (1 - lam) * x[index]
         y_a, y_b = y, y[index]
-        print(f"DEBUG MIXUP: Mixup zakończony, kształt mixed_x: {mixed_x.shape}")
 
         return mixed_x, y_a, y_b, lam
+
     except Exception as e:
-        print(f"BŁĄD podczas mixup: {e}")
-        print(f"SZCZEGÓŁY: {traceback.format_exc()}")
-        # Awaryjne podejście - zwróć oryginalne dane
+        print(f"Błąd podczas mixup: {str(e)}")
+        # Zwróć oryginalne dane w przypadku błędu
         return x, y, y, 1.0
 
 

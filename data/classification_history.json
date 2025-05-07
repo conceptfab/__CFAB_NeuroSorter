@@ -6,9 +6,15 @@
         "image_path": "F:/_____test/10410.5268bf3423495.jpg"
     },
     {
-        "date": "2025-05-07T16:01:33.539954",
-        "image_path": "F:/______training_database_V2/animal/American Bullfrog.thumb.jpeg",
         "class_name": "food",
-        "confidence": 0.256591796875
+        "confidence": 0.256591796875,
+        "date": "2025-05-07T16:01:33.539954",
+        "image_path": "F:/______training_database_V2/animal/American Bullfrog.thumb.jpeg"
+    },
+    {
+        "date": "2025-05-07T16:29:40.383190",
+        "image_path": "F:/______training_database_V2/animal/animated-snakes-pack.jpeg",
+        "class_name": "toy",
+        "confidence": 0.6962890625
     }
 ]

@@ -1,4 +1,4 @@
-AI 2.0 - poprawic kod
+AI 2.0 - poprawic kod - tworzenie modeli :::??
 CORE - poprawic
 
 Klonowanie modeli!!!

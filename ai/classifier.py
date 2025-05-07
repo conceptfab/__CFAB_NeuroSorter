@@ -340,13 +340,17 @@ class ImageClassifier:
             )
 
             # ---> START DODANEGO KODU <---
-            key_to_find = str(predicted_class)  # Klucz, którego szukamy
-            print(f"DEBUG: Szukam klucza: '{key_to_find}' (typ: {type(key_to_find)})")
-            print(f"DEBUG: Dostępny słownik class_names: {self.class_names}")
-            if self.class_names:
-                print(
-                    f"DEBUG: Typy kluczy w class_names: {[type(k) for k in self.class_names.keys()]}"
-                )
+            key_to_find = str(predicted_class)  # Konwersja na string
+            if self.class_names and key_to_find not in self.class_names:
+                # Spróbuj znaleźć klucz jako liczbę
+                try:
+                    int_key = int(key_to_find)
+                    if str(int_key) in self.class_names:
+                        key_to_find = str(int_key)
+                    elif int_key in self.class_names:
+                        key_to_find = int_key
+                except ValueError:
+                    pass
             # ---> KONIEC DODANEGO KODU <---
 
             class_name = self.class_names.get(key_to_find)
@@ -738,14 +742,21 @@ class ImageClassifier:
         # Na GPU dobieramy rozmiar batcha na podstawie ilości pamięci
         try:
             memory_info = torch.cuda.get_device_properties(0).total_memory
-            memory_gb = memory_info / (1024**3)  # Konwersja na GB
+            free_memory = memory_info - torch.cuda.memory_allocated(0)
+            memory_gb = free_memory / (1024**3)  # Konwersja na GB
 
-            # Proste mapowanie pamięci GPU na rozmiar batcha
-            if memory_gb > 10:
-                return 64
+            # Bardziej precyzyjne mapowanie pamięci GPU na rozmiar batcha
+            if memory_gb > 16:
+                return 128
+            elif memory_gb > 12:
+                return 96
             elif memory_gb > 8:
-                return 32
+                return 64
+            elif memory_gb > 6:
+                return 48
             elif memory_gb > 4:
+                return 32
+            elif memory_gb > 2:
                 return 16
             else:
                 return 8
