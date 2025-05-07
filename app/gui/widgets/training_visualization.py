@@ -31,19 +31,19 @@ class TrainingVisualization(QWidget):
     def get_theme_colors(self):
         """Zwraca kolory dla ciemnego motywu."""
         return {
-            "background": (30, 30, 30),  # Ciemnoszary
-            "foreground": (200, 200, 200),  # Jasnoszary
-            "grid": (60, 60, 60),  # Średni szary
-            "train_loss": (0, 120, 215),  # Niebieski
-            "val_loss": (215, 0, 0),  # Czerwony
-            "train_acc": (0, 180, 0),  # Zielony
-            "val_acc": (180, 0, 180),  # Fioletowy
-            "val_top3": (255, 165, 0),  # Pomarańczowy
-            "val_top5": (255, 140, 0),  # Ciemny pomarańczowy
-            "val_precision": (0, 255, 255),  # Cyjan
-            "val_recall": (255, 0, 255),  # Magenta
-            "val_f1": (255, 255, 0),  # Żółty
-            "val_auc": (128, 0, 128),  # Fioletowy
+            "background": (45, 45, 45),  # Jaśniejszy ciemnoszary
+            "foreground": (220, 220, 220),  # Jaśniejszy jasnoszary
+            "grid": (80, 80, 80),  # Jaśniejszy średni szary
+            "train_loss": (0, 150, 255),  # Jaśniejszy niebieski
+            "val_loss": (255, 50, 50),  # Jaśniejszy czerwony
+            "train_acc": (50, 220, 50),  # Jaśniejszy zielony
+            "val_acc": (220, 50, 220),  # Jaśniejszy fioletowy
+            "val_top3": (255, 180, 50),  # Jaśniejszy pomarańczowy
+            "val_top5": (255, 160, 50),  # Jaśniejszy ciemny pomarańczowy
+            "val_precision": (50, 255, 255),  # Jaśniejszy cyjan
+            "val_recall": (255, 50, 255),  # Jaśniejszy magenta
+            "val_f1": (255, 255, 50),  # Jaśniejszy żółty
+            "val_auc": (180, 50, 180),  # Jaśniejszy fioletowy
         }
 
     def setup_ui(self):
@@ -98,7 +98,7 @@ class TrainingVisualization(QWidget):
             # Metryki kluczowe - najgrubsze linie, mocne kolory, linia ciągła
             {
                 "data": self.val_loss_data,
-                "color": (215, 0, 0),  # Czerwony
+                "color": (255, 50, 50),  # Jaśniejszy czerwony
                 "width": 4,
                 "style": Qt.PenStyle.SolidLine,
                 "name": "Strata walidacyjna",
@@ -107,7 +107,7 @@ class TrainingVisualization(QWidget):
             },
             {
                 "data": self.val_acc_data,
-                "color": (0, 180, 0),  # Zielony
+                "color": (50, 220, 50),  # Jaśniejszy zielony
                 "width": 4,
                 "style": Qt.PenStyle.SolidLine,
                 "name": "Dokładność walidacyjna",
@@ -117,7 +117,7 @@ class TrainingVisualization(QWidget):
             # Metryki drugorzędne - średnia grubość, mocne kolory, linia ciągła
             {
                 "data": self.train_loss_data,
-                "color": (0, 120, 215),  # Niebieski
+                "color": (0, 150, 255),  # Jaśniejszy niebieski
                 "width": 3,
                 "style": Qt.PenStyle.SolidLine,
                 "name": "Strata treningowa",
@@ -126,7 +126,7 @@ class TrainingVisualization(QWidget):
             },
             {
                 "data": self.train_acc_data,
-                "color": (180, 0, 180),  # Fioletowy
+                "color": (220, 50, 220),  # Jaśniejszy fioletowy
                 "width": 3,
                 "style": Qt.PenStyle.SolidLine,
                 "name": "Dokładność treningowa",
@@ -136,16 +136,17 @@ class TrainingVisualization(QWidget):
             # Metryki dodatkowe - cienkie linie, różne style
             {
                 "data": self.val_f1_data,
-                "color": (255, 165, 0),  # Pomarańczowy
+                "color": (255, 180, 50),  # Jaśniejszy pomarańczowy
                 "width": 2,
                 "style": Qt.PenStyle.DashLine,
                 "name": "F1-score",
                 "symbol": "t",
                 "symbol_size": 3,
+                "dash": [5, 3],  # Dłuższe kreski, krótsze odstępy
             },
             {
                 "data": self.val_auc_data,
-                "color": (128, 0, 128),  # Purpurowy
+                "color": (180, 50, 180),  # Jaśniejszy purpurowy
                 "width": 2,
                 "style": Qt.PenStyle.DotLine,
                 "name": "AUC",
@@ -155,39 +156,50 @@ class TrainingVisualization(QWidget):
             # Metryki specjalistyczne - najcieńsze linie, różne style
             {
                 "data": self.val_precision_data,
-                "color": (0, 255, 255),  # Cyjan
+                "color": (50, 255, 255),  # Jaśniejszy cyjan
                 "width": 1,
                 "style": Qt.PenStyle.DashDotLine,
                 "name": "Precyzja",
                 "symbol": "s",
                 "symbol_size": 2,
+                "dash": [4, 2, 1, 2],  # Kreska-kropka z krótszymi odstępami
             },
             {
                 "data": self.val_recall_data,
-                "color": (255, 0, 255),  # Magenta
+                "color": (255, 50, 255),  # Jaśniejszy magenta
                 "width": 1,
                 "style": Qt.PenStyle.DashDotDotLine,
                 "name": "Recall",
                 "symbol": "s",
                 "symbol_size": 2,
+                "dash": [
+                    4,
+                    2,
+                    1,
+                    2,
+                    1,
+                    2,
+                ],  # Kreska-kropka-kropka z krótszymi odstępami
             },
             {
                 "data": self.val_top3_data,
-                "color": (255, 140, 0),  # Ciemny pomarańczowy
+                "color": (255, 160, 50),  # Jaśniejszy ciemny pomarańczowy
                 "width": 1,
                 "style": Qt.PenStyle.DashDotLine,
                 "name": "Top-3 dokładność",
                 "symbol": "t",
                 "symbol_size": 2,
+                "dash": [3, 2, 1, 2],  # Krótsze kreski i odstępy
             },
             {
                 "data": self.val_top5_data,
-                "color": (255, 69, 0),  # Czerwono-pomarańczowy
+                "color": (255, 100, 50),  # Jaśniejszy czerwono-pomarańczowy
                 "width": 1,
                 "style": Qt.PenStyle.DashDotDotLine,
                 "name": "Top-5 dokładność",
                 "symbol": "t",
                 "symbol_size": 2,
+                "dash": [3, 2, 1, 2, 1, 2],  # Krótsze kreski i odstępy
             },
         ]
 
@@ -206,14 +218,19 @@ class TrainingVisualization(QWidget):
                     v is not None for v in config["data"]
                 ):
                     y_data = np.array(config["data"])
+                    pen_kwargs = {
+                        "color": config["color"],
+                        "width": config["width"],
+                        "style": config["style"],
+                    }
+                    # Dodaj parametr dash jeśli jest zdefiniowany
+                    if "dash" in config:
+                        pen_kwargs["dash"] = config["dash"]
+
                     self.plot_widget.plot(
                         x_data[: len(y_data)],
                         y_data,
-                        pen=pg.mkPen(
-                            color=config["color"],
-                            width=config["width"],
-                            style=config["style"],
-                        ),
+                        pen=pg.mkPen(**pen_kwargs),
                         name=config["name"],
                         symbol=config["symbol"],
                         symbolSize=config["symbol_size"],
