@@ -50,8 +50,12 @@ class ImageSorter:
                 return False
 
             # Sprawdź czy mapowanie klas jest poprawne
-            if not self.classifier.verify_class_mapping():
-                logger.error("Wykryto problemy z mapowaniem klas!")
+            if not all(isinstance(k, str) for k in class_mapping.keys()):
+                logger.warning("Klucze w mapowaniu klas nie są typu string!")
+                return False
+
+            if not all(isinstance(v, str) for v in class_mapping.values()):
+                logger.warning("Wartości w mapowaniu klas nie są typu string!")
                 return False
 
             logger.info(f"Mapowanie klas zweryfikowane: {len(class_mapping)} kategorii")
@@ -108,9 +112,13 @@ class ImageSorter:
 
             # Sprawdź czy kategoria jest w mapowaniu klas
             class_mapping = self.classifier.get_class_mapping()
-            if category not in class_mapping:
-                logger.warning(f"Wykryto nieznaną kategorię: {category}")
-                category = "nieskategoryzowane"
+
+            # Sprawdzenie czy kategoria jest wartością w słowniku class_mapping
+            if category is not None and class_mapping:
+                category_exists = category in class_mapping.values()
+                if not category_exists:
+                    logger.warning(f"Wykryto nieznaną kategorię: {category}")
+                    category = "nieskategoryzowane"
 
             logger.info(f"Klasyfikacja: {category} (pewność: {confidence:.2f})")
 
@@ -472,3 +480,12 @@ class ImageSorter:
             logger.info(f"  - {category}: {count} plików")
 
         return stats
+
+    def _get_category_names(self):
+        """Zwraca listę wszystkich dostępnych nazw kategorii z modelu."""
+        class_mapping = self.classifier.get_class_mapping()
+        if not class_mapping:
+            return []
+
+        # Zwróć unikalne nazwy kategorii
+        return list(set(class_mapping.values()))
