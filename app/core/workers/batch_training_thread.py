@@ -285,7 +285,19 @@ class BatchTrainingThread(QThread):
             except Exception as e:
                 self.logger.error(f"BŁĄD podczas tworzenia modelu: {e}")
                 self.logger.error(f"TRACEBACK: {traceback.format_exc()}")
-                raise
+
+                # Dodajemy szczegółowe informacje o błędzie i wskazówki dla użytkownika
+                error_details = str(e).lower()
+                if "cuda" in error_details or "gpu" in error_details:
+                    additional_info = "Wykryto problem z GPU/CUDA. Spróbuj uruchomić trening z wyłączoną obsługą GPU."
+                    self.logger.error(additional_info)
+                    raise ValueError(f"{str(e)}. {additional_info}")
+                elif "memory" in error_details or "pamięć" in error_details:
+                    additional_info = "Wykryto problem z pamięcią. Spróbuj zmniejszyć rozmiar wsadu (batch_size)."
+                    self.logger.error(additional_info)
+                    raise ValueError(f"{str(e)}. {additional_info}")
+                else:
+                    raise
 
             # Ustal urządzenie
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -404,7 +416,26 @@ class BatchTrainingThread(QThread):
                     self.logger.warning(
                         "Brak mapowania klas w wynikach treningu i modelu!"
                     )
-                    model.class_names = None
+
+                    # Dodane: Próbuj utworzyć proste mapowanie bazując na danych
+                    try:
+                        temp_transform = get_default_transforms()
+                        train_dataset = datasets.ImageFolder(
+                            training_dir, transform=temp_transform
+                        )
+                        class_names = {}
+                        for idx, class_name in enumerate(train_dataset.classes):
+                            class_names[str(idx)] = class_name
+
+                        model.class_names = class_names
+                        self.logger.info(
+                            f"Utworzono mapowanie klas na podstawie katalogów: {class_names}"
+                        )
+                    except Exception as mapping_error:
+                        self.logger.error(
+                            f"Nie udało się utworzyć mapowania klas: {mapping_error}"
+                        )
+                        model.class_names = {}
 
                 # Generuj nazwę pliku modelu
                 timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
@@ -413,19 +444,55 @@ class BatchTrainingThread(QThread):
 
                 self.logger.info(f"Generowana nazwa modelu: {model_filename}")
 
-                # Zapisz stan modelu
-                model.save(
-                    model_path,
-                    metadata={
-                        "accuracy": result.get("val_acc", 0),
-                        "training_time": training_time,
-                        "training_params": task_data,
-                        "timestamp": timestamp,
-                        "class_names": model.class_names,
-                    },
-                )
+                # Zapisz stan modelu z dokładnym śledzeniem błędów
+                try:
+                    model.save(
+                        model_path,
+                        metadata={
+                            "accuracy": result.get("val_acc", 0),
+                            "training_time": training_time,
+                            "training_params": task_data,
+                            "timestamp": timestamp,
+                            "class_names": model.class_names,
+                        },
+                    )
 
-                self.logger.info(f"Model zapisany w: {model_path}")
+                    # Sprawdź, czy plik został rzeczywiście zapisany
+                    if not os.path.exists(model_path):
+                        raise FileNotFoundError(
+                            f"Plik modelu nie został utworzony: {model_path}"
+                        )
+
+                    # Sprawdź rozmiar pliku
+                    file_size = os.path.getsize(model_path)
+                    if file_size < 1000:  # Mniej niż 1KB - prawdopodobnie uszkodzony
+                        raise ValueError(
+                            f"Zapisany plik modelu jest zbyt mały: {file_size} bajtów"
+                        )
+
+                    self.logger.info(
+                        f"Model zapisany w: {model_path}, rozmiar: {file_size/1024/1024:.2f} MB"
+                    )
+
+                except Exception as save_error:
+                    self.logger.error(f"Błąd podczas zapisywania modelu: {save_error}")
+                    self.logger.error(f"TRACEBACK: {traceback.format_exc()}")
+
+                    # Spróbuj zapisać model w innej lokalizacji jako awaryjny
+                    try:
+                        backup_path = os.path.join(
+                            output_dir, f"backup_{model_filename}"
+                        )
+                        torch.save(model.model.state_dict(), backup_path)
+                        self.logger.info(
+                            f"Zapisano kopię zapasową modelu w: {backup_path}"
+                        )
+                    except Exception as backup_error:
+                        self.logger.error(
+                            f"Nie udało się zapisać kopii zapasowej: {backup_error}"
+                        )
+
+                    raise
 
             except Exception as e:
                 self.logger.error(f"BŁĄD podczas zapisywania modelu: {e}")

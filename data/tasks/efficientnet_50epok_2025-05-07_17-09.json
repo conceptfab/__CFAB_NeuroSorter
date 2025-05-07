@@ -1,9 +1,9 @@
 {
-    "name": "efficientnet_50epok_2025-05-07_16-31.json",
+    "name": "efficientnet_50epok_2025-05-07_17-09.json",
     "type": "Trening",
     "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-07 16:31:28",
+    "created_at": "2025-05-07 17:09:19",
     "config": {
         "model_arch": "efficientnet",
         "data_dir": "F:/_set_A/__dane_treningowe",
@@ -20,7 +20,7 @@
         "early_stopping": 5,
         "augmentation": {
             "basic": true,
-            "advanced": true
+            "advanced": false
         }
     }
 }

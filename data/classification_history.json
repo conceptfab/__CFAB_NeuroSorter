@@ -12,9 +12,27 @@
         "image_path": "F:/______training_database_V2/animal/American Bullfrog.thumb.jpeg"
     },
     {
-        "date": "2025-05-07T16:29:40.383190",
-        "image_path": "F:/______training_database_V2/animal/animated-snakes-pack.jpeg",
         "class_name": "toy",
-        "confidence": 0.6962890625
+        "confidence": 0.6962890625,
+        "date": "2025-05-07T16:29:40.383190",
+        "image_path": "F:/______training_database_V2/animal/animated-snakes-pack.jpeg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 1.0,
+        "date": "2025-05-07T16:35:15.648336",
+        "image_path": "F:/______training_database_V2/animal/Black Rhinoceros.thumb.jpeg"
+    },
+    {
+        "class_name": "food",
+        "confidence": 0.465087890625,
+        "date": "2025-05-07T16:35:54.976887",
+        "image_path": "F:/______training_database_V2/animal/House Sparrow.jpg"
+    },
+    {
+        "date": "2025-05-07T16:55:39.355999",
+        "image_path": "F:/______training_database_V2/animal/American Bullfrog.thumb.jpeg",
+        "class_name": "clothing_accessories",
+        "confidence": 0.748046875
     }
 ]

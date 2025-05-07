@@ -302,7 +302,8 @@ def train_model_optimized(
             )
             print(f"Błąd: {str(e_batch)}")
             print(traceback.format_exc())
-            # Można tutaj dodać break lub return, jeśli błąd jest tak poważny, że dalszy trening nie ma sensu
+            # Przerywamy pętlę, aby uniknąć dalszych błędów
+            break
 
         # Oblicz średnie wartości dla epoki
         epoch_loss = (
@@ -415,6 +416,17 @@ def train_model_optimized(
                     f"Wartości przy błędzie: epoch={epoch + 1}, loss={epoch_loss:.4f}, acc={epoch_acc:.4f}"
                 )
 
+        # Na końcu każdej epoki dodajemy czyszczenie pamięci GPU:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            # Opcjonalnie sprawdź i wyświetl aktualnie używaną pamięć
+            if device.type == "cuda":
+                memory_allocated = torch.cuda.memory_allocated(device) / (1024 * 1024)
+                memory_reserved = torch.cuda.memory_reserved(device) / (1024 * 1024)
+                print(
+                    f"GPU memory: allocated={memory_allocated:.2f}MB, reserved={memory_reserved:.2f}MB"
+                )
+
     print(
         f"DEBUG optimized_training: Zakończono pętlę po epokach (naturalnie lub przez break). Ostatnia przetworzona epoka (0-indexed): {epoch if 'epoch' in locals() else 'nie zdefiniowano'}"
     )
@@ -471,44 +483,31 @@ def configure_optimizer(model, optimizer_type, learning_rate, weight_decay):
         )
 
 
-def configure_scheduler(optimizer, scheduler_type, epochs, patience=3):
+def configure_scheduler(
+    optimizer, scheduler_type, epochs, patience=3, steps_per_epoch=100
+):
     """Konfiguruje scheduler learning rate odpowiedni do typu optymalizatora i długości treningu."""
     if scheduler_type == "plateau":
-        # ReduceLROnPlateau z lepszymi parametrami
         return optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            mode="min",
-            factor=0.5,  # Zmniejsz learning rate o połowę
-            patience=patience,
-            verbose=True,
-            min_lr=1e-7,
+            optimizer, mode="min", factor=0.1, patience=patience, verbose=True
         )
     elif scheduler_type == "cosine":
-        # CosineAnnealingLR z odpowiednim T_max
         return optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=epochs, eta_min=1e-7, verbose=True
+            optimizer, T_max=epochs, eta_min=1e-6, verbose=True
         )
     elif scheduler_type == "onecycle":
-        # OneCycleLR - często najlepszy wybór dla krótszych treningów
         return optim.lr_scheduler.OneCycleLR(
             optimizer,
             max_lr=optimizer.param_groups[0]["lr"] * 10,
             epochs=epochs,
-            steps_per_epoch=len(train_loader),
+            steps_per_epoch=steps_per_epoch,
             pct_start=0.3,
             anneal_strategy="cos",
             div_factor=25.0,
             final_div_factor=10000.0,
             verbose=True,
         )
-    elif scheduler_type == "step":
-        # StepLR z odpowiednią częstotliwością kroków
-        step_size = max(5, epochs // 4)  # Co najmniej 5 epok lub 1/4 całkowitej liczby
-        return optim.lr_scheduler.StepLR(
-            optimizer, step_size=step_size, gamma=0.5, verbose=True
-        )
     else:
-        # Brak schedulera
         return None
 
 
