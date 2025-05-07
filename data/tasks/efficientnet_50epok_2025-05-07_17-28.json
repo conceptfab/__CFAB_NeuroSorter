@@ -1,9 +1,9 @@
 {
-    "name": "efficientnet_50epok_2025-05-07_17-09.json",
+    "name": "efficientnet_50epok_2025-05-07_17-28.json",
     "type": "Trening",
-    "status": "Nowy",
+    "status": "Zakończony",
     "priority": 0,
-    "created_at": "2025-05-07 17:09:19",
+    "created_at": "2025-05-07 17:28:35",
     "config": {
         "model_arch": "efficientnet",
         "data_dir": "F:/_set_A/__dane_treningowe",
@@ -20,7 +20,13 @@
         "early_stopping": 5,
         "augmentation": {
             "basic": true,
-            "advanced": false
+            "advanced": true
         }
-    }
+    },
+    "training_time": 385.38,
+    "training_time_str": "0:06:25",
+    "train_accuracy": 0.7657252888318357,
+    "train_loss": 0.7371572668735797,
+    "validation_accuracy": 0.6118421052631579,
+    "validation_loss": 1.9343792796134949
 }

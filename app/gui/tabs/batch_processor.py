@@ -36,6 +36,7 @@ class BatchProcessor(QWidget, TabInterface):
         self.settings = settings
         self.metadata_manager = MetadataManager()
         self.image_sorter = None
+        self.is_processing = False  # Flaga kontrolująca stan przetwarzania
         self.setup_ui()
         self.connect_signals()
         # Konfiguracja loggera
@@ -84,8 +85,12 @@ class BatchProcessor(QWidget, TabInterface):
         self.control_layout = QHBoxLayout()
         start_btn = QPushButton("Rozpocznij sortowanie")
         start_btn.clicked.connect(self._start_processing)
+        self.stop_btn = QPushButton("Przerwij sortowanie")
+        self.stop_btn.clicked.connect(self._stop_processing)
+        self.stop_btn.setEnabled(False)  # Domyślnie wyłączony
         self.status_label = QLabel("Gotowy")
         self.control_layout.addWidget(start_btn)
+        self.control_layout.addWidget(self.stop_btn)
         self.control_layout.addStretch()
         self.control_layout.addWidget(self.status_label)
         control_group.setLayout(self.control_layout)
@@ -230,6 +235,8 @@ class BatchProcessor(QWidget, TabInterface):
 
         # Rozpocznij sortowanie
         try:
+            self.is_processing = True
+            self.stop_btn.setEnabled(True)
             self.status_label.setText("Sortowanie w toku...")
             self._clear_results()  # Wyczyść poprzednie wyniki
             self._setup_progress_bar()  # Ustaw/pokaż pasek postępu
@@ -241,6 +248,9 @@ class BatchProcessor(QWidget, TabInterface):
                 confidence_threshold=0.5,  # Można dodać do UI
                 callback=self._update_progress,  # Callback do paska postępu
             )
+
+            if not self.is_processing:  # Sprawdź czy proces nie został przerwany
+                return
 
             # Aktualizuj tabelę wyników
             self.results_table.setRowCount(0)
@@ -290,6 +300,8 @@ class BatchProcessor(QWidget, TabInterface):
             # Ukryj pasek postępu po zakończeniu (lub błędzie)
             if hasattr(self, "progress_bar"):
                 self.progress_bar.setVisible(False)
+            self.is_processing = False
+            self.stop_btn.setEnabled(False)
 
     def _setup_progress_bar(self):
         """Inicjalizuje i pokazuje pasek postępu, jeśli nie istnieje."""
@@ -316,3 +328,14 @@ class BatchProcessor(QWidget, TabInterface):
         self.progress_bar.setValue(percentage)
         self.status_label.setText(f"Sortowanie: {current}/{total} ({percentage}%)")
         QCoreApplication.processEvents()  # Użyj QCoreApplication
+
+    def _stop_processing(self):
+        """Przerywa przetwarzanie plików."""
+        if hasattr(self, "image_sorter"):
+            self.image_sorter.stop()
+            self.status_label.setText("Sortowanie przerwane")
+            QMessageBox.information(self, "Informacja", "Sortowanie zostało przerwane.")
+        else:
+            QMessageBox.warning(
+                self, "Brak sortowania", "Nie ma aktualnie uruchomionego sortowania."
+            )

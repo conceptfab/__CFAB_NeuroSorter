@@ -1,6 +1,3 @@
-AI 2.0 - poprawic kod - tworzenie modeli :::??
-CORE - poprawic
-
 Klonowanie modeli!!!
 
 Poprawic sorter!!! - dodac zatrzymanie sortowania!!!

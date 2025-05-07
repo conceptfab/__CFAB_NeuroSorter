@@ -30,9 +30,15 @@
         "image_path": "F:/______training_database_V2/animal/House Sparrow.jpg"
     },
     {
-        "date": "2025-05-07T16:55:39.355999",
-        "image_path": "F:/______training_database_V2/animal/American Bullfrog.thumb.jpeg",
         "class_name": "clothing_accessories",
-        "confidence": 0.748046875
+        "confidence": 0.748046875,
+        "date": "2025-05-07T16:55:39.355999",
+        "image_path": "F:/______training_database_V2/animal/American Bullfrog.thumb.jpeg"
+    },
+    {
+        "date": "2025-05-07T17:36:37.037964",
+        "image_path": "F:/______training_database_V2/animal/Baby Emperor Penguin ( Juvenile ).thumb.jpeg",
+        "class_name": "animal",
+        "confidence": 0.978515625
     }
 ]

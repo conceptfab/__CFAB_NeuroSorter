@@ -32,6 +32,7 @@ class ImageSorter:
         self.metadata_manager = MetadataManager()
         self.copy_files = copy_files
         self.uncategorized_dir = "__pliki_bez_kategorii"
+        self._stop_requested = False  # Flaga do kontroli przerwania
 
         # Weryfikacja modelu i mapowania klas
         self._verify_model_and_mapping()
@@ -242,6 +243,11 @@ class ImageSorter:
 
         return sanitized
 
+    def stop(self):
+        """Żąda przerwania procesu sortowania."""
+        self._stop_requested = True
+        logger.info("Otrzymano żądanie przerwania sortowania")
+
     def sort_directory(
         self,
         input_dir: str,
@@ -251,6 +257,7 @@ class ImageSorter:
     ) -> Dict:
         """Sortuje pliki w katalogu na podstawie klasyfikacji."""
         try:
+            self._stop_requested = False  # Reset flagi przerwania
             start_time = datetime.now()
             logger.info(f"Rozpoczęcie sortowania katalogu: {input_dir}")
             logger.info(
@@ -286,6 +293,15 @@ class ImageSorter:
             logger.info("Skanowanie katalogu w poszukiwaniu obrazów...")
             for root, _, files in os.walk(input_dir):
                 for file in files:
+                    if self._stop_requested:  # Sprawdź czy nie ma żądania przerwania
+                        logger.info("Przerwano sortowanie podczas skanowania katalogu")
+                        return {
+                            "processed": 0,
+                            "moved": 0,
+                            "skipped": 0,
+                            "uncategorized": 0,
+                            "categories": {},
+                        }
                     if any(file.lower().endswith(ext) for ext in valid_extensions):
                         image_files.append(os.path.join(root, file))
 
@@ -304,6 +320,10 @@ class ImageSorter:
 
             # Sortuj każdy obraz
             for i, image_path in enumerate(image_files):
+                if self._stop_requested:  # Sprawdź czy nie ma żądania przerwania
+                    logger.info("Przerwano sortowanie podczas przetwarzania plików")
+                    return stats
+
                 try:
                     stats["processed"] += 1
                     logger.info(
