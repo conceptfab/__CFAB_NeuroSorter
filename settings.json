@@ -45,5 +45,5 @@
     "chart_val_acc_color": "m",
     "chart_plot_area_background_color": "w",
     "last_verify_dir": "F:/______training_database_V2",
-    "last_model": "efficientnet_2epok_2025-05-06_22-24.pt"
+    "last_model": "global_worker_15.pt"
 }

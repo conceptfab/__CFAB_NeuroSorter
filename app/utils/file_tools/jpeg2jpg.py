@@ -91,8 +91,10 @@ class JpegToJpgConverter(QWidget):
 
         self.log_area.clear()
         self.log_message(f"Rozpoczynanie konwersji w folderze: {folder_path}...")
-        self.status_bar.showMessage("Przetwarzanie...", 0)  # 0 = bez limitu czasu
-        self.convert_button.setEnabled(False)  # Zapobiega wielokrotnemu kliknięciu
+        self.status_bar.showMessage("Przetwarzanie...", 0)
+        # 0 = bez limitu czasu
+        self.convert_button.setEnabled(False)
+        # Zapobiega wielokrotnemu kliknięciu
 
         files_renamed_count = 0
         files_found_count = 0
@@ -111,7 +113,8 @@ class JpegToJpgConverter(QWidget):
                         # Sprawdzenie, czy plik .jpg już nie istnieje
                         if os.path.exists(new_filepath):
                             self.log_message(
-                                f"UWAGA: Plik {new_filepath} już istnieje. Pomijam {old_filepath}",
+                                f"UWAGA: Plik {new_filepath} już istnieje. "
+                                f"Pomijam {old_filepath}",
                                 is_error=True,
                             )
                             continue
@@ -134,7 +137,8 @@ class JpegToJpgConverter(QWidget):
         finally:
             self.convert_button.setEnabled(True)
             self.log_message(
-                f"\nZakończono. Znaleziono plików .jpeg: {files_found_count}. Zmieniono nazwę: {files_renamed_count} plików."
+                f"\\nZakończono. Znaleziono plików .jpeg: {files_found_count}. "
+                f"Zmieniono nazwę: {files_renamed_count} plików."
             )
             self.status_bar.showMessage(
                 f"Zakończono. Zmieniono {files_renamed_count} plików.", 5000

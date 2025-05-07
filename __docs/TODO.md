@@ -1,4 +1,4 @@
-Brak danych podwykresem do usniecia
+Poprawic sorter!!!
 settings - ładowanie ustwien!!!!
 By dopasować kolorystykę wykresu do kolorystyki aplikacji
 

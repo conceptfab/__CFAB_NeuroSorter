@@ -33,7 +33,8 @@ def main():
     # Ustawienia skalowania DPI
     os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
-    # Inicjalizacja aplikacji musi nastąpić przed utworzeniem jakichkolwiek widgetów, w tym splash
+    # Inicjalizacja aplikacji musi nastąpić przed utworzeniem
+    # jakichkolwiek widgetów, w tym splash
     app = QApplication(sys.argv)
 
     # --- Ekran powitalny ---
@@ -41,7 +42,8 @@ def main():
     try:
         splash_path = os.path.join("app", "img", "splash.jpg")
         splash_pix = QPixmap(splash_path)
-        if not splash_pix.isNull():  # Sprawdź, czy obraz został poprawnie załadowany
+        # Sprawdź, czy obraz został poprawnie załadowany
+        if not splash_pix.isNull():
             splash = QSplashScreen(splash_pix, Qt.WindowType.WindowStaysOnTopHint)
             splash.showMessage(
                 "Ładowanie...",
