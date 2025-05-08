@@ -102,6 +102,12 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             btn_ok = QtWidgets.QDialogButtonBox.StandardButton.Ok
             btn_cancel = QtWidgets.QDialogButtonBox.StandardButton.Cancel
             buttons = QtWidgets.QDialogButtonBox(btn_ok | btn_cancel)
+            buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setText(
+                "Dodaj zadanie"
+            )
+            buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Cancel).setText(
+                "Zamknij"
+            )
             buttons.accepted.connect(self._on_accept)
             buttons.rejected.connect(self.reject)
             layout.addWidget(buttons)
@@ -224,6 +230,10 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.save_profile_btn.clicked.connect(self._save_profile)
             buttons_layout.addWidget(self.save_profile_btn)
 
+            self.delete_profile_btn = QtWidgets.QPushButton("Usuń profil")
+            self.delete_profile_btn.clicked.connect(self._delete_profile)
+            buttons_layout.addWidget(self.delete_profile_btn)
+
             profile_layout.addLayout(buttons_layout)
             profile_group.setLayout(profile_layout)
 
@@ -254,25 +264,18 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             self.current_profile = profile_data
             self.profile_info.setText(profile_data.get("info", ""))
-            self.profile_description.setText(
-                profile_data.get("description", "")
-            )
-            self.profile_data_required.setText(
-                profile_data.get("data_required", "")
-            )
+            self.profile_description.setText(profile_data.get("description", ""))
+            self.profile_data_required.setText(profile_data.get("data_required", ""))
             self.profile_hardware_required.setText(
                 profile_data.get("hardware_required", "")
             )
 
         except Exception as e:
             self.logger.error(
-                f"Błąd podczas ładowania profilu: {str(e)}", 
-                exc_info=True
+                f"Błąd podczas ładowania profilu: {str(e)}", exc_info=True
             )
             QtWidgets.QMessageBox.critical(
-                self, 
-                "Błąd", 
-                f"Nie można załadować profilu: {str(e)}"
+                self, "Błąd", f"Nie można załadować profilu: {str(e)}"
             )
 
     def _edit_profile(self):
@@ -602,6 +605,45 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             )
             QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Nie można zapisać profilu: {str(e)}"
+            )
+
+    def _delete_profile(self):
+        """Usuwa wybrany profil."""
+        if not self.current_profile:
+            QtWidgets.QMessageBox.warning(
+                self, "Ostrzeżenie", "Najpierw wybierz profil do usunięcia."
+            )
+            return
+
+        try:
+            current_name = self.profile_list.currentItem().text()
+            reply = QtWidgets.QMessageBox.question(
+                self,
+                "Potwierdzenie",
+                f"Czy na pewno chcesz usunąć profil '{current_name}'?",
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.No,
+            )
+
+            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+                profile_path = self.profiles_dir / f"{current_name}.json"
+                if profile_path.exists():
+                    profile_path.unlink()
+                    self._refresh_profile_list()
+                    self.current_profile = None
+                    self.profile_info.clear()
+                    self.profile_description.clear()
+                    self.profile_data_required.clear()
+                    self.profile_hardware_required.clear()
+                    QtWidgets.QMessageBox.information(
+                        self, "Sukces", "Profil został pomyślnie usunięty."
+                    )
+
+        except Exception as e:
+            self.logger.error(f"Błąd podczas usuwania profilu: {str(e)}", exc_info=True)
+            QtWidgets.QMessageBox.critical(
+                self, "Błąd", f"Nie można usunąć profilu: {str(e)}"
             )
 
     def _on_architecture_changed(self, arch_name):
