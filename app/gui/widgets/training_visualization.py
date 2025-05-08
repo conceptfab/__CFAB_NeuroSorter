@@ -360,3 +360,24 @@ class TrainingVisualization(QWidget):
         self.val_auc_data = []
         self.data_updated = False
         self.update_plot()
+
+    def save_plot(self, filename):
+        """Zapisuje wykres do pliku PNG.
+
+        Args:
+            filename (str): Ścieżka do pliku, w którym zostanie zapisany wykres.
+        """
+        try:
+            # Upewnij się, że wykres jest aktualny
+            if self.data_updated:
+                self.update_plot()
+
+            # Zapisz wykres do pliku
+            self.plot_widget.export(filename)
+            return True
+        except Exception as e:
+            print(f"Błąd podczas zapisywania wykresu: {e}")
+            import traceback
+
+            print(traceback.format_exc())
+            return False

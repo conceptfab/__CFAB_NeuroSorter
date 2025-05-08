@@ -1,5 +1,8 @@
 import datetime
+import json
 import logging
+import os
+from pathlib import Path
 
 from PyQt6 import QtWidgets
 
@@ -20,6 +23,9 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         self._setup_logging()
         self.setWindowTitle("Konfiguracja treningu")
         self.setMinimumWidth(1000)
+        self.profiles_dir = Path("data/profiles")
+        self.profiles_dir.mkdir(exist_ok=True)
+        self.current_profile = None
         self._init_ui()
 
     def _setup_logging(self):
@@ -156,13 +162,409 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.num_classes_spin.setValue(2)
             form.addRow("Liczba klas:", self.num_classes_spin)
 
+            # Grupa profili
+            profile_group = QtWidgets.QGroupBox("Dostępne profile")
+            profile_layout = QtWidgets.QVBoxLayout()
+
+            # Lista profili
+            self.profile_list = QtWidgets.QListWidget()
+            self.profile_list.currentItemChanged.connect(self._on_profile_selected)
+            self._refresh_profile_list()
+            profile_layout.addWidget(self.profile_list)
+
+            # Informacje o profilu
+            info_group = QtWidgets.QGroupBox("Informacje o profilu")
+            info_layout = QtWidgets.QFormLayout()
+
+            self.profile_info = QtWidgets.QTextEdit()
+            self.profile_info.setReadOnly(True)
+            self.profile_info.setMaximumHeight(60)
+            info_layout.addRow("Info:", self.profile_info)
+
+            self.profile_description = QtWidgets.QTextEdit()
+            self.profile_description.setReadOnly(True)
+            self.profile_description.setMaximumHeight(60)
+            info_layout.addRow("Opis:", self.profile_description)
+
+            self.profile_data_required = QtWidgets.QTextEdit()
+            self.profile_data_required.setReadOnly(True)
+            self.profile_data_required.setMaximumHeight(60)
+            info_layout.addRow("Wymagane dane:", self.profile_data_required)
+
+            self.profile_hardware_required = QtWidgets.QTextEdit()
+            self.profile_hardware_required.setReadOnly(True)
+            self.profile_hardware_required.setMaximumHeight(60)
+            info_layout.addRow("Wymagany sprzęt:", self.profile_hardware_required)
+
+            info_group.setLayout(info_layout)
+            profile_layout.addWidget(info_group)
+
+            # Przyciski profilu
+            buttons_layout = QtWidgets.QHBoxLayout()
+
+            self.edit_profile_btn = QtWidgets.QPushButton("Edytuj profil")
+            self.edit_profile_btn.clicked.connect(self._edit_profile)
+            buttons_layout.addWidget(self.edit_profile_btn)
+
+            self.apply_profile_btn = QtWidgets.QPushButton("Zastosuj profil")
+            self.apply_profile_btn.clicked.connect(self._apply_profile)
+            buttons_layout.addWidget(self.apply_profile_btn)
+
+            self.clone_profile_btn = QtWidgets.QPushButton("Klonuj profil")
+            self.clone_profile_btn.clicked.connect(self._clone_profile)
+            buttons_layout.addWidget(self.clone_profile_btn)
+
+            self.save_profile_btn = QtWidgets.QPushButton("Zapisz profil")
+            self.save_profile_btn.clicked.connect(self._save_profile)
+            buttons_layout.addWidget(self.save_profile_btn)
+
+            profile_layout.addLayout(buttons_layout)
+            profile_group.setLayout(profile_layout)
+
             layout.addLayout(form)
+            layout.addWidget(profile_group)
             return tab
 
         except Exception as e:
             msg = "Błąd podczas tworzenia zakładki"
             self.logger.error(f"{msg}: {str(e)}", exc_info=True)
             raise
+
+    def _refresh_profile_list(self):
+        """Odświeża listę dostępnych profili."""
+        self.profile_list.clear()
+        for profile_file in self.profiles_dir.glob("*.json"):
+            self.profile_list.addItem(profile_file.stem)
+
+    def _on_profile_selected(self, current, previous):
+        """Obsługa wyboru profilu z listy."""
+        if current is None:
+            return
+
+        try:
+            profile_path = self.profiles_dir / f"{current.text()}.json"
+            with open(profile_path, "r", encoding="utf-8") as f:
+                profile_data = json.load(f)
+
+            self.current_profile = profile_data
+            self.profile_info.setText(profile_data.get("info", ""))
+            self.profile_description.setText(profile_data.get("description", ""))
+            self.profile_data_required.setText(profile_data.get("data_required", ""))
+            self.profile_hardware_required.setText(
+                profile_data.get("hardware_required", "")
+            )
+
+        except Exception as e:
+            self.logger.error(
+                f"Błąd podczas ładowania profilu: {str(e)}", exc_info=True
+            )
+            QtWidgets.QMessageBox.critical(
+                self, "Błąd", f"Nie można załadować profilu: {str(e)}"
+            )
+
+    def _edit_profile(self):
+        """Otwiera profil w edytorze tekstowym."""
+        if not self.current_profile:
+            QtWidgets.QMessageBox.warning(
+                self, "Ostrzeżenie", "Najpierw wybierz profil do edycji."
+            )
+            return
+
+        try:
+            profile_path = (
+                self.profiles_dir / f"{self.profile_list.currentItem().text()}.json"
+            )
+            os.startfile(str(profile_path))  # Dla Windows
+        except Exception as e:
+            self.logger.error(
+                f"Błąd podczas otwierania profilu: {str(e)}", exc_info=True
+            )
+            QtWidgets.QMessageBox.critical(
+                self, "Błąd", f"Nie można otworzyć profilu: {str(e)}"
+            )
+
+    def _apply_profile(self):
+        """Zastosowuje wybrany profil do konfiguracji."""
+        if not self.current_profile:
+            QtWidgets.QMessageBox.warning(
+                self, "Ostrzeżenie", "Najpierw wybierz profil do zastosowania."
+            )
+            return
+
+        try:
+            config = self.current_profile.get("config", {})
+
+            # Dane i Model
+            if "model" in config:
+                model_config = config["model"]
+                self.arch_combo.setCurrentText(
+                    model_config.get("architecture", "EfficientNet")
+                )
+                self.variant_combo.setCurrentText(
+                    model_config.get("variant", "EfficientNet-B0")
+                )
+                self.input_size_spin.setValue(model_config.get("input_size", 224))
+                self.num_classes_spin.setValue(model_config.get("num_classes", 2))
+
+            # Parametry Treningu
+            if "training" in config:
+                training_config = config["training"]
+                self.epochs_spin.setValue(training_config.get("epochs", 100))
+                self.batch_size_spin.setValue(training_config.get("batch_size", 32))
+                self.lr_spin.setValue(training_config.get("learning_rate", 0.001))
+                self.optimizer_combo.setCurrentText(
+                    training_config.get("optimizer", "Adam")
+                )
+                self.scheduler_combo.setCurrentText(
+                    training_config.get("scheduler", "None")
+                )
+                self.num_workers_spin.setValue(training_config.get("num_workers", 4))
+                self.warmup_epochs_spin.setValue(
+                    training_config.get("warmup_epochs", 5)
+                )
+                self.mixed_precision_check.setChecked(
+                    training_config.get("mixed_precision", True)
+                )
+
+            # Regularyzacja
+            if "regularization" in config:
+                reg_config = config["regularization"]
+                self.weight_decay_spin.setValue(reg_config.get("weight_decay", 0.0001))
+                self.gradient_clip_spin.setValue(reg_config.get("gradient_clip", 1.0))
+                self.label_smoothing_spin.setValue(
+                    reg_config.get("label_smoothing", 0.1)
+                )
+                self.drop_connect_spin.setValue(
+                    reg_config.get("drop_connect_rate", 0.2)
+                )
+                self.dropout_spin.setValue(reg_config.get("dropout_rate", 0.2))
+                self.momentum_spin.setValue(reg_config.get("momentum", 0.9))
+                self.epsilon_spin.setValue(reg_config.get("epsilon", 1e-6))
+                self.use_swa_check.setChecked(
+                    reg_config.get("swa", {}).get("use", False)
+                )
+                self.swa_start_epoch_spin.setValue(
+                    reg_config.get("swa", {}).get("start_epoch", 10)
+                )
+
+            # Augmentacja
+            if "augmentation" in config:
+                aug_config = config["augmentation"]
+                basic_config = aug_config.get("basic", {})
+                self.basic_aug_check.setChecked(basic_config.get("use", False))
+                self.rotation_spin.setValue(basic_config.get("rotation", 30))
+                self.brightness_spin.setValue(basic_config.get("brightness", 0.2))
+                self.shift_spin.setValue(basic_config.get("shift", 0.1))
+                self.zoom_spin.setValue(basic_config.get("zoom", 0.1))
+                self.horizontal_flip_check.setChecked(
+                    basic_config.get("horizontal_flip", True)
+                )
+                self.vertical_flip_check.setChecked(
+                    basic_config.get("vertical_flip", False)
+                )
+
+                mixup_config = aug_config.get("mixup", {})
+                self.mixup_check.setChecked(mixup_config.get("use", False))
+                self.mixup_alpha_spin.setValue(mixup_config.get("alpha", 0.2))
+
+                cutmix_config = aug_config.get("cutmix", {})
+                self.cutmix_check.setChecked(cutmix_config.get("use", False))
+                self.cutmix_alpha_spin.setValue(cutmix_config.get("alpha", 1.0))
+
+            # Monitorowanie
+            if "monitoring" in config:
+                monitor_config = config["monitoring"]
+                metrics_config = monitor_config.get("metrics", {})
+                self.accuracy_check.setChecked(metrics_config.get("accuracy", True))
+                self.precision_check.setChecked(metrics_config.get("precision", True))
+                self.recall_check.setChecked(metrics_config.get("recall", True))
+                self.f1_check.setChecked(metrics_config.get("f1", True))
+                self.topk_check.setChecked(metrics_config.get("topk", False))
+                self.confusion_matrix_check.setChecked(
+                    metrics_config.get("confusion_matrix", False)
+                )
+
+                early_stop_config = monitor_config.get("early_stopping", {})
+                self.patience_spin.setValue(early_stop_config.get("patience", 10))
+                self.min_delta_spin.setValue(early_stop_config.get("min_delta", 0.001))
+                self.monitor_combo.setCurrentText(
+                    early_stop_config.get("monitor", "val_loss")
+                )
+
+                checkpoint_config = monitor_config.get("checkpointing", {})
+                self.best_only_check.setChecked(
+                    checkpoint_config.get("best_only", True)
+                )
+                self.save_freq_spin.setValue(checkpoint_config.get("save_frequency", 1))
+                self.checkpoint_metric_combo.setCurrentText(
+                    checkpoint_config.get("metric", "val_loss")
+                )
+
+            QtWidgets.QMessageBox.information(
+                self, "Sukces", "Profil został pomyślnie zastosowany."
+            )
+
+        except Exception as e:
+            self.logger.error(
+                f"Błąd podczas stosowania profilu: {str(e)}", exc_info=True
+            )
+            QtWidgets.QMessageBox.critical(
+                self, "Błąd", f"Nie można zastosować profilu: {str(e)}"
+            )
+
+    def _clone_profile(self):
+        """Klonuje wybrany profil."""
+        if not self.current_profile:
+            QtWidgets.QMessageBox.warning(
+                self, "Ostrzeżenie", "Najpierw wybierz profil do sklonowania."
+            )
+            return
+
+        try:
+            current_name = self.profile_list.currentItem().text()
+            new_name, ok = QtWidgets.QInputDialog.getText(
+                self,
+                "Klonuj profil",
+                "Podaj nazwę dla nowego profilu:",
+                QtWidgets.QLineEdit.EchoMode.Normal,
+                f"{current_name}_clone",
+            )
+
+            if ok and new_name:
+                new_profile = self.current_profile.copy()
+                new_profile["info"] = f"Klon profilu {current_name}"
+                new_profile["description"] = f"Klon profilu {current_name}"
+
+                new_path = self.profiles_dir / f"{new_name}.json"
+                with open(new_path, "w", encoding="utf-8") as f:
+                    json.dump(new_profile, f, indent=4, ensure_ascii=False)
+
+                self._refresh_profile_list()
+                QtWidgets.QMessageBox.information(
+                    self, "Sukces", "Profil został pomyślnie sklonowany."
+                )
+
+        except Exception as e:
+            self.logger.error(
+                f"Błąd podczas klonowania profilu: {str(e)}", exc_info=True
+            )
+            QtWidgets.QMessageBox.critical(
+                self, "Błąd", f"Nie można sklonować profilu: {str(e)}"
+            )
+
+    def _save_profile(self):
+        """Zapisuje aktualną konfigurację jako nowy profil."""
+        try:
+            name, ok = QtWidgets.QInputDialog.getText(
+                self,
+                "Zapisz profil",
+                "Podaj nazwę dla nowego profilu:",
+                QtWidgets.QLineEdit.EchoMode.Normal,
+                f"{self.arch_combo.currentText()}_"
+                f"{self.variant_combo.currentText()}",
+            )
+
+            if ok and name:
+                profile_data = {
+                    "info": (
+                        f"Profil dla {self.arch_combo.currentText()} "
+                        f"{self.variant_combo.currentText()}"
+                    ),
+                    "description": "Profil utworzony przez użytkownika",
+                    "data_required": "Standardowe dane treningowe",
+                    "hardware_required": "Standardowy sprzęt",
+                    "config": {
+                        "model": {
+                            "architecture": self.arch_combo.currentText(),
+                            "variant": self.variant_combo.currentText(),
+                            "input_size": self.input_size_spin.value(),
+                            "num_classes": self.num_classes_spin.value(),
+                        },
+                        "training": {
+                            "epochs": self.epochs_spin.value(),
+                            "batch_size": self.batch_size_spin.value(),
+                            "learning_rate": float(self.lr_spin.value()),
+                            "optimizer": self.optimizer_combo.currentText(),
+                            "scheduler": self.scheduler_combo.currentText(),
+                            "num_workers": self.num_workers_spin.value(),
+                            "warmup_epochs": self.warmup_epochs_spin.value(),
+                            "mixed_precision": (self.mixed_precision_check.isChecked()),
+                        },
+                        "regularization": {
+                            "weight_decay": float(self.weight_decay_spin.value()),
+                            "gradient_clip": self.gradient_clip_spin.value(),
+                            "label_smoothing": (self.label_smoothing_spin.value()),
+                            "drop_connect_rate": (self.drop_connect_spin.value()),
+                            "dropout_rate": self.dropout_spin.value(),
+                            "momentum": self.momentum_spin.value(),
+                            "epsilon": self.epsilon_spin.value(),
+                            "swa": {
+                                "use": self.use_swa_check.isChecked(),
+                                "start_epoch": (self.swa_start_epoch_spin.value()),
+                            },
+                        },
+                        "augmentation": {
+                            "basic": {
+                                "use": self.basic_aug_check.isChecked(),
+                                "rotation": self.rotation_spin.value(),
+                                "brightness": self.brightness_spin.value(),
+                                "shift": self.shift_spin.value(),
+                                "zoom": self.zoom_spin.value(),
+                                "horizontal_flip": (
+                                    self.horizontal_flip_check.isChecked()
+                                ),
+                                "vertical_flip": (self.vertical_flip_check.isChecked()),
+                            },
+                            "mixup": {
+                                "use": self.mixup_check.isChecked(),
+                                "alpha": self.mixup_alpha_spin.value(),
+                            },
+                            "cutmix": {
+                                "use": self.cutmix_check.isChecked(),
+                                "alpha": self.cutmix_alpha_spin.value(),
+                            },
+                        },
+                        "monitoring": {
+                            "metrics": {
+                                "accuracy": self.accuracy_check.isChecked(),
+                                "precision": self.precision_check.isChecked(),
+                                "recall": self.recall_check.isChecked(),
+                                "f1": self.f1_check.isChecked(),
+                                "topk": self.topk_check.isChecked(),
+                                "confusion_matrix": (
+                                    self.confusion_matrix_check.isChecked()
+                                ),
+                            },
+                            "early_stopping": {
+                                "patience": self.patience_spin.value(),
+                                "min_delta": self.min_delta_spin.value(),
+                                "monitor": self.monitor_combo.currentText(),
+                            },
+                            "checkpointing": {
+                                "best_only": self.best_only_check.isChecked(),
+                                "save_frequency": self.save_freq_spin.value(),
+                                "metric": (self.checkpoint_metric_combo.currentText()),
+                            },
+                        },
+                    },
+                }
+
+                profile_path = self.profiles_dir / f"{name}.json"
+                with open(profile_path, "w", encoding="utf-8") as f:
+                    json.dump(profile_data, f, indent=4, ensure_ascii=False)
+
+                self._refresh_profile_list()
+                QtWidgets.QMessageBox.information(
+                    self, "Sukces", "Profil został pomyślnie zapisany."
+                )
+
+        except Exception as e:
+            self.logger.error(
+                f"Błąd podczas zapisywania profilu: {str(e)}", exc_info=True
+            )
+            QtWidgets.QMessageBox.critical(
+                self, "Błąd", f"Nie można zapisać profilu: {str(e)}"
+            )
 
     def _on_architecture_changed(self, arch_name):
         self._update_variant_combo(arch_name)

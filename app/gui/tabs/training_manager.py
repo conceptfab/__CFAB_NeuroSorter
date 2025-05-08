@@ -1064,6 +1064,32 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             self._set_task_status(task_name, "Zakończony")
             self.parent.logger.info(f"Status zadania {task_name} został zmieniony")
 
+            # Zapisz wykres treningu
+            if hasattr(self, "training_visualization") and self.training_visualization:
+                try:
+                    # Utwórz katalog na wykresy jeśli nie istnieje
+                    plots_dir = os.path.join("data", "plots")
+                    os.makedirs(plots_dir, exist_ok=True)
+
+                    # Generuj nazwę pliku wykresu
+                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+                    plot_filename = f"{task_name}_{timestamp}.png"
+                    plot_path = os.path.join(plots_dir, plot_filename)
+
+                    # Zapisz wykres
+                    if self.training_visualization.save_plot(plot_path):
+                        self.parent.logger.info(
+                            f"Wykres treningu zapisany w: {plot_path}"
+                        )
+                    else:
+                        self.parent.logger.error(
+                            "Nie udało się zapisać wykresu treningu"
+                        )
+                except Exception as plot_error:
+                    self.parent.logger.error(
+                        f"Błąd podczas zapisywania wykresu: {plot_error}"
+                    )
+
         except Exception as e:
             self.parent.logger.error(
                 f"Błąd podczas obsługi zakończenia zadania: {str(e)}"
