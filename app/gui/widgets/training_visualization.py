@@ -52,11 +52,6 @@ class TrainingVisualization(QWidget):
         """Konfiguruje interfejs użytkownika."""
         layout = QVBoxLayout(self)
 
-        # Nagłówek
-        header = QLabel("Wizualizacja treningu")
-        header.setStyleSheet("font-weight: bold; font-size: 14px;")
-        layout.addWidget(header)
-
         # Kontrolki
         controls_layout = QHBoxLayout()
         controls_layout.addStretch()

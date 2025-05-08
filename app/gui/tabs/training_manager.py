@@ -397,7 +397,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         self.refresh_queue_btn.setFixedHeight(24)
         buttons_layout.addWidget(self.refresh_queue_btn)
 
-        self.null_btn = QtWidgets.QPushButton("Null")
+        self.null_btn = QtWidgets.QPushButton("Uruchom wsadowy trening")
         self.null_btn.setFixedHeight(24)
         self.null_btn.clicked.connect(self._show_queue_manager)
         buttons_layout.addWidget(self.null_btn)

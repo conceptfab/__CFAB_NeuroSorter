@@ -446,14 +446,23 @@ def train_model_optimized(
             history["val_loss"].append(val_loss)
             history["val_acc"].append(val_acc)
 
+        if val_loader:
+            print(f"Walidacja - Strata: {val_loss:.4f}")
+            print(f"Walidacja - Dokładność: {val_acc:.4f}")
+        else:
+            val_loss = 0.0
+            val_acc = 0.0
+            val_top_3 = 0.0
+            val_top_5 = 0.0
+            val_precision = 0.0
+            val_recall = 0.0
+            val_f1 = 0.0
+            val_auc = 0.0
+
         print("\n--- PODSUMOWANIE EPOKI ---")
         print(f"Czas trwania: {epoch_time:.2f}s")
         print(f"Średnia strata: {epoch_loss:.4f}")
         print(f"Średnia dokładność: {epoch_acc:.4f}")
-
-        if val_loader:
-            print(f"Walidacja - Strata: {val_loss:.4f}")
-            print(f"Walidacja - Dokładność: {val_acc:.4f}")
 
         print(
             f"DEBUG optimized_training: Koniec epoki {epoch + 1}. Zaraz wywołam progress_callback (jeśli istnieje)."
