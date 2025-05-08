@@ -1,5 +1,5 @@
 automatyczne zapisywanie wizualizacji treningu
-
+scaller
 walidacja danych treningowych i 
 
 profile

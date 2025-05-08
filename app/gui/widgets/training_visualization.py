@@ -363,6 +363,15 @@ class TrainingVisualization(QWidget):
         self.data_updated = False
         self.update_plot()
 
+    def reset_plot(self):
+        """Resetuje wykres do stanu początkowego."""
+        self.plot_widget.clear()
+        self.plot_widget.setLabel("left", "Wartość")
+        self.plot_widget.setLabel("bottom", "Epoka")
+        self.plot_widget.showGrid(x=True, y=True)
+        self.plot_widget.autoRange()
+        self.data_updated = False
+
     def save_plot(self, filename):
         """Zapisuje wykres do pliku PNG.
 
