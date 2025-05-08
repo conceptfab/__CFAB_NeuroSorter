@@ -3,31 +3,7 @@ import glob
 import json
 import os
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QComboBox,
-    QDialog,
-    QDialogButtonBox,
-    QDoubleSpinBox,
-    QFileDialog,
-    QFormLayout,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QProgressDialog,
-    QPushButton,
-    QSizePolicy,
-    QSpinBox,
-    QTableWidget,
-    QTableWidgetItem,
-    QTabWidget,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6 import QtCore, QtWidgets
 
 from app.core.workers.batch_training_thread import BatchTrainingThread
 from app.core.workers.single_training_thread import SingleTrainingThread
@@ -43,7 +19,7 @@ from app.utils.file_utils import (
 )
 
 
-class TrainingManager(QWidget, TabInterface):
+class TrainingManager(QtWidgets.QWidget, TabInterface):
     """Klasa zarządzająca zakładką treningu."""
 
     def __init__(self, parent=None, settings=None):
@@ -58,37 +34,39 @@ class TrainingManager(QWidget, TabInterface):
 
     def setup_ui(self):
         """Tworzy i konfiguruje elementy interfejsu zakładki."""
-        layout = QVBoxLayout(self)
+        layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
         # Dodaj etykietę informacji o profilu sprzętowym
-        profile_layout = QHBoxLayout()
+        profile_layout = QtWidgets.QHBoxLayout()
 
         # Lewa kolumna - informacje o profilu
-        profile_info_panel = QWidget()
-        profile_info_layout = QVBoxLayout(profile_info_panel)
+        profile_info_panel = QtWidgets.QWidget()
+        profile_info_layout = QtWidgets.QVBoxLayout(profile_info_panel)
         profile_info_layout.setContentsMargins(0, 0, 0, 0)
 
         # Nagłówek sekcji
-        optimization_header = QLabel("OPTYMALIZACJA TRENINGU")
+        optimization_header = QtWidgets.QLabel("OPTYMALIZACJA TRENINGU")
         optimization_header.setStyleSheet(
             "font-weight: bold; color: #CCCCCC; "
             "font-size: 11px; padding-bottom: 4px;"
         )
         profile_info_layout.addWidget(optimization_header)
 
-        self.profile_info_label = QLabel("Status profilu: Nieznany")
+        self.profile_info_label = QtWidgets.QLabel("Status profilu: Nieznany")
         self.profile_info_label.setStyleSheet("color: #CCCCCC; padding: 4px;")
         profile_info_layout.addWidget(self.profile_info_label)
 
         # Prawa kolumna - przyciski i opcje
-        profile_controls_panel = QWidget()
-        profile_controls_layout = QVBoxLayout(profile_controls_panel)
+        profile_controls_panel = QtWidgets.QWidget()
+        profile_controls_layout = QtWidgets.QVBoxLayout(profile_controls_panel)
         profile_controls_layout.setContentsMargins(0, 0, 0, 0)
 
         # Checkbox optymalizacji
-        self.use_optimization_checkbox = QCheckBox("Używaj optymalizacji sprzętowej")
+        self.use_optimization_checkbox = QtWidgets.QCheckBox(
+            "Używaj optymalizacji sprzętowej"
+        )
         self.use_optimization_checkbox.setChecked(True)
         self.use_optimization_checkbox.setToolTip(
             "Automatycznie dobiera parametry treningu "
@@ -97,7 +75,7 @@ class TrainingManager(QWidget, TabInterface):
         profile_controls_layout.addWidget(self.use_optimization_checkbox)
 
         # Przycisk profilowania
-        self.run_profiler_btn = QPushButton("Uruchom profilowanie sprzętu")
+        self.run_profiler_btn = QtWidgets.QPushButton("Uruchom profilowanie sprzętu")
         self.run_profiler_btn.setFixedHeight(24)
         self.run_profiler_btn.clicked.connect(self._run_profiler)
         profile_controls_layout.addWidget(self.run_profiler_btn)
@@ -110,7 +88,7 @@ class TrainingManager(QWidget, TabInterface):
         self._create_add_task_panel(layout)
 
         # === Początek zmian: Dodanie QTabWidget ===
-        self.tabs = QTabWidget()
+        self.tabs = QtWidgets.QTabWidget()
 
         # Zakładka 1: Kolejka zadań treningowych
         queue_panel_widget = self._create_queue_panel_widget()
@@ -176,32 +154,40 @@ class TrainingManager(QWidget, TabInterface):
 
                     # Nazwa zadania
                     task_name = task_data.get("name", os.path.basename(task_file))
-                    self.tasks_table.setItem(row, 0, QTableWidgetItem(task_name))
+                    self.tasks_table.setItem(
+                        row, 0, QtWidgets.QTableWidgetItem(task_name)
+                    )
 
                     # Typ zadania
                     task_type = task_data.get("type", "Trening")
-                    self.tasks_table.setItem(row, 1, QTableWidgetItem(task_type))
+                    self.tasks_table.setItem(
+                        row, 1, QtWidgets.QTableWidgetItem(task_type)
+                    )
 
                     # Status
                     status = task_data.get("status", "Nowy")
-                    self.tasks_table.setItem(row, 2, QTableWidgetItem(status))
+                    self.tasks_table.setItem(row, 2, QtWidgets.QTableWidgetItem(status))
 
                     # Priorytet
                     priority = task_data.get("priority", 0)
-                    self.tasks_table.setItem(row, 3, QTableWidgetItem(str(priority)))
+                    self.tasks_table.setItem(
+                        row, 3, QtWidgets.QTableWidgetItem(str(priority))
+                    )
 
                     # Data utworzenia
                     created_at = task_data.get("created_at", "")
-                    self.tasks_table.setItem(row, 4, QTableWidgetItem(created_at))
+                    self.tasks_table.setItem(
+                        row, 4, QtWidgets.QTableWidgetItem(created_at)
+                    )
 
                     # Przyciski akcji
-                    action_widget = QWidget()
-                    action_layout = QHBoxLayout(action_widget)
+                    action_widget = QtWidgets.QWidget()
+                    action_layout = QtWidgets.QHBoxLayout(action_widget)
                     action_layout.setContentsMargins(0, 0, 0, 0)
-                    action_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+                    action_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter)
 
                     # Przycisk uruchomienia
-                    run_btn = QPushButton("Uruchom")
+                    run_btn = QtWidgets.QPushButton("Uruchom")
                     run_btn.setFixedWidth(100)
                     run_btn.setFixedHeight(20)
                     run_btn.clicked.connect(
@@ -209,7 +195,7 @@ class TrainingManager(QWidget, TabInterface):
                     )
 
                     # Przycisk edycji
-                    edit_btn = QPushButton("Edytuj")
+                    edit_btn = QtWidgets.QPushButton("Edytuj")
                     edit_btn.setFixedWidth(80)
                     edit_btn.setFixedHeight(20)
                     edit_btn.clicked.connect(
@@ -217,7 +203,7 @@ class TrainingManager(QWidget, TabInterface):
                     )
 
                     # Przycisk usunięcia
-                    delete_btn = QPushButton("Usuń")
+                    delete_btn = QtWidgets.QPushButton("Usuń")
                     delete_btn.setFixedWidth(80)
                     delete_btn.setFixedHeight(20)
                     delete_btn.clicked.connect(
@@ -238,31 +224,31 @@ class TrainingManager(QWidget, TabInterface):
                         # Czas treningu
                         training_time = task_data.get("training_time_str", "")
                         self.tasks_table.setItem(
-                            row, 5, QTableWidgetItem(training_time)
+                            row, 5, QtWidgets.QTableWidgetItem(training_time)
                         )
 
                         # Dokładność treningu
                         train_acc = task_data.get("train_accuracy", 0)
                         self.tasks_table.setItem(
-                            row, 6, QTableWidgetItem(f"{train_acc:.2f}")
+                            row, 6, QtWidgets.QTableWidgetItem(f"{train_acc:.2f}")
                         )
 
                         # Strata treningu
                         train_loss = task_data.get("train_loss", 0)
                         self.tasks_table.setItem(
-                            row, 7, QTableWidgetItem(f"{train_loss:.2f}")
+                            row, 7, QtWidgets.QTableWidgetItem(f"{train_loss:.2f}")
                         )
 
                         # Dokładność walidacji
                         val_acc = task_data.get("validation_accuracy", 0)
                         self.tasks_table.setItem(
-                            row, 8, QTableWidgetItem(f"{val_acc:.2f}")
+                            row, 8, QtWidgets.QTableWidgetItem(f"{val_acc:.2f}")
                         )
 
                         # Strata walidacji
                         val_loss = task_data.get("validation_loss", 0)
                         self.tasks_table.setItem(
-                            row, 9, QTableWidgetItem(f"{val_loss:.2f}")
+                            row, 9, QtWidgets.QTableWidgetItem(f"{val_loss:.2f}")
                         )
 
                 except Exception as e:
@@ -296,12 +282,12 @@ class TrainingManager(QWidget, TabInterface):
 
     def _create_add_task_panel(self, parent_layout):
         """Tworzy panel dodawania nowego zadania treningowego."""
-        add_task_panel = QWidget()
-        add_task_layout = QVBoxLayout(add_task_panel)
+        add_task_panel = QtWidgets.QWidget()
+        add_task_layout = QtWidgets.QVBoxLayout(add_task_panel)
         add_task_layout.setContentsMargins(0, 0, 0, 0)
 
         # Nagłówek sekcji
-        add_task_header = QLabel("DODAJ NOWE ZADANIE TRENINGOWE")
+        add_task_header = QtWidgets.QLabel("DODAJ NOWE ZADANIE TRENINGOWE")
         add_task_header.setStyleSheet(
             "font-weight: bold; color: #CCCCCC; "
             "font-size: 11px; padding-bottom: 4px;"
@@ -309,10 +295,10 @@ class TrainingManager(QWidget, TabInterface):
         add_task_layout.addWidget(add_task_header)
 
         # Wybór typu zadania
-        task_type_layout = QHBoxLayout()
-        task_type_label = QLabel("Typ zadania:")
+        task_type_layout = QtWidgets.QHBoxLayout()
+        task_type_label = QtWidgets.QLabel("Typ zadania:")
         task_type_label.setFixedWidth(120)
-        self.task_type_combo = QComboBox()
+        self.task_type_combo = QtWidgets.QComboBox()
         self.task_type_combo.addItems(
             ["Trening nowego modelu", "Doszkalanie istniejącego modelu"]
         )
@@ -322,7 +308,7 @@ class TrainingManager(QWidget, TabInterface):
         add_task_layout.addLayout(task_type_layout)
 
         # Model architektury
-        self.model_arch_combo = QComboBox()
+        self.model_arch_combo = QtWidgets.QComboBox()
         self.model_arch_combo.addItems(
             ["efficientnet", "resnet50", "mobilenet", "vit", "convnext"]
         )
@@ -331,12 +317,12 @@ class TrainingManager(QWidget, TabInterface):
         )  # Ustawiam efficientnet jako domyślny
 
         # Liczba epok
-        self.epochs_spin = QSpinBox()
+        self.epochs_spin = QtWidgets.QSpinBox()
         self.epochs_spin.setRange(1, 1000)
         self.epochs_spin.setValue(30)
 
         # Model bazowy dla doszkalania
-        self.base_model_combo = QComboBox()
+        self.base_model_combo = QtWidgets.QComboBox()
         models_dir = os.path.join("data", "models")
         if os.path.exists(models_dir):
             for model in os.listdir(models_dir):
@@ -344,7 +330,7 @@ class TrainingManager(QWidget, TabInterface):
                     self.base_model_combo.addItem(model)
 
         # Przycisk dodania zadania
-        self.add_task_btn = QPushButton("Dodaj zadanie do kolejki")
+        self.add_task_btn = QtWidgets.QPushButton("Dodaj zadanie do kolejki")
         self.add_task_btn.clicked.connect(self._add_training_task)
         self.add_task_btn.setFixedHeight(24)
         add_task_layout.addWidget(self.add_task_btn)
@@ -357,13 +343,13 @@ class TrainingManager(QWidget, TabInterface):
 
     def _create_queue_panel_widget(self):
         """Tworzy i zwraca panel kolejki zadań treningowych jako widget."""
-        queue_panel = QWidget()
-        queue_layout = QVBoxLayout(queue_panel)
+        queue_panel = QtWidgets.QWidget()
+        queue_layout = QtWidgets.QVBoxLayout(queue_panel)
         queue_layout.setContentsMargins(0, 0, 0, 0)
         queue_layout.setSpacing(8)
 
         # Nagłówek sekcji
-        queue_header = QLabel("KOLEJKA ZADAŃ TRENINGOWYCH")
+        queue_header = QtWidgets.QLabel("KOLEJKA ZADAŃ TRENINGOWYCH")
         queue_header.setStyleSheet(
             "font-weight: bold; color: #CCCCCC; "
             "font-size: 11px; padding-bottom: 4px;"
@@ -371,7 +357,7 @@ class TrainingManager(QWidget, TabInterface):
         queue_layout.addWidget(queue_header)
 
         # Tabela z zadaniami
-        self.tasks_table = QTableWidget()
+        self.tasks_table = QtWidgets.QTableWidget()
         self.tasks_table.setColumnCount(11)
         self.tasks_table.setHorizontalHeaderLabels(
             [
@@ -389,29 +375,32 @@ class TrainingManager(QWidget, TabInterface):
             ]
         )
         self.tasks_table.horizontalHeader().setStretchLastSection(True)
-        self.tasks_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.tasks_table.setSelectionBehavior(
+            QtWidgets.QTableWidget.SelectionBehavior.SelectRows
+        )
         self.tasks_table.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding,
         )
         queue_layout.addWidget(self.tasks_table, 1)
 
         # Przyciski zarządzania kolejką
-        buttons_container = QWidget()
-        buttons_layout = QHBoxLayout(buttons_container)
+        buttons_container = QtWidgets.QWidget()
+        buttons_layout = QtWidgets.QHBoxLayout(buttons_container)
         buttons_layout.setContentsMargins(0, 0, 0, 0)
         buttons_layout.setSpacing(8)
 
-        self.refresh_queue_btn = QPushButton("Odśwież kolejkę")
+        self.refresh_queue_btn = QtWidgets.QPushButton("Odśwież kolejkę")
         self.refresh_queue_btn.clicked.connect(self.refresh)
         self.refresh_queue_btn.setFixedHeight(24)
         buttons_layout.addWidget(self.refresh_queue_btn)
 
-        self.start_queue_btn = QPushButton("Uruchom kolejkę")
+        self.start_queue_btn = QtWidgets.QPushButton("Uruchom kolejkę")
         self.start_queue_btn.clicked.connect(self._start_task_queue)
         self.start_queue_btn.setFixedHeight(24)
         buttons_layout.addWidget(self.start_queue_btn)
 
-        self.clear_queue_btn = QPushButton("Wyczyść kolejkę")
+        self.clear_queue_btn = QtWidgets.QPushButton("Wyczyść kolejkę")
         self.clear_queue_btn.clicked.connect(self._clear_task_queue)
         self.clear_queue_btn.setFixedHeight(24)
         buttons_layout.addWidget(self.clear_queue_btn)
@@ -441,7 +430,7 @@ class TrainingManager(QWidget, TabInterface):
                     hardware_profile=getattr(self.parent, "hardware_profile", None),
                 )
                 result = dialog.exec()
-                if result == QDialog.Accepted:
+                if result == QtWidgets.QDialog.DialogCode.Accepted:
                     task_config = dialog.get_task_config()
                     if task_config:
                         task_file = os.path.join("data", "tasks", task_config["name"])
@@ -455,7 +444,7 @@ class TrainingManager(QWidget, TabInterface):
                 self._configure_finetuning_task()
 
         except Exception as e:
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Nie udało się dodać zadania treningowego: {str(e)}"
             )
 
@@ -463,21 +452,21 @@ class TrainingManager(QWidget, TabInterface):
         """Konfiguruje zadanie doszkalania istniejącego modelu."""
         try:
             # Dialog konfiguracji
-            dialog = QDialog(self)
+            dialog = QtWidgets.QDialog(self)
             dialog.setWindowTitle("Konfiguracja zadania doszkalania")
             dialog.setMinimumWidth(500)
-            layout = QVBoxLayout(dialog)
+            layout = QtWidgets.QVBoxLayout(dialog)
 
             # Formularz konfiguracji
-            form_layout = QFormLayout()
+            form_layout = QtWidgets.QFormLayout()
 
             # Wybór modelu bazowego
-            base_model_layout = QHBoxLayout()
-            base_model_edit = QLineEdit()
-            base_model_button = QPushButton("Przeglądaj...")
+            base_model_layout = QtWidgets.QHBoxLayout()
+            base_model_edit = QtWidgets.QLineEdit()
+            base_model_button = QtWidgets.QPushButton("Przeglądaj...")
 
             def select_base_model():
-                file_path, _ = QFileDialog.getOpenFileName(
+                file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                     self,
                     "Wybierz model bazowy",
                     os.path.join("data", "models"),
@@ -492,9 +481,9 @@ class TrainingManager(QWidget, TabInterface):
             form_layout.addRow("Model bazowy:", base_model_layout)
 
             # Wybór folderu treningowego
-            train_dir_layout = QHBoxLayout()
-            train_dir_edit = QLineEdit()
-            train_dir_button = QPushButton("Przeglądaj...")
+            train_dir_layout = QtWidgets.QHBoxLayout()
+            train_dir_edit = QtWidgets.QLineEdit()
+            train_dir_button = QtWidgets.QPushButton("Przeglądaj...")
             train_dir_button.clicked.connect(
                 lambda: self._select_directory(train_dir_edit)
             )
@@ -503,9 +492,9 @@ class TrainingManager(QWidget, TabInterface):
             form_layout.addRow("Katalog danych treningowych:", train_dir_layout)
 
             # Wybór folderu walidacyjnego (opcjonalnie)
-            val_dir_layout = QHBoxLayout()
-            val_dir_edit = QLineEdit()
-            val_dir_button = QPushButton("Przeglądaj...")
+            val_dir_layout = QtWidgets.QHBoxLayout()
+            val_dir_edit = QtWidgets.QLineEdit()
+            val_dir_button = QtWidgets.QPushButton("Przeglądaj...")
             val_dir_button.clicked.connect(lambda: self._select_directory(val_dir_edit))
             val_dir_layout.addWidget(val_dir_edit)
             val_dir_layout.addWidget(val_dir_button)
@@ -514,13 +503,13 @@ class TrainingManager(QWidget, TabInterface):
             )
 
             # Liczba epok
-            epochs_spin = QSpinBox()
+            epochs_spin = QtWidgets.QSpinBox()
             epochs_spin.setRange(1, 1000)
             epochs_spin.setValue(50)
             form_layout.addRow("Liczba epok:", epochs_spin)
 
             # Typ modelu (architektura)
-            model_arch_combo = QComboBox()
+            model_arch_combo = QtWidgets.QComboBox()
             model_arch_combo.addItems(
                 ["efficientnet", "resnet50", "mobilenet", "vit", "convnext"]
             )
@@ -530,24 +519,24 @@ class TrainingManager(QWidget, TabInterface):
             form_layout.addRow("Typ modelu:", model_arch_combo)
 
             # Rozmiar wsadu
-            batch_size_spin = QSpinBox()
+            batch_size_spin = QtWidgets.QSpinBox()
             batch_size_spin.setRange(1, 256)
             batch_size_spin.setValue(32)
             form_layout.addRow("Rozmiar wsadu:", batch_size_spin)
 
             # Współczynnik uczenia
-            learning_rate_combo = QComboBox()
+            learning_rate_combo = QtWidgets.QComboBox()
             learning_rate_combo.addItems(["0.1", "0.01", "0.001", "0.0001"])
             learning_rate_combo.setCurrentText("0.0001")
             form_layout.addRow("Współczynnik uczenia:", learning_rate_combo)
 
             # Optymalizator
-            optimizer_combo = QComboBox()
+            optimizer_combo = QtWidgets.QComboBox()
             optimizer_combo.addItems(["Adam", "SGD", "RMSprop", "AdamW"])
             form_layout.addRow("Optymalizator:", optimizer_combo)
 
             # Liczba wątków do ładowania danych
-            num_workers_spin = QSpinBox()
+            num_workers_spin = QtWidgets.QSpinBox()
             num_workers_spin.setRange(0, 16)
             if (
                 hasattr(self.parent, "hardware_profile")
@@ -567,13 +556,13 @@ class TrainingManager(QWidget, TabInterface):
             form_layout.addRow("Liczba wątków do ładowania danych:", num_workers_spin)
 
             # Współczynnik regularyzacji L2
-            weight_decay_combo = QComboBox()
+            weight_decay_combo = QtWidgets.QComboBox()
             weight_decay_combo.addItems(["1e-3", "1e-4", "1e-5", "1e-6"])
             weight_decay_combo.setCurrentText("1e-4")  # Domyślna wartość
             form_layout.addRow("Współczynnik regularyzacji L2:", weight_decay_combo)
 
             # Label Smoothing
-            label_smoothing_spin = QDoubleSpinBox()
+            label_smoothing_spin = QtWidgets.QDoubleSpinBox()
             label_smoothing_spin.setRange(0.0, 0.5)
             label_smoothing_spin.setValue(0.1)
             label_smoothing_spin.setDecimals(2)
@@ -581,7 +570,7 @@ class TrainingManager(QWidget, TabInterface):
             form_layout.addRow("Label Smoothing:", label_smoothing_spin)
 
             # Drop Connect Rate
-            drop_connect_spin = QDoubleSpinBox()
+            drop_connect_spin = QtWidgets.QDoubleSpinBox()
             drop_connect_spin.setRange(0.0, 0.5)
             drop_connect_spin.setValue(0.2)
             drop_connect_spin.setDecimals(2)
@@ -589,7 +578,7 @@ class TrainingManager(QWidget, TabInterface):
             form_layout.addRow("Drop Connect Rate:", drop_connect_spin)
 
             # Momentum
-            momentum_spin = QDoubleSpinBox()
+            momentum_spin = QtWidgets.QDoubleSpinBox()
             momentum_spin.setRange(0.0, 1.0)
             momentum_spin.setValue(0.9)
             momentum_spin.setDecimals(2)
@@ -597,7 +586,7 @@ class TrainingManager(QWidget, TabInterface):
             form_layout.addRow("Momentum:", momentum_spin)
 
             # Epsilon
-            epsilon_spin = QDoubleSpinBox()
+            epsilon_spin = QtWidgets.QDoubleSpinBox()
             epsilon_spin.setRange(0.0001, 0.01)
             epsilon_spin.setValue(0.001)
             epsilon_spin.setDecimals(4)
@@ -605,13 +594,13 @@ class TrainingManager(QWidget, TabInterface):
             form_layout.addRow("Epsilon:", epsilon_spin)
 
             # Warmup Epochs
-            warmup_epochs_spin = QSpinBox()
+            warmup_epochs_spin = QtWidgets.QSpinBox()
             warmup_epochs_spin.setRange(0, 10)
             warmup_epochs_spin.setValue(5)
             form_layout.addRow("Liczba epok warmup:", warmup_epochs_spin)
 
             # Wartość przycinania gradientów
-            gradient_clip_spin = QDoubleSpinBox()
+            gradient_clip_spin = QtWidgets.QDoubleSpinBox()
             gradient_clip_spin.setRange(0.0, 1.0)
             gradient_clip_spin.setValue(DEFAULT_TRAINING_PARAMS["gradient_clip_val"])
             gradient_clip_spin.setDecimals(2)
@@ -619,7 +608,7 @@ class TrainingManager(QWidget, TabInterface):
             form_layout.addRow("Wartość przycinania gradientów:", gradient_clip_spin)
 
             # Liczba epok bez poprawy przed wczesnym zatrzymaniem
-            early_stopping_spin = QSpinBox()
+            early_stopping_spin = QtWidgets.QSpinBox()
             early_stopping_spin.setRange(1, 50)
             early_stopping_spin.setValue(
                 DEFAULT_TRAINING_PARAMS["early_stopping_patience"]
@@ -629,16 +618,16 @@ class TrainingManager(QWidget, TabInterface):
             )
 
             # Opcje doszkalania
-            finetuning_group = QGroupBox("Opcje doszkalania")
-            finetuning_layout = QFormLayout(finetuning_group)
+            finetuning_group = QtWidgets.QGroupBox("Opcje doszkalania")
+            finetuning_layout = QtWidgets.QFormLayout(finetuning_group)
 
             # Zamrożenie warstw
-            freeze_layers = QCheckBox("Zamroź warstwy bazowe")
+            freeze_layers = QtWidgets.QCheckBox("Zamroź warstwy bazowe")
             freeze_layers.setChecked(True)
             finetuning_layout.addRow("", freeze_layers)
 
             # Liczba warstw do trenowania
-            trainable_layers_spin = QSpinBox()
+            trainable_layers_spin = QtWidgets.QSpinBox()
             trainable_layers_spin.setRange(1, 10)
             trainable_layers_spin.setValue(3)
             finetuning_layout.addRow(
@@ -646,31 +635,31 @@ class TrainingManager(QWidget, TabInterface):
             )
 
             # Augmentacja danych
-            augmentation_group = QGroupBox("Augmentacja danych")
-            augmentation_layout = QFormLayout(augmentation_group)
+            augmentation_group = QtWidgets.QGroupBox("Augmentacja danych")
+            augmentation_layout = QtWidgets.QFormLayout(augmentation_group)
 
             # Włącz augmentację
-            use_augmentation = QCheckBox("Używaj augmentacji danych")
+            use_augmentation = QtWidgets.QCheckBox("Używaj augmentacji danych")
             augmentation_layout.addRow("", use_augmentation)
 
             # Rotacja
-            rotation_spin = QSpinBox()
+            rotation_spin = QtWidgets.QSpinBox()
             rotation_spin.setRange(0, 360)
             rotation_spin.setValue(15)
             rotation_spin.setSuffix("°")
             augmentation_layout.addRow("Maksymalny kąt rotacji:", rotation_spin)
 
             # Jasność
-            brightness_spin = QSpinBox()
+            brightness_spin = QtWidgets.QSpinBox()
             brightness_spin.setRange(0, 100)
             brightness_spin.setValue(20)
             brightness_spin.setSuffix("%")
             augmentation_layout.addRow("Zmiana jasności:", brightness_spin)
 
             # Przyciski
-            buttons = QDialogButtonBox(
-                QDialogButtonBox.StandardButton.Ok
-                | QDialogButtonBox.StandardButton.Cancel
+            buttons = QtWidgets.QDialogButtonBox(
+                QtWidgets.QDialogButtonBox.StandardButton.Ok
+                | QtWidgets.QDialogButtonBox.StandardButton.Cancel
             )
             buttons.accepted.connect(dialog.accept)
             buttons.rejected.connect(dialog.reject)
@@ -696,14 +685,14 @@ class TrainingManager(QWidget, TabInterface):
 
                     # Walidacja danych
                     if not base_model or not os.path.exists(base_model):
-                        QMessageBox.warning(
+                        QtWidgets.QMessageBox.warning(
                             self, "Błąd", "Wybierz poprawny model bazowy."
                         )
                         return
 
                     is_valid, error_msg = validate_training_directory(train_dir)
                     if not is_valid:
-                        QMessageBox.warning(
+                        QtWidgets.QMessageBox.warning(
                             self,
                             "Błąd",
                             f"Nieprawidłowy katalog treningowy: {error_msg}",
@@ -713,7 +702,7 @@ class TrainingManager(QWidget, TabInterface):
                     if val_dir:
                         is_valid, error_msg = validate_validation_directory(val_dir)
                         if not is_valid:
-                            QMessageBox.warning(
+                            QtWidgets.QMessageBox.warning(
                                 self,
                                 "Błąd",
                                 f"Nieprawidłowy katalog walidacyjny: {error_msg}",
@@ -770,7 +759,7 @@ class TrainingManager(QWidget, TabInterface):
                     # Walidacja konfiguracji
                     is_valid, error_msg = validate_task_config(task_config)
                     if not is_valid:
-                        QMessageBox.warning(
+                        QtWidgets.QMessageBox.warning(
                             self,
                             "Błąd walidacji",
                             f"Konfiguracja zadania nieprawidłowa: {error_msg}",
@@ -796,7 +785,7 @@ class TrainingManager(QWidget, TabInterface):
                             f"Błąd walidacji pliku zadania: {error_msg}"
                         )
                         os.remove(task_file)  # Usuń nieprawidłowy plik
-                        QMessageBox.critical(
+                        QtWidgets.QMessageBox.critical(
                             self,
                             "Błąd walidacji",
                             f"Plik zadania nie przeszedł walidacji: {error_msg}",
@@ -804,7 +793,7 @@ class TrainingManager(QWidget, TabInterface):
                         return
 
                     # Komunikat o sukcesie
-                    QMessageBox.information(
+                    QtWidgets.QMessageBox.information(
                         self,
                         "Zadanie utworzone",
                         f"Zadanie doszkalania '{task_name}' zostało dodane do kolejki.",
@@ -817,7 +806,7 @@ class TrainingManager(QWidget, TabInterface):
                     dialog.accept()
 
                 except Exception as e:
-                    QMessageBox.critical(
+                    QtWidgets.QMessageBox.critical(
                         self,
                         "Błąd",
                         f"Wystąpił błąd podczas tworzenia zadania: {str(e)}",
@@ -830,7 +819,7 @@ class TrainingManager(QWidget, TabInterface):
             dialog.exec()
 
         except Exception as e:
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self,
                 "Błąd",
                 f"Nie udało się otworzyć okna konfiguracji zadania doszkalania: {str(e)}",
@@ -844,7 +833,7 @@ class TrainingManager(QWidget, TabInterface):
             and self.training_thread is not None
             and self.training_thread.isRunning()
         ):
-            QMessageBox.warning(
+            QtWidgets.QMessageBox.warning(
                 self,
                 "Trening w toku",
                 "Proces treningu jest aktywny. Poczekaj na jego zakończenie lub zatrzymaj go.",
@@ -859,7 +848,7 @@ class TrainingManager(QWidget, TabInterface):
         task_files = sorted(glob.glob(os.path.join(tasks_dir, "*.json")))
 
         if not task_files:
-            QMessageBox.information(
+            QtWidgets.QMessageBox.information(
                 self, "Kolejka pusta", "Brak zadań w kolejce do uruchomienia."
             )
             return
@@ -891,22 +880,23 @@ class TrainingManager(QWidget, TabInterface):
             self.parent.logger.info("Uruchomiono przetwarzanie kolejki zadań.")
 
         except Exception as e:
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Nie udało się uruchomić kolejki zadań: {str(e)}"
             )
             self.parent.logger.error(f"Błąd podczas uruchamiania kolejki: {str(e)}")
 
     def _clear_task_queue(self):
         """Czyści kolejkę zadań treningowych."""
-        reply = QMessageBox.question(
+        reply = QtWidgets.QMessageBox.question(
             self,
             "Potwierdzenie",
             "Czy na pewno chcesz usunąć wszystkie zadania z kolejki?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No,
         )
 
-        if reply != QMessageBox.StandardButton.Yes:
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
             return
 
         try:
@@ -929,14 +919,14 @@ class TrainingManager(QWidget, TabInterface):
             self.refresh()
 
             # Wyświetl potwierdzenie
-            QMessageBox.information(
+            QtWidgets.QMessageBox.information(
                 self,
                 "Kolejka wyczyszczona",
                 "Wszystkie zadania zostały usunięte z kolejki.",
             )
 
         except Exception as e:
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Wystąpił błąd podczas czyszczenia kolejki: {str(e)}"
             )
 
@@ -1079,7 +1069,7 @@ class TrainingManager(QWidget, TabInterface):
                 f"Błąd podczas obsługi zakończenia zadania: {str(e)}"
             )
             self.parent.logger.error(f"TRACEBACK: {traceback.format_exc()}")
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self,
                 "Błąd",
                 f"Nie udało się zakończyć zadania: {str(e)}",
@@ -1090,7 +1080,7 @@ class TrainingManager(QWidget, TabInterface):
         self.parent.logger.info("Wszystkie zadania treningowe zostały zakończone")
 
         # Informacja dla użytkownika
-        QMessageBox.information(
+        QtWidgets.QMessageBox.information(
             self,
             "Trening zakończony",
             "Wszystkie zadania treningowe zostały zakończone pomyślnie.",
@@ -1116,7 +1106,7 @@ class TrainingManager(QWidget, TabInterface):
         self.parent.logger.error(f"Błąd zadania {task_name}: {error_message}")
 
         # Pokaż komunikat o błędzie
-        QMessageBox.critical(
+        QtWidgets.QMessageBox.critical(
             self,
             "Błąd treningu",
             f"Wystąpił błąd w zadaniu {task_name}: {error_message}",
@@ -1173,20 +1163,21 @@ class TrainingManager(QWidget, TabInterface):
         """Uruchamia proces profilowania sprzętu."""
         try:
             # Wyświetl dialog potwierdzenia
-            reply = QMessageBox.question(
+            reply = QtWidgets.QMessageBox.question(
                 self,
                 "Profilowanie sprzętu",
                 "Proces profilowania może potrwać kilka minut i okresowo "
                 "obciążyć system.\n\nCzy chcesz kontynuować?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.Yes,
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.Yes,
             )
 
-            if reply != QMessageBox.StandardButton.Yes:
+            if reply != QtWidgets.QMessageBox.StandardButton.Yes:
                 return
 
             # Utwórz i skonfiguruj dialog postępu
-            progress_dialog = QProgressDialog(
+            progress_dialog = QtWidgets.QProgressDialog(
                 "Trwa profilowanie sprzętu...", "Anuluj", 0, 100, self
             )
             progress_dialog.setWindowTitle("Profilowanie")
@@ -1196,7 +1187,7 @@ class TrainingManager(QWidget, TabInterface):
 
             # Aktualizacja interfejsu
             progress_dialog.setValue(10)
-            QApplication.processEvents()
+            QtCore.QCoreApplication.processEvents()
 
             # Uruchom profiler w tle
             from app.utils.profiler import HardwareProfiler
@@ -1206,7 +1197,7 @@ class TrainingManager(QWidget, TabInterface):
             # Aktualizacja interfejsu
             progress_dialog.setValue(20)
             progress_dialog.setLabelText("Rozpoczynam profilowanie...")
-            QApplication.processEvents()
+            QtCore.QCoreApplication.processEvents()
 
             # Wykonaj pełne profilowanie
             profile = profiler.run_profile()
@@ -1214,13 +1205,13 @@ class TrainingManager(QWidget, TabInterface):
             # Aktualizacja interfejsu
             progress_dialog.setValue(100)
             progress_dialog.setLabelText("Profilowanie zakończone!")
-            QApplication.processEvents()
+            QtCore.QCoreApplication.processEvents()
 
             # Załaduj wygenerowany profil
             self.parent.hardware_profile = profile
 
             # Wyświetl podsumowanie profilowania
-            QMessageBox.information(
+            QtWidgets.QMessageBox.information(
                 self,
                 "Profilowanie zakończone",
                 "Profilowanie sprzętu zostało zakończone pomyślnie.\n\n"
@@ -1232,7 +1223,7 @@ class TrainingManager(QWidget, TabInterface):
 
         except Exception as e:
             self.parent.logger.error(f"Błąd profilowania: {str(e)}")
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self,
                 "Błąd profilowania",
                 f"Wystąpił nieoczekiwany błąd: {str(e)}",
@@ -1274,7 +1265,7 @@ class TrainingManager(QWidget, TabInterface):
                 and self.training_thread is not None
                 and self.training_thread.isRunning()
             ):
-                QMessageBox.warning(
+                QtWidgets.QMessageBox.warning(
                     self,
                     "Trening w toku",
                     "Inny proces treningu jest już aktywny. "
@@ -1303,7 +1294,7 @@ class TrainingManager(QWidget, TabInterface):
             self.parent.logger.info("Uruchomiono pojedyncze zadanie.")
 
         except Exception as e:
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Nie udało się uruchomić zadania: {str(e)}"
             )
 
@@ -1316,15 +1307,16 @@ class TrainingManager(QWidget, TabInterface):
                 task_name = task_data.get("name", os.path.basename(task_file))
 
             # Potwierdzenie usunięcia
-            reply = QMessageBox.question(
+            reply = QtWidgets.QMessageBox.question(
                 self,
                 "Potwierdzenie",
                 f"Czy na pewno chcesz usunąć zadanie '{task_name}'?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.No,
             )
 
-            if reply != QMessageBox.StandardButton.Yes:
+            if reply != QtWidgets.QMessageBox.StandardButton.Yes:
                 return
 
             # Usuń plik zadania
@@ -1334,14 +1326,14 @@ class TrainingManager(QWidget, TabInterface):
             self.refresh()
 
             # Wyświetl potwierdzenie
-            QMessageBox.information(
+            QtWidgets.QMessageBox.information(
                 self,
                 "Zadanie usunięte",
                 f"Zadanie '{task_name}' zostało usunięte z kolejki.",
             )
 
         except Exception as e:
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Wystąpił błąd podczas usuwania zadania: {str(e)}"
             )
             self.parent.logger.error(f"Błąd podczas usuwania zadania: {str(e)}")
@@ -1417,7 +1409,7 @@ class TrainingManager(QWidget, TabInterface):
 
         except Exception as e:
             self.parent.logger.error(f"Błąd podczas zatrzymywania zadania: {str(e)}")
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Wystąpił błąd podczas zatrzymywania zadania:\n{str(e)}"
             )
 
@@ -1436,7 +1428,7 @@ class TrainingManager(QWidget, TabInterface):
 
         except Exception as e:
             self.parent.logger.error(f"Błąd podczas otwierania pliku: {str(e)}")
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Nie udało się otworzyć pliku w edytorze: {str(e)}"
             )
 
@@ -1449,7 +1441,7 @@ class TrainingManager(QWidget, TabInterface):
                 and self.training_thread is not None
                 and self.training_thread.isRunning()
             ):
-                QMessageBox.warning(
+                QtWidgets.QMessageBox.warning(
                     self,
                     "Trening w toku",
                     "Inny proces treningu jest już aktywny. "
@@ -1466,7 +1458,7 @@ class TrainingManager(QWidget, TabInterface):
             task_files = sorted(glob.glob(os.path.join(tasks_dir, "*.json")))
 
             if not task_files:
-                QMessageBox.information(
+                QtWidgets.QMessageBox.information(
                     self, "Kolejka pusta", "Brak zadań w kolejce do uruchomienia."
                 )
                 return
@@ -1500,13 +1492,13 @@ class TrainingManager(QWidget, TabInterface):
                 self.parent.logger.info("Uruchomiono przetwarzanie kolejki zadań.")
 
             except Exception as e:
-                QMessageBox.critical(
+                QtWidgets.QMessageBox.critical(
                     self, "Błąd", f"Nie udało się uruchomić kolejki zadań: {str(e)}"
                 )
                 self.parent.logger.error(f"Błąd podczas uruchamiania kolejki: {str(e)}")
 
         except Exception as e:
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Nie udało się uruchomić wsadowego treningu: {str(e)}"
             )
             self.parent.logger.error(
@@ -1516,18 +1508,18 @@ class TrainingManager(QWidget, TabInterface):
     def _select_directory(self, line_edit):
         """Otwiera dialog wyboru katalogu i aktualizuje pole tekstowe."""
         try:
-            directory = QFileDialog.getExistingDirectory(
+            directory = QtWidgets.QFileDialog.getExistingDirectory(
                 self,
                 "Wybierz katalog",
                 os.path.join("data"),
-                QFileDialog.Option.ShowDirsOnly
-                | QFileDialog.Option.DontResolveSymlinks,
+                QtWidgets.QFileDialog.Option.ShowDirsOnly
+                | QtWidgets.QFileDialog.Option.DontResolveSymlinks,
             )
             if directory:
                 line_edit.setText(directory)
                 self.parent.logger.info(f"Wybrano katalog: {directory}")
         except Exception as e:
             self.parent.logger.error(f"Błąd podczas wyboru katalogu: {str(e)}")
-            QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Wystąpił błąd podczas wyboru katalogu: {str(e)}"
             )

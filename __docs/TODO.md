@@ -1,13 +1,8 @@
-Klonowanie modeli!!!
+profile
+automatyczne zapisywanie wizualizacji treningu
 
 - doszkalanie ; 
 
-- resetowanie sortowania/czyczszczenie
-
-- profile dla modeli - zapisz/wczytaj
-
-
-Poprawic sorter!!! - dodac zatrzymanie sortowania!!!
 settings - ładowanie ustwien!!!!
 
 - validator do poprawy -
