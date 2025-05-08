@@ -123,10 +123,21 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         # layout.addWidget(queue_panel, 1)  # <- skalowalny na wysokość
 
     def connect_signals(self):
-        """Podłącza sygnały do slotów."""
+        """Łączy sygnały z odpowiednimi slotami."""
         self.add_task_btn.clicked.connect(self._add_training_task)
+        self.task_type_combo.currentTextChanged.connect(self._on_task_type_changed)
         self.refresh_queue_btn.clicked.connect(self.refresh)
         self.clear_queue_btn.clicked.connect(self._clear_task_queue)
+
+    def _on_task_type_changed(self, task_type):
+        """Obsługuje zmianę typu zadania."""
+        try:
+            # Aktualizuj interfejs w zależności od typu zadania
+            pass
+        except Exception as e:
+            self.parent.logger.error(
+                f"Błąd podczas aktualizacji interfejsu po zmianie typu zadania: {str(e)}"
+            )
 
     def refresh(self):
         """Odświeża listę zadań w kolejce."""
@@ -314,28 +325,6 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         task_type_layout.addWidget(self.task_type_combo)
         add_task_layout.addLayout(task_type_layout)
 
-        # Model architektury
-        self.model_arch_combo = QtWidgets.QComboBox()
-        self.model_arch_combo.addItems(
-            ["efficientnet", "resnet50", "mobilenet", "vit", "convnext"]
-        )
-        self.model_arch_combo.setCurrentText(
-            "efficientnet"
-        )  # Ustawiam efficientnet jako domyślny
-
-        # Liczba epok
-        self.epochs_spin = QtWidgets.QSpinBox()
-        self.epochs_spin.setRange(1, 1000)
-        self.epochs_spin.setValue(30)
-
-        # Model bazowy dla doszkalania
-        self.base_model_combo = QtWidgets.QComboBox()
-        models_dir = os.path.join("data", "models")
-        if os.path.exists(models_dir):
-            for model in os.listdir(models_dir):
-                if model.endswith(".h5"):
-                    self.base_model_combo.addItem(model)
-
         # Przycisk dodania zadania
         self.add_task_btn = QtWidgets.QPushButton("Dodaj zadanie do kolejki")
         self.add_task_btn.setFixedHeight(24)
@@ -415,14 +404,24 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
     def _add_training_task(self):
         try:
             # Pobierz typ zadania
-            task_type_index = self.task_type_combo.currentIndex()
+            task_type = self.task_type_combo.currentText()
 
-            # Użyj dialogu konfiguracji zadania
-            dialog = TrainingTaskConfigDialog(
-                parent=self,
-                settings=self.settings,
-                hardware_profile=getattr(self.parent, "hardware_profile", None),
-            )
+            # Wybierz odpowiedni dialog w zależności od typu zadania
+            if task_type == "Trening nowego modelu":
+                dialog = TrainingTaskConfigDialog(
+                    parent=self,
+                    settings=self.settings,
+                    hardware_profile=getattr(self.parent, "hardware_profile", None),
+                )
+            elif task_type == "Doszkalanie istniejącego modelu":
+                dialog = FineTuningTaskConfigDialog(
+                    parent=self,
+                    settings=self.settings,
+                    hardware_profile=getattr(self.parent, "hardware_profile", None),
+                )
+            else:
+                raise ValueError(f"Nieznany typ zadania: {task_type}")
+
             result = dialog.exec()
             if result == QtWidgets.QDialog.DialogCode.Accepted:
                 task_config = dialog.get_task_config()
@@ -436,57 +435,6 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         except Exception as e:
             QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Nie udało się dodać zadania treningowego: {str(e)}"
-            )
-
-    def _configure_finetuning_task(self):
-        """Konfiguruje zadanie doszkalania istniejącego modelu."""
-        try:
-            dialog = FineTuningTaskConfigDialog(self)
-
-            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-                config = dialog.config
-                if config is None:
-                    raise ValueError("Nie udało się utworzyć konfiguracji zadania")
-
-                # Przygotuj nazwę zadania
-                base_model = config.get("base_model")
-                if not base_model:
-                    raise ValueError("Nie wybrano modelu bazowego")
-
-                train_dir = config.get("train_dir")
-                if not train_dir:
-                    raise ValueError("Nie wybrano katalogu treningowego")
-
-                model_name = os.path.splitext(os.path.basename(base_model))[0]
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                task_name = f"Doszkalanie_{model_name}_{timestamp}"
-
-                # Dodaj zadanie do listy
-                task_item = QtWidgets.QListWidgetItem(task_name)
-                task_item.setData(
-                    QtCore.Qt.UserRole,
-                    {
-                        "name": task_name,
-                        "typ": "doszkalanie",
-                        "status": "Nowy",
-                        "priority": 0,
-                        "created_at": datetime.datetime.now().strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
-                        "config": config,
-                    },
-                )
-                self.task_list.addItem(task_item)
-                self.logger.info(f"Dodano nowe zadanie doszkalania: {task_name}")
-
-        except Exception as e:
-            self.logger.error(
-                f"Błąd podczas konfiguracji zadania doszkalania: {str(e)}"
-            )
-            QtWidgets.QMessageBox.critical(
-                self,
-                "Błąd",
-                "Wystąpił błąd podczas konfiguracji zadania doszkalania: " f"{str(e)}",
             )
 
     def _clear_task_queue(self):
