@@ -1,3 +1,6 @@
+Okno trenigu doszkanalia - zapisz, zamknij.
+Usun proofil
+
 profile
 wszystkie modele:
 resnet50
@@ -6,7 +9,7 @@ mobilenet
 
 automatyczne zapisywanie wizualizacji treningu
 
-- doszkalanie ; 
+- doszkalanie ;
 
 settings - ładowanie ustwien!!!!
 

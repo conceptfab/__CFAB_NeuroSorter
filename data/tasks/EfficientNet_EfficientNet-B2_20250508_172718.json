@@ -1,9 +1,9 @@
 {
-    "name": "EfficientNet_EfficientNet-B2_20250508_163355.json",
+    "name": "EfficientNet_EfficientNet-B2_20250508_172718.json",
     "type": "Trening",
-    "status": "Zakończony",
+    "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-08 16:33:55",
+    "created_at": "2025-05-08 17:27:18",
     "config": {
         "train_dir": "F:/_set_A/__dane_treningowe",
         "data_dir": "F:/_set_A/__dane_treningowe",
@@ -132,11 +132,5 @@
                 "frequency": 10
             }
         }
-    },
-    "training_time": 170.61,
-    "training_time_str": "0:02:50",
-    "train_accuracy": 0.7118758434547908,
-    "train_loss": 1.5250438426130561,
-    "validation_accuracy": 0.6917293233082706,
-    "validation_loss": 1.6677704784605238
+    }
 }

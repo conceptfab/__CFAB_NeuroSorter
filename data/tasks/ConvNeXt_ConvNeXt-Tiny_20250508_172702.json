@@ -1,9 +1,9 @@
 {
-    "name": "ConvNeXt_ConvNeXt-Tiny_20250508_163312.json",
+    "name": "ConvNeXt_ConvNeXt-Tiny_20250508_172702.json",
     "type": "Trening",
-    "status": "Zakończony",
+    "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-08 16:33:12",
+    "created_at": "2025-05-08 17:27:02",
     "config": {
         "train_dir": "F:/_set_A/__dane_treningowe",
         "data_dir": "F:/_set_A/__dane_treningowe",
@@ -132,11 +132,5 @@
                 "frequency": 10
             }
         }
-    },
-    "training_time": 150.51,
-    "training_time_str": "0:02:30",
-    "train_accuracy": 0.6987179487179487,
-    "train_loss": 1.5763938144970966,
-    "validation_accuracy": 0.6541353383458647,
-    "validation_loss": 1.8007837533950806
+    }
 }

@@ -1,12 +1,15 @@
 import datetime
 import glob
 import json
+import logging
 import os
+from pathlib import Path
 
 from PyQt6 import QtCore, QtWidgets
 
 from app.core.workers.batch_training_thread import BatchTrainingThread
 from app.core.workers.single_training_thread import SingleTrainingThread
+from app.gui.dialogs.fine_tuning_task_config_dialog import FineTuningTaskConfigDialog
 from app.gui.dialogs.training_task_config_dialog import TrainingTaskConfigDialog
 from app.gui.tab_interface import TabInterface
 from app.gui.widgets.training_visualization import TrainingVisualization
@@ -23,6 +26,8 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
     """Klasa zarządzająca zakładką treningu."""
 
     def __init__(self, parent=None, settings=None):
+        self.logger = logging.getLogger("TrainingManager")
+        self.logger.setLevel(logging.INFO)
         super().__init__(parent)
         self.parent = parent
         self.settings = settings
@@ -451,273 +456,23 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
     def _configure_finetuning_task(self):
         """Konfiguruje zadanie doszkalania istniejącego modelu."""
         try:
-            # Dialog konfiguracji
-            dialog = QtWidgets.QDialog(self)
-            dialog.setWindowTitle("Konfiguracja zadania doszkalania")
-            dialog.setMinimumWidth(500)
-            layout = QtWidgets.QVBoxLayout(dialog)
+            dialog = FineTuningTaskConfigDialog(self)
 
-            # Formularz konfiguracji
-            form_layout = QtWidgets.QFormLayout()
+            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                config = dialog.config
 
-            # Wybór modelu bazowego
-            base_model_layout = QtWidgets.QHBoxLayout()
-            base_model_edit = QtWidgets.QLineEdit()
-            base_model_button = QtWidgets.QPushButton("Przeglądaj...")
+                # Przygotuj nazwę zadania
+                base_model = config["base_model"]
+                train_dir = config["train_dir"]
+                model_name = os.path.splitext(os.path.basename(base_model))[0]
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                task_name = f"Doszkalanie_{model_name}_{timestamp}"
 
-            def select_base_model():
-                file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-                    self,
-                    "Wybierz model bazowy",
-                    os.path.join("data", "models"),
-                    "Modele (*.h5 *.pt);;Wszystkie pliki (*.*)",
-                )
-                if file_path:
-                    base_model_edit.setText(file_path)
-
-            base_model_button.clicked.connect(select_base_model)
-            base_model_layout.addWidget(base_model_edit)
-            base_model_layout.addWidget(base_model_button)
-            form_layout.addRow("Model bazowy:", base_model_layout)
-
-            # Wybór folderu treningowego
-            train_dir_layout = QtWidgets.QHBoxLayout()
-            train_dir_edit = QtWidgets.QLineEdit()
-            train_dir_button = QtWidgets.QPushButton("Przeglądaj...")
-            train_dir_button.clicked.connect(
-                lambda: self._select_directory(train_dir_edit)
-            )
-            train_dir_layout.addWidget(train_dir_edit)
-            train_dir_layout.addWidget(train_dir_button)
-            form_layout.addRow("Katalog danych treningowych:", train_dir_layout)
-
-            # Wybór folderu walidacyjnego (opcjonalnie)
-            val_dir_layout = QtWidgets.QHBoxLayout()
-            val_dir_edit = QtWidgets.QLineEdit()
-            val_dir_button = QtWidgets.QPushButton("Przeglądaj...")
-            val_dir_button.clicked.connect(lambda: self._select_directory(val_dir_edit))
-            val_dir_layout.addWidget(val_dir_edit)
-            val_dir_layout.addWidget(val_dir_button)
-            form_layout.addRow(
-                "Katalog danych walidacyjnych (opcjonalnie):", val_dir_layout
-            )
-
-            # Liczba epok
-            epochs_spin = QtWidgets.QSpinBox()
-            epochs_spin.setRange(1, 1000)
-            epochs_spin.setValue(50)
-            form_layout.addRow("Liczba epok:", epochs_spin)
-
-            # Typ modelu (architektura)
-            model_arch_combo = QtWidgets.QComboBox()
-            model_arch_combo.addItems(
-                ["efficientnet", "resnet50", "mobilenet", "vit", "convnext"]
-            )
-            model_arch_combo.setCurrentText(
-                "efficientnet"
-            )  # Ustawiam efficientnet jako domyślny
-            form_layout.addRow("Typ modelu:", model_arch_combo)
-
-            # Rozmiar wsadu
-            batch_size_spin = QtWidgets.QSpinBox()
-            batch_size_spin.setRange(1, 256)
-            batch_size_spin.setValue(32)
-            form_layout.addRow("Rozmiar wsadu:", batch_size_spin)
-
-            # Współczynnik uczenia
-            learning_rate_combo = QtWidgets.QComboBox()
-            learning_rate_combo.addItems(["0.1", "0.01", "0.001", "0.0001"])
-            learning_rate_combo.setCurrentText("0.0001")
-            form_layout.addRow("Współczynnik uczenia:", learning_rate_combo)
-
-            # Optymalizator
-            optimizer_combo = QtWidgets.QComboBox()
-            optimizer_combo.addItems(["Adam", "SGD", "RMSprop", "AdamW"])
-            form_layout.addRow("Optymalizator:", optimizer_combo)
-
-            # Liczba wątków do ładowania danych
-            num_workers_spin = QtWidgets.QSpinBox()
-            num_workers_spin.setRange(0, 16)
-            if (
-                hasattr(self.parent, "hardware_profile")
-                and self.parent.hardware_profile
-            ):
-                profile = self.parent.hardware_profile
-                recommended_workers = profile.get("recommended_workers", 2)
-                num_workers_spin.setValue(recommended_workers)
-                num_workers_spin.setToolTip(
-                    f"Zalecana wartość z profilu sprzętowego: {recommended_workers}"
-                )
-            else:
-                num_workers_spin.setValue(2)
-                num_workers_spin.setToolTip(
-                    "Brak profilu sprzętowego - używana wartość domyślna: 2"
-                )
-            form_layout.addRow("Liczba wątków do ładowania danych:", num_workers_spin)
-
-            # Współczynnik regularyzacji L2
-            weight_decay_combo = QtWidgets.QComboBox()
-            weight_decay_combo.addItems(["1e-3", "1e-4", "1e-5", "1e-6"])
-            weight_decay_combo.setCurrentText("1e-4")  # Domyślna wartość
-            form_layout.addRow("Współczynnik regularyzacji L2:", weight_decay_combo)
-
-            # Label Smoothing
-            label_smoothing_spin = QtWidgets.QDoubleSpinBox()
-            label_smoothing_spin.setRange(0.0, 0.5)
-            label_smoothing_spin.setValue(0.1)
-            label_smoothing_spin.setDecimals(2)
-            label_smoothing_spin.setSingleStep(0.01)
-            form_layout.addRow("Label Smoothing:", label_smoothing_spin)
-
-            # Drop Connect Rate
-            drop_connect_spin = QtWidgets.QDoubleSpinBox()
-            drop_connect_spin.setRange(0.0, 0.5)
-            drop_connect_spin.setValue(0.2)
-            drop_connect_spin.setDecimals(2)
-            drop_connect_spin.setSingleStep(0.01)
-            form_layout.addRow("Drop Connect Rate:", drop_connect_spin)
-
-            # Momentum
-            momentum_spin = QtWidgets.QDoubleSpinBox()
-            momentum_spin.setRange(0.0, 1.0)
-            momentum_spin.setValue(0.9)
-            momentum_spin.setDecimals(2)
-            momentum_spin.setSingleStep(0.01)
-            form_layout.addRow("Momentum:", momentum_spin)
-
-            # Epsilon
-            epsilon_spin = QtWidgets.QDoubleSpinBox()
-            epsilon_spin.setRange(0.0001, 0.01)
-            epsilon_spin.setValue(0.001)
-            epsilon_spin.setDecimals(4)
-            epsilon_spin.setSingleStep(0.0001)
-            form_layout.addRow("Epsilon:", epsilon_spin)
-
-            # Warmup Epochs
-            warmup_epochs_spin = QtWidgets.QSpinBox()
-            warmup_epochs_spin.setRange(0, 10)
-            warmup_epochs_spin.setValue(5)
-            form_layout.addRow("Liczba epok warmup:", warmup_epochs_spin)
-
-            # Wartość przycinania gradientów
-            gradient_clip_spin = QtWidgets.QDoubleSpinBox()
-            gradient_clip_spin.setRange(0.0, 1.0)
-            gradient_clip_spin.setValue(DEFAULT_TRAINING_PARAMS["gradient_clip_val"])
-            gradient_clip_spin.setDecimals(2)
-            gradient_clip_spin.setSingleStep(0.01)
-            form_layout.addRow("Wartość przycinania gradientów:", gradient_clip_spin)
-
-            # Liczba epok bez poprawy przed wczesnym zatrzymaniem
-            early_stopping_spin = QtWidgets.QSpinBox()
-            early_stopping_spin.setRange(1, 50)
-            early_stopping_spin.setValue(
-                DEFAULT_TRAINING_PARAMS["early_stopping_patience"]
-            )
-            form_layout.addRow(
-                "Liczba epok bez poprawy przed zatrzymaniem:", early_stopping_spin
-            )
-
-            # Opcje doszkalania
-            finetuning_group = QtWidgets.QGroupBox("Opcje doszkalania")
-            finetuning_layout = QtWidgets.QFormLayout(finetuning_group)
-
-            # Zamrożenie warstw
-            freeze_layers = QtWidgets.QCheckBox("Zamroź warstwy bazowe")
-            freeze_layers.setChecked(True)
-            finetuning_layout.addRow("", freeze_layers)
-
-            # Liczba warstw do trenowania
-            trainable_layers_spin = QtWidgets.QSpinBox()
-            trainable_layers_spin.setRange(1, 10)
-            trainable_layers_spin.setValue(3)
-            finetuning_layout.addRow(
-                "Liczba warstw do trenowania:", trainable_layers_spin
-            )
-
-            # Augmentacja danych
-            augmentation_group = QtWidgets.QGroupBox("Augmentacja danych")
-            augmentation_layout = QtWidgets.QFormLayout(augmentation_group)
-
-            # Włącz augmentację
-            use_augmentation = QtWidgets.QCheckBox("Używaj augmentacji danych")
-            augmentation_layout.addRow("", use_augmentation)
-
-            # Rotacja
-            rotation_spin = QtWidgets.QSpinBox()
-            rotation_spin.setRange(0, 360)
-            rotation_spin.setValue(15)
-            rotation_spin.setSuffix("°")
-            augmentation_layout.addRow("Maksymalny kąt rotacji:", rotation_spin)
-
-            # Jasność
-            brightness_spin = QtWidgets.QSpinBox()
-            brightness_spin.setRange(0, 100)
-            brightness_spin.setValue(20)
-            brightness_spin.setSuffix("%")
-            augmentation_layout.addRow("Zmiana jasności:", brightness_spin)
-
-            # Przyciski
-            buttons = QtWidgets.QDialogButtonBox(
-                QtWidgets.QDialogButtonBox.StandardButton.Ok
-                | QtWidgets.QDialogButtonBox.StandardButton.Cancel
-            )
-            buttons.accepted.connect(dialog.accept)
-            buttons.rejected.connect(dialog.reject)
-
-            # Dodaj wszystkie elementy do głównego layoutu
-            layout.addLayout(form_layout)
-            layout.addWidget(finetuning_group)
-            layout.addWidget(augmentation_group)
-            layout.addWidget(buttons)
-
-            # Wyłącz domyślne połączenie przycisku OK i podłącz własny handler
-            buttons.accepted.disconnect()
-
-            # Funkcja obsługująca zaakceptowanie dialogu
-            def handle_finetuning_accept():
-                try:
-                    # Pobierz podstawowe dane
-                    base_model = base_model_edit.text()
-                    train_dir = train_dir_edit.text()
-                    val_dir = val_dir_edit.text()
-                    epochs = epochs_spin.value()
-                    model_arch = model_arch_combo.currentText()
-
-                    # Walidacja danych
-                    if not base_model or not os.path.exists(base_model):
-                        QtWidgets.QMessageBox.warning(
-                            self, "Błąd", "Wybierz poprawny model bazowy."
-                        )
-                        return
-
-                    is_valid, error_msg = validate_training_directory(train_dir)
-                    if not is_valid:
-                        QtWidgets.QMessageBox.warning(
-                            self,
-                            "Błąd",
-                            f"Nieprawidłowy katalog treningowy: {error_msg}",
-                        )
-                        return
-
-                    if val_dir:
-                        is_valid, error_msg = validate_validation_directory(val_dir)
-                        if not is_valid:
-                            QtWidgets.QMessageBox.warning(
-                                self,
-                                "Błąd",
-                                f"Nieprawidłowy katalog walidacyjny: {error_msg}",
-                            )
-                            return
-
-                    # Generuj nazwę pliku zadania
-                    base_model_name = os.path.splitext(os.path.basename(base_model))[0]
-                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-                    task_name = (
-                        f"{base_model_name}_{model_arch}_{epochs}epok_{timestamp}.json"
-                    )
-
-                    # Przygotuj konfigurację zadania
-                    task_config = {
+                # Dodaj zadanie do listy
+                task_item = QtWidgets.QListWidgetItem(task_name)
+                task_item.setData(
+                    QtCore.Qt.UserRole,
+                    {
                         "name": task_name,
                         "type": "Doszkalanie",
                         "status": "Nowy",
@@ -725,104 +480,20 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                         "created_at": datetime.datetime.now().strftime(
                             "%Y-%m-%d %H:%M:%S"
                         ),
-                        "config": {
-                            "base_model": base_model,
-                            "train_dir": train_dir,
-                            "data_dir": train_dir,
-                            "val_dir": val_dir,
-                            "epochs": epochs,
-                            "model_arch": model_arch,
-                            "batch_size": batch_size_spin.value(),
-                            "learning_rate": float(learning_rate_combo.currentText()),
-                            "optimizer": optimizer_combo.currentText(),
-                            "num_workers": num_workers_spin.value(),
-                            "weight_decay": float(weight_decay_combo.currentText()),
-                            "gradient_clip": gradient_clip_spin.value(),
-                            "early_stopping": early_stopping_spin.value(),
-                            "finetuning": {
-                                "freeze_base_layers": freeze_layers.isChecked(),
-                                "trainable_layers": trainable_layers_spin.value(),
-                            },
-                            "augmentation": {
-                                "enabled": use_augmentation.isChecked(),
-                                "rotation": rotation_spin.value(),
-                                "brightness": brightness_spin.value(),
-                            },
-                            "monitor_metrics": [
-                                "accuracy" if metric_accuracy.isChecked() else None,
-                                "precision" if metric_precision.isChecked() else None,
-                                "recall" if metric_recall.isChecked() else None,
-                            ],
-                        },
-                    }
-
-                    # Walidacja konfiguracji
-                    is_valid, error_msg = validate_task_config(task_config)
-                    if not is_valid:
-                        QtWidgets.QMessageBox.warning(
-                            self,
-                            "Błąd walidacji",
-                            f"Konfiguracja zadania nieprawidłowa: {error_msg}",
-                        )
-                        return
-
-                    # Zapisz konfigurację
-                    tasks_dir = os.path.join("data", "tasks")
-                    os.makedirs(tasks_dir, exist_ok=True)
-                    task_file = os.path.join(tasks_dir, task_name)
-
-                    with open(task_file, "w", encoding="utf-8") as f:
-                        json.dump(task_config, f, indent=4, ensure_ascii=False)
-
-                    # Sprawdź czy plik został zapisany poprawnie
-                    if not os.path.exists(task_file) or os.path.getsize(task_file) == 0:
-                        raise IOError("Plik zadania nie został poprawnie zapisany")
-
-                    # Walidacja zapisanego pliku
-                    is_valid, error_msg = validate_task_file(task_file)
-                    if not is_valid:
-                        self.parent.logger.error(
-                            f"Błąd walidacji pliku zadania: {error_msg}"
-                        )
-                        os.remove(task_file)  # Usuń nieprawidłowy plik
-                        QtWidgets.QMessageBox.critical(
-                            self,
-                            "Błąd walidacji",
-                            f"Plik zadania nie przeszedł walidacji: {error_msg}",
-                        )
-                        return
-
-                    # Komunikat o sukcesie
-                    QtWidgets.QMessageBox.information(
-                        self,
-                        "Zadanie utworzone",
-                        f"Zadanie doszkalania '{task_name}' zostało dodane do kolejki.",
-                    )
-
-                    # Odśwież listę zadań
-                    self.refresh()
-
-                    # Zamknij dialog
-                    dialog.accept()
-
-                except Exception as e:
-                    QtWidgets.QMessageBox.critical(
-                        self,
-                        "Błąd",
-                        f"Wystąpił błąd podczas tworzenia zadania: {str(e)}",
-                    )
-
-            # Podłącz handler
-            buttons.accepted.connect(handle_finetuning_accept)
-
-            # Wyświetl dialog
-            dialog.exec()
+                        "config": config,
+                    },
+                )
+                self.task_list.addItem(task_item)
+                self.logger.info(f"Dodano nowe zadanie doszkalania: {task_name}")
 
         except Exception as e:
+            self.logger.error(
+                f"Błąd podczas konfiguracji zadania doszkalania: {str(e)}"
+            )
             QtWidgets.QMessageBox.critical(
                 self,
                 "Błąd",
-                f"Nie udało się otworzyć okna konfiguracji zadania doszkalania: {str(e)}",
+                "Wystąpił błąd podczas konfiguracji zadania doszkalania: " f"{str(e)}",
             )
 
     def _start_task_queue(self):

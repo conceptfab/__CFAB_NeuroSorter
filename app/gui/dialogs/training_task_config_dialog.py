@@ -254,18 +254,25 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             self.current_profile = profile_data
             self.profile_info.setText(profile_data.get("info", ""))
-            self.profile_description.setText(profile_data.get("description", ""))
-            self.profile_data_required.setText(profile_data.get("data_required", ""))
+            self.profile_description.setText(
+                profile_data.get("description", "")
+            )
+            self.profile_data_required.setText(
+                profile_data.get("data_required", "")
+            )
             self.profile_hardware_required.setText(
                 profile_data.get("hardware_required", "")
             )
 
         except Exception as e:
             self.logger.error(
-                f"Błąd podczas ładowania profilu: {str(e)}", exc_info=True
+                f"Błąd podczas ładowania profilu: {str(e)}", 
+                exc_info=True
             )
             QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie można załadować profilu: {str(e)}"
+                self, 
+                "Błąd", 
+                f"Nie można załadować profilu: {str(e)}"
             )
 
     def _edit_profile(self):
