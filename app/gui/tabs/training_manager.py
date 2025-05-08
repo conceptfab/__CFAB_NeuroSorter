@@ -9,7 +9,6 @@ from pathlib import Path
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from app.core.workers.batch_training_thread import BatchTrainingThread
 from app.core.workers.single_training_thread import SingleTrainingThread
 from app.gui.dialogs.fine_tuning_task_config_dialog import FineTuningTaskConfigDialog
 from app.gui.dialogs.training_task_config_dialog import TrainingTaskConfigDialog
@@ -425,26 +424,23 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         try:
             # Pobierz typ zadania
             task_type_index = self.task_type_combo.currentIndex()
-            task_type = "trening" if task_type_index == 0 else "Doszkalanie"
+            task_type = "trening" if task_type_index == 0 else "doszkalanie"
 
-            if task_type == "trening":
-                # Użyj nowego dialogu
-                dialog = TrainingTaskConfigDialog(
-                    parent=self,
-                    settings=self.settings,
-                    hardware_profile=getattr(self.parent, "hardware_profile", None),
-                )
-                result = dialog.exec()
-                if result == QtWidgets.QDialog.DialogCode.Accepted:
-                    task_config = dialog.get_task_config()
-                    if task_config:
-                        task_file = os.path.join("data", "tasks", task_config["name"])
-                        os.makedirs(os.path.dirname(task_file), exist_ok=True)
-                        with open(task_file, "w", encoding="utf-8") as f:
-                            json.dump(task_config, f, indent=4)
-                        self.refresh()
-            else:
-                self._configure_finetuning_task()
+            # Użyj dialogu konfiguracji zadania
+            dialog = TrainingTaskConfigDialog(
+                parent=self,
+                settings=self.settings,
+                hardware_profile=getattr(self.parent, "hardware_profile", None),
+            )
+            result = dialog.exec()
+            if result == QtWidgets.QDialog.DialogCode.Accepted:
+                task_config = dialog.get_task_config()
+                if task_config:
+                    task_file = os.path.join("data", "tasks", task_config["name"])
+                    os.makedirs(os.path.dirname(task_file), exist_ok=True)
+                    with open(task_file, "w", encoding="utf-8") as f:
+                        json.dump(task_config, f, indent=4)
+                    self.refresh()
 
         except Exception as e:
             QtWidgets.QMessageBox.critical(
@@ -503,7 +499,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             )
 
     def _start_task_queue(self):
-        """Uruchamia wszystkie zadania w kolejce."""
+        """Otwiera okno zarządzania kolejką zadań."""
         # Sprawdź, czy wątek treningowy już działa
         if (
             hasattr(self, "training_thread")
@@ -513,59 +509,65 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             QtWidgets.QMessageBox.warning(
                 self,
                 "Trening w toku",
-                "Proces treningu jest aktywny. Poczekaj na jego zakończenie lub zatrzymaj go.",
+                "Proces treningu jest aktywny. "
+                "Poczekaj na jego zakończenie lub zatrzymaj go.",
             )
             return
 
-        # Katalog z zadaniami
-        tasks_dir = os.path.join("data", "tasks")
-        os.makedirs(tasks_dir, exist_ok=True)
+        # Otwórz okno zarządzania kolejką
+        from app.gui.dialogs.queue_manager import QueueManager
 
-        # Pobierz listę plików zadań
-        task_files = sorted(glob.glob(os.path.join(tasks_dir, "*.json")))
+        queue_dialog = QueueManager(parent=self, settings=self.settings)
 
-        if not task_files:
-            QtWidgets.QMessageBox.information(
-                self, "Kolejka pusta", "Brak zadań w kolejce do uruchomienia."
-            )
-            return
+        if queue_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            # Pobierz listę zadań do wykonania
+            task_files = queue_dialog.start_queue()
 
-        # Wyczyść wizualizację przed rozpoczęciem kolejki
-        if hasattr(self, "training_visualization") and self.training_visualization:
-            self.training_visualization.clear_data()
-            self.training_visualization.reset_plot()
+            if task_files:
+                # Wyczyść wizualizację przed rozpoczęciem kolejki
+                if (
+                    hasattr(self, "training_visualization")
+                    and self.training_visualization
+                ):
+                    self.training_visualization.clear_data()
+                    self.training_visualization.reset_plot()
 
-        self.parent.logger.info(
-            f"Znaleziono {len(task_files)} zadań w kolejce. Uruchamianie..."
-        )
+                self.parent.logger.info(
+                    f"Znaleziono {len(task_files)} zadań w kolejce. " "Uruchamianie..."
+                )
 
-        try:
-            # Utwórz nowy wątek z listą zadań
-            self.training_thread = BatchTrainingThread(task_files)
+                try:
+                    # Utwórz nowy wątek z listą zadań
+                    self.training_thread = SingleTrainingThread(task_files[0])
 
-            # Podłącz sygnały
-            self.training_thread.task_started.connect(self._training_task_started)
-            self.training_thread.task_progress.connect(self._training_task_progress)
-            self.training_thread.task_completed.connect(self._training_task_completed)
-            self.training_thread.all_tasks_completed.connect(
-                self._all_training_tasks_completed
-            )
-            self.training_thread.error.connect(self._training_task_error)
+                    # Podłącz sygnały
+                    self.training_thread.task_started.connect(
+                        self._training_task_started
+                    )
+                    self.training_thread.task_progress.connect(
+                        self._training_task_progress
+                    )
+                    self.training_thread.task_completed.connect(
+                        self._training_task_completed
+                    )
+                    self.training_thread.error.connect(self._training_task_error)
 
-            # Uruchom wątek
-            self.training_thread.start()
+                    # Uruchom wątek
+                    self.training_thread.start()
 
-            # Zaktualizuj UI
-            self.parent.current_task_info.setText(
-                "Rozpoczynanie przetwarzania kolejki..."
-            )
-            self.parent.logger.info("Uruchomiono przetwarzanie kolejki zadań.")
+                    # Zaktualizuj UI
+                    self.parent.current_task_info.setText(
+                        "Rozpoczynanie przetwarzania kolejki..."
+                    )
+                    self.parent.logger.info("Uruchomiono przetwarzanie kolejki zadań.")
 
-        except Exception as e:
-            QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie udało się uruchomić kolejki zadań: {str(e)}"
-            )
-            self.parent.logger.error(f"Błąd podczas uruchamiania kolejki: {str(e)}")
+                except Exception as e:
+                    QtWidgets.QMessageBox.critical(
+                        self, "Błąd", f"Nie udało się uruchomić kolejki zadań: {str(e)}"
+                    )
+                    self.parent.logger.error(
+                        f"Błąd podczas uruchamiania kolejki: {str(e)}"
+                    )
 
     def _clear_task_queue(self):
         """Czyści kolejkę zadań treningowych."""
@@ -1147,76 +1149,42 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             )
 
     def _run_batch_training(self):
-        """Uruchamia wsadowy trening wszystkich zadań w kolejce."""
+        """Uruchamia wsadowe zadania treningowe."""
         try:
-            # Sprawdź, czy wątek treningowy już działa
-            if (
-                hasattr(self, "training_thread")
-                and self.training_thread is not None
-                and self.training_thread.isRunning()
-            ):
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    "Trening w toku",
-                    "Inny proces treningu jest już aktywny. "
-                    "Poczekaj na jego zakończenie lub zatrzymaj go.",
-                )
-                return
-
-            # Wyczyść dane wizualizacji przed rozpoczęciem wsadowego treningu
-            if hasattr(self, "training_visualization") and self.training_visualization:
-                self.training_visualization.clear_data()
-
             # Pobierz listę zadań do wykonania
-            tasks_dir = os.path.join("data", "tasks")
-            task_files = sorted(glob.glob(os.path.join(tasks_dir, "*.json")))
+            task_files = []
+            for row in range(self.tasks_table.rowCount()):
+                task_name = self.tasks_table.item(row, 0).text()
+                task_type = self.tasks_table.item(row, 1).text()
+                status = self.tasks_table.item(row, 2).text()
+
+                if status == "Nowy":
+                    task_file = os.path.join("data", "tasks", f"{task_name}.json")
+                    if os.path.exists(task_file):
+                        task_files.append(task_file)
 
             if not task_files:
-                QtWidgets.QMessageBox.information(
-                    self, "Kolejka pusta", "Brak zadań w kolejce do uruchomienia."
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Brak zadań",
+                    "Nie znaleziono żadnych nowych zadań do wykonania.",
                 )
                 return
 
-            self.parent.logger.info(
-                f"Znaleziono {len(task_files)} zadań w kolejce. Uruchamianie..."
-            )
-
-            try:
-                # Utwórz nowy wątek z listą zadań
-                self.training_thread = BatchTrainingThread(task_files)
-
-                # Podłącz sygnały
-                self.training_thread.task_started.connect(self._training_task_started)
-                self.training_thread.task_progress.connect(self._training_task_progress)
-                self.training_thread.task_completed.connect(
-                    self._training_task_completed
-                )
-                self.training_thread.all_tasks_completed.connect(
-                    self._all_training_tasks_completed
-                )
-                self.training_thread.error.connect(self._training_task_error)
-
-                # Uruchom wątek
-                self.training_thread.start()
-
-                # Zaktualizuj UI
-                self.parent.current_task_info.setText(
-                    "Rozpoczynanie przetwarzania kolejki..."
-                )
-                self.parent.logger.info("Uruchomiono przetwarzanie kolejki zadań.")
-
-            except Exception as e:
-                QtWidgets.QMessageBox.critical(
-                    self, "Błąd", f"Nie udało się uruchomić kolejki zadań: {str(e)}"
-                )
-                self.parent.logger.error(f"Błąd podczas uruchamiania kolejki: {str(e)}")
+            # Uruchom pierwsze zadanie
+            self.training_thread = SingleTrainingThread(task_files[0])
+            self.training_thread.task_started.connect(self._training_task_started)
+            self.training_thread.task_progress.connect(self._training_task_progress)
+            self.training_thread.task_completed.connect(self._training_task_completed)
+            self.training_thread.error.connect(self._training_task_error)
+            self.training_thread.start()
 
         except Exception as e:
+            self.logger.error(f"Błąd podczas uruchamiania wsadowego treningu: {str(e)}")
             QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie udało się uruchomić wsadowego treningu: {str(e)}"
-            )
-            self.parent.logger.error(
-                f"Błąd podczas uruchamiania wsadowego treningu: {str(e)}"
+                self,
+                "Błąd",
+                f"Wystąpił błąd podczas uruchamiania wsadowego treningu:\n{str(e)}",
             )
 
     def _select_directory(self, line_edit):

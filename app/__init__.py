@@ -1,4 +1,4 @@
-from .core import BatchClassificationThread, BatchTrainingThread, ClassificationThread
+from .core import BatchClassificationThread, ClassificationThread
 from .database.db_manager import DatabaseManager
 from .gui.main_window import MainWindow
 from .metadata.metadata_manager import MetadataManager
@@ -11,5 +11,4 @@ __all__ = [
     "ImageSorter",
     "ClassificationThread",
     "BatchClassificationThread",
-    "BatchTrainingThread",
 ]
