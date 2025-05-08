@@ -1,0 +1,136 @@
+{
+    "name": "EfficientNet_EfficientNet-B0_20250508_182906.json",
+    "type": "Trening",
+    "status": "Nowy",
+    "priority": 0,
+    "created_at": "2025-05-08 18:29:06",
+    "config": {
+        "train_dir": "C:/_cloud/__CFAB_NeuroSorter/config",
+        "data_dir": "C:/_cloud/__CFAB_NeuroSorter/config",
+        "val_dir": "",
+        "model": {
+            "architecture": "EfficientNet",
+            "variant": "EfficientNet-B0",
+            "input_size": 224,
+            "num_classes": 2
+        },
+        "training": {
+            "epochs": 50,
+            "batch_size": 32,
+            "learning_rate": 0.001,
+            "optimizer": "Adam",
+            "scheduler": "None",
+            "num_workers": 16,
+            "warmup_epochs": 5,
+            "mixed_precision": true,
+            "freeze_base_model": false,
+            "unfreeze_layers": "all",
+            "unfreeze_strategy": "unfreeze_all"
+        },
+        "regularization": {
+            "weight_decay": 0.0001,
+            "gradient_clip": 1.0,
+            "label_smoothing": 0.1,
+            "drop_connect_rate": 0.2,
+            "dropout_rate": 0.2,
+            "momentum": 0.9,
+            "epsilon": 1e-06,
+            "swa": {
+                "use": false,
+                "start_epoch": 10
+            }
+        },
+        "augmentation": {
+            "basic": {
+                "use": false,
+                "rotation": 30,
+                "brightness": 0.2,
+                "shift": 0.1,
+                "zoom": 0.1,
+                "horizontal_flip": false,
+                "vertical_flip": false
+            },
+            "mixup": {
+                "use": false,
+                "alpha": 0.2
+            },
+            "cutmix": {
+                "use": false,
+                "alpha": 1.0
+            },
+            "autoaugment": {
+                "use": false
+            },
+            "randaugment": {
+                "use": false,
+                "n": 2,
+                "m": 9
+            }
+        },
+        "preprocessing": {
+            "normalization": "RGB",
+            "scaling": {
+                "method": "Bilinear",
+                "maintain_aspect_ratio": true,
+                "pad_to_square": false,
+                "pad_mode": "constant",
+                "pad_value": 0
+            }
+        },
+        "monitoring": {
+            "metrics": {
+                "accuracy": false,
+                "precision": false,
+                "recall": false,
+                "f1": false,
+                "topk": false,
+                "confusion_matrix": false
+            },
+            "early_stopping": {
+                "patience": 10,
+                "min_delta": 0.0,
+                "monitor": "val_loss"
+            },
+            "checkpointing": {
+                "best_only": false,
+                "save_frequency": 1,
+                "metric": "val_loss"
+            },
+            "tensorboard": {
+                "use": false,
+                "log_dir": ""
+            },
+            "save_dir": "",
+            "save_logs": false
+        },
+        "advanced": {
+            "scheduler": {
+                "patience": 5,
+                "factor": 0.1,
+                "min_lr": 0.0,
+                "cooldown": 0
+            },
+            "weights": {
+                "init_method": "kaiming_normal",
+                "freeze_cnn": false
+            },
+            "cross_validation": {
+                "use": false,
+                "folds": 5
+            },
+            "distributed": {
+                "use": false,
+                "backend": "nccl",
+                "strategy": "ddp"
+            },
+            "gradients": {
+                "clip": 1.0,
+                "accumulation": 1
+            },
+            "online_validation": {
+                "use": false,
+                "frequency": 10
+            }
+        }
+    }
+}

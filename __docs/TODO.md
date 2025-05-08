@@ -1,6 +1,8 @@
 Okno trenigu doszkanalia - zapisz, zamknij.
 Usun proofil
 
+walidacja danych treningowych i 
+
 profile
 wszystkie modele:
 resnet50

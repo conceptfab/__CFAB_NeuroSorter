@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from PyQt6 import QtWidgets
+from PyQt6.QtCore import Qt
 
 from app.utils.config import DEFAULT_TRAINING_PARAMS
 from app.utils.file_utils import (
@@ -32,6 +33,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         self.profiles_dir = Path("data/profiles")
         self.profiles_dir.mkdir(exist_ok=True)
         self.current_profile = None
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowCloseButtonHint)
         self._init_ui()
 
     def _setup_logging(self):
@@ -98,19 +100,20 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             layout.addWidget(self.tabs)
 
-            # Przyciski OK i Anuluj
-            btn_ok = QtWidgets.QDialogButtonBox.StandardButton.Ok
-            btn_cancel = QtWidgets.QDialogButtonBox.StandardButton.Cancel
-            buttons = QtWidgets.QDialogButtonBox(btn_ok | btn_cancel)
-            buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setText(
-                "Dodaj zadanie"
-            )
-            buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Cancel).setText(
-                "Zamknij"
-            )
-            buttons.accepted.connect(self._on_accept)
-            buttons.rejected.connect(self.reject)
-            layout.addWidget(buttons)
+            # Przyciski
+            buttons_layout = QtWidgets.QHBoxLayout()
+
+            # Przycisk "Dodaj zadanie"
+            add_task_btn = QtWidgets.QPushButton("Dodaj zadanie")
+            add_task_btn.clicked.connect(self._on_accept)
+            buttons_layout.addWidget(add_task_btn)
+
+            # Przycisk "Zamknij"
+            close_btn = QtWidgets.QPushButton("Zamknij")
+            close_btn.clicked.connect(self.accept)
+            buttons_layout.addWidget(close_btn)
+
+            layout.addLayout(buttons_layout)
 
             self.logger.debug("Zakończono inicjalizację UI")
 
@@ -1474,7 +1477,9 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             }
 
             self.logger.info(f"Utworzono konfigurację zadania: {task_name}")
-            self.accept()
+            QtWidgets.QMessageBox.information(
+                self, "Sukces", "Zadanie zostało pomyślnie dodane."
+            )
 
         except Exception as e:
             self.logger.error("Błąd podczas zapisywania konfiguracji", exc_info=True)
@@ -1485,5 +1490,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             )
 
     def get_task_config(self):
-        """Zwraca konfigurację zadania."""
-        return self.task_config
+        """Zwraca konfigurację zadania lub None, jeśli nie dodano zadania."""
+        return getattr(self, "task_config", None)
+
+    def closeEvent(self, event):
+        """Obsługa zamknięcia okna."""
+        self.logger.info("Zamykanie okna dialogowego")
+        self.accept()
+        event.accept()

@@ -336,7 +336,6 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
 
         # Przycisk dodania zadania
         self.add_task_btn = QtWidgets.QPushButton("Dodaj zadanie do kolejki")
-        self.add_task_btn.clicked.connect(self._add_training_task)
         self.add_task_btn.setFixedHeight(24)
         add_task_layout.addWidget(self.add_task_btn)
 
@@ -421,7 +420,6 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         pass
 
     def _add_training_task(self):
-        """Dodaje nowe zadanie treningowe do kolejki."""
         try:
             # Pobierz typ zadania
             task_type_index = self.task_type_combo.currentIndex()
@@ -441,8 +439,6 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                         task_file = os.path.join("data", "tasks", task_config["name"])
                         os.makedirs(os.path.dirname(task_file), exist_ok=True)
                         with open(task_file, "w", encoding="utf-8") as f:
-                            import json
-
                             json.dump(task_config, f, indent=4)
                         self.refresh()
             else:
