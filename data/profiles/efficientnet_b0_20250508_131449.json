@@ -1,0 +1,59 @@
+{
+    "info": {
+        "name": "efficientnet_b0",
+        "description": "asd",
+        "created_at": "2025-05-08 13:14:49",
+        "version": "1.0"
+    },
+    "data_required": {
+        "min_samples": 0,
+        "min_classes": 0,
+        "input_size": 224,
+        "num_classes": 10
+    },
+    "hardware_required": {
+        "min_ram_gb": 0,
+        "min_gpu_memory_gb": 0,
+        "recommended_gpu": "",
+        "recommended_cpu": ""
+    },
+    "model": {
+        "architecture": "efficientnet",
+        "variant": "b0",
+        "input_size": 224,
+        "num_classes": 10
+    },
+    "training": {
+        "epochs": 50,
+        "batch_size": 32,
+        "learning_rate": 1e-05,
+        "optimizer": "RMSprop",
+        "scheduler": "cosine",
+        "num_workers": 16,
+        "warmup_epochs": 5,
+        "use_mixed_precision": true
+    },
+    "regularization": {
+        "weight_decay": 0.0,
+        "gradient_clip": 0.1,
+        "label_smoothing": 0.1,
+        "drop_connect_rate": 0.2,
+        "dropout_rate": 0.2,
+        "momentum": 0.9,
+        "epsilon": 1e-08,
+        "use_swa": false,
+        "swa_start_epoch": 10
+    },
+    "augmentation": {
+        "use_basic": true,
+        "use_advanced": false,
+        "rotation": 15,
+        "brightness": 20,
+        "shift": 0.1,
+        "zoom": 0.1,
+        "use_mixup": false,
+        "mixup_alpha": 0.2,
+        "use_cutmix": false,
+        "cutmix_alpha": 0.2
+    }
+}

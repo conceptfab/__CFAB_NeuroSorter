@@ -239,27 +239,52 @@ class ModelManager(QWidget, TabInterface):
                             config = json.load(f)
                             metadata = config.get("metadata", {})
                             if metadata:
-                                accuracy = f"{metadata.get('accuracy', 0):.2%}"
-                                training_time = (
-                                    f"{metadata.get('training_time', 0):.1f}s"
-                                )
-
+                                acc_val = metadata.get("accuracy", 0)
+                                if isinstance(acc_val, dict):
+                                    accuracy = "Nieznana"
+                                else:
+                                    try:
+                                        accuracy = f"{float(acc_val):.2%}"
+                                    except Exception:
+                                        accuracy = str(acc_val)
+                                train_time_val = metadata.get("training_time", 0)
+                                if isinstance(train_time_val, dict):
+                                    training_time = "Nieznany"
+                                else:
+                                    try:
+                                        training_time = f"{float(train_time_val):.1f}s"
+                                    except Exception:
+                                        training_time = str(train_time_val)
                                 training_params = metadata.get(
                                     "training_params", {}
                                 ).get("config", {})
                                 if training_params:
-                                    epochs = str(
-                                        training_params.get("epochs", "Nieznana")
+                                    ep_val = training_params.get("epochs", "Nieznana")
+                                    if isinstance(ep_val, dict):
+                                        epochs = "Nieznana"
+                                    else:
+                                        epochs = str(ep_val)
+                                    bs_val = training_params.get(
+                                        "batch_size", "Nieznany"
                                     )
-                                    batch_size = str(
-                                        training_params.get("batch_size", "Nieznany")
+                                    if isinstance(bs_val, dict):
+                                        batch_size = "Nieznany"
+                                    else:
+                                        batch_size = str(bs_val)
+                                    lr_val = training_params.get(
+                                        "learning_rate", "Nieznany"
                                     )
-                                    learning_rate = str(
-                                        training_params.get("learning_rate", "Nieznany")
-                                    )
-                                    optimizer = training_params.get(
+                                    if isinstance(lr_val, dict):
+                                        learning_rate = "Nieznany"
+                                    else:
+                                        learning_rate = str(lr_val)
+                                    opt_val = training_params.get(
                                         "optimizer", "Nieznany"
                                     )
+                                    if isinstance(opt_val, dict):
+                                        optimizer = "Nieznany"
+                                    else:
+                                        optimizer = str(opt_val)
                     except Exception:
                         pass
                 self.models_table.setItem(row, 3, QTableWidgetItem(accuracy))
