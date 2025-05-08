@@ -1,5 +1,4 @@
-Okno trenigu doszkanalia - zapisz, zamknij.
-Usun proofil
+automatyczne zapisywanie wizualizacji treningu
 
 walidacja danych treningowych i 
 
@@ -9,7 +8,7 @@ resnet50
 vit
 mobilenet
 
-automatyczne zapisywanie wizualizacji treningu
+
 
 - doszkalanie ;
 

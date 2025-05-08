@@ -1,4 +1,5 @@
 {
+  "typ": "trening",
   "info": "Profil dla ConvNeXt-Tiny",
   "description": "Profil zoptymalizowany do klasyfikacji 38 kategorii z małym zbiorem danych, wykorzystujący nowoczesną architekturę ConvNeXt",
   "data_required": "38 klas, 95 obrazów treningowych i 5 walidacyjnych na klasę",

@@ -1,4 +1,5 @@
 {
+  "typ": "trening",
   "info": "Profil dla EfficientNet-B2",
   "description": "Profil zoptymalizowany do klasyfikacji 38 kategorii z małym zbiorem danych, zbalansowany pod kątem wydajności i dokładności",
   "data_required": "38 klas, 95 obrazów treningowych i 5 walidacyjnych na klasę",
