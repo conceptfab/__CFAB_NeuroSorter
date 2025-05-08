@@ -394,9 +394,23 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
     def _refresh_profile_list(self):
         """Odświeża listę dostępnych profili."""
-        self.profile_list.clear()
-        for profile_file in self.profiles_dir.glob("*.json"):
-            self.profile_list.addItem(profile_file.stem)
+        try:
+            self.profile_list.clear()
+            for profile_file in self.profiles_dir.glob("*.json"):
+                try:
+                    with open(profile_file, "r", encoding="utf-8") as f:
+                        profile_data = json.load(f)
+                        if profile_data.get("typ") == "tuning":
+                            self.profile_list.addItem(profile_file.stem)
+                except Exception as e:
+                    self.logger.error(
+                        f"Błąd podczas wczytywania profilu {profile_file}: {str(e)}",
+                        exc_info=True,
+                    )
+        except Exception as e:
+            self.logger.error(
+                f"Błąd podczas odświeżania listy profili: {str(e)}", exc_info=True
+            )
 
     def _on_profile_selected(self, current, previous):
         """Obsługa wyboru profilu."""
@@ -618,6 +632,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
             if ok and name:
                 profile_data = {
+                    "typ": "tuning",
                     "info": f"Profil dla {self.arch_combo.currentText()} {self.variant_combo.currentText()}",
                     "description": "Profil utworzony przez użytkownika",
                     "data_required": "Standardowe dane treningowe",
@@ -1627,6 +1642,11 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # Wczytaj oryginalny profil
             with open(profile_path, "r", encoding="utf-8") as f:
                 profile_data = json.load(f)
+
+            # Upewnij się, że typ jest ustawiony na "tuning"
+            profile_data["typ"] = "tuning"
+            profile_data["info"] = f"Klon profilu {item.text()}"
+            profile_data["description"] = f"Klon profilu {item.text()}"
 
             # Zapisz sklonowany profil
             with open(new_profile_path, "w", encoding="utf-8") as f:

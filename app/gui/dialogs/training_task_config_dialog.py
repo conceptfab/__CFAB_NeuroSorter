@@ -253,7 +253,16 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         """Odświeża listę dostępnych profili."""
         self.profile_list.clear()
         for profile_file in self.profiles_dir.glob("*.json"):
-            self.profile_list.addItem(profile_file.stem)
+            try:
+                with open(profile_file, "r", encoding="utf-8") as f:
+                    profile_data = json.load(f)
+                    if profile_data.get("typ") == "trening":
+                        self.profile_list.addItem(profile_file.stem)
+            except Exception as e:
+                self.logger.error(
+                    f"Błąd podczas wczytywania profilu {profile_file}: {str(e)}",
+                    exc_info=True,
+                )
 
     def _on_profile_selected(self, current, previous):
         """Obsługa wyboru profilu z listy."""
@@ -478,6 +487,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 new_profile = self.current_profile.copy()
                 new_profile["info"] = f"Klon profilu {current_name}"
                 new_profile["description"] = f"Klon profilu {current_name}"
+                new_profile["typ"] = "trening"  # Upewniamy się, że typ jest ustawiony
 
                 new_path = self.profiles_dir / f"{new_name}.json"
                 with open(new_path, "w", encoding="utf-8") as f:
@@ -510,6 +520,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             if ok and name:
                 profile_data = {
+                    "typ": "trening",
                     "info": (
                         f"Profil dla {self.arch_combo.currentText()} "
                         f"{self.variant_combo.currentText()}"

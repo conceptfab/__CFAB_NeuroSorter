@@ -456,10 +456,18 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
 
             if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
                 config = dialog.config
+                if config is None:
+                    raise ValueError("Nie udało się utworzyć konfiguracji zadania")
 
                 # Przygotuj nazwę zadania
-                base_model = config["base_model"]
-                train_dir = config["train_dir"]
+                base_model = config.get("base_model")
+                if not base_model:
+                    raise ValueError("Nie wybrano modelu bazowego")
+
+                train_dir = config.get("train_dir")
+                if not train_dir:
+                    raise ValueError("Nie wybrano katalogu treningowego")
+
                 model_name = os.path.splitext(os.path.basename(base_model))[0]
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 task_name = f"Doszkalanie_{model_name}_{timestamp}"
