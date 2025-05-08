@@ -11,6 +11,7 @@ from PyQt6.QtCore import Qt
 
 from app.core.workers.single_training_thread import SingleTrainingThread
 from app.gui.dialogs.fine_tuning_task_config_dialog import FineTuningTaskConfigDialog
+from app.gui.dialogs.queue_manager import QueueManager
 from app.gui.dialogs.training_task_config_dialog import TrainingTaskConfigDialog
 from app.gui.tab_interface import TabInterface
 from app.gui.widgets.training_visualization import TrainingVisualization
@@ -33,6 +34,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         self.parent = parent
         self.settings = settings
         self.training_thread = None
+        self.queue_manager = QueueManager(self)  # Tworzymy instancję QueueManager
         self.setup_ui()
         self.connect_signals()
         # Automatyczne odświeżenie listy zadań przy starcie
@@ -124,7 +126,6 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         """Podłącza sygnały do slotów."""
         self.add_task_btn.clicked.connect(self._add_training_task)
         self.refresh_queue_btn.clicked.connect(self.refresh)
-        self.start_queue_btn.clicked.connect(self._start_task_queue)
         self.clear_queue_btn.clicked.connect(self._clear_task_queue)
 
     def refresh(self):
@@ -342,10 +343,6 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
 
         parent_layout.addWidget(add_task_panel)
 
-    def _create_queue_panel(self, parent_layout):
-        """Zachowujemy dla kompatybilności, ale nie używamy już tej metody do dodawania panelu."""
-        pass
-
     def _create_queue_panel_widget(self):
         """Tworzy i zwraca panel kolejki zadań treningowych jako widget."""
         queue_panel = QtWidgets.QWidget()
@@ -400,10 +397,10 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         self.refresh_queue_btn.setFixedHeight(24)
         buttons_layout.addWidget(self.refresh_queue_btn)
 
-        self.start_queue_btn = QtWidgets.QPushButton("Uruchom kolejkę")
-        self.start_queue_btn.clicked.connect(self._start_task_queue)
-        self.start_queue_btn.setFixedHeight(24)
-        buttons_layout.addWidget(self.start_queue_btn)
+        self.null_btn = QtWidgets.QPushButton("Null")
+        self.null_btn.setFixedHeight(24)
+        self.null_btn.clicked.connect(self._show_queue_manager)
+        buttons_layout.addWidget(self.null_btn)
 
         self.clear_queue_btn = QtWidgets.QPushButton("Wyczyść kolejkę")
         self.clear_queue_btn.clicked.connect(self._clear_task_queue)
@@ -415,16 +412,10 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
 
         return queue_panel
 
-    def _create_progress_panel(self, parent_layout):
-        """Tworzy panel postępu zadania."""
-        # Usuwamy całą sekcję POSTĘP ZADANIA, ponieważ została przeniesiona do głównego okna
-        pass
-
     def _add_training_task(self):
         try:
             # Pobierz typ zadania
             task_type_index = self.task_type_combo.currentIndex()
-            task_type = "trening" if task_type_index == 0 else "doszkalanie"
 
             # Użyj dialogu konfiguracji zadania
             dialog = TrainingTaskConfigDialog(
@@ -497,77 +488,6 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                 "Błąd",
                 "Wystąpił błąd podczas konfiguracji zadania doszkalania: " f"{str(e)}",
             )
-
-    def _start_task_queue(self):
-        """Otwiera okno zarządzania kolejką zadań."""
-        # Sprawdź, czy wątek treningowy już działa
-        if (
-            hasattr(self, "training_thread")
-            and self.training_thread is not None
-            and self.training_thread.isRunning()
-        ):
-            QtWidgets.QMessageBox.warning(
-                self,
-                "Trening w toku",
-                "Proces treningu jest aktywny. "
-                "Poczekaj na jego zakończenie lub zatrzymaj go.",
-            )
-            return
-
-        # Otwórz okno zarządzania kolejką
-        from app.gui.dialogs.queue_manager import QueueManager
-
-        queue_dialog = QueueManager(parent=self, settings=self.settings)
-
-        if queue_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-            # Pobierz listę zadań do wykonania
-            task_files = queue_dialog.start_queue()
-
-            if task_files:
-                # Wyczyść wizualizację przed rozpoczęciem kolejki
-                if (
-                    hasattr(self, "training_visualization")
-                    and self.training_visualization
-                ):
-                    self.training_visualization.clear_data()
-                    self.training_visualization.reset_plot()
-
-                self.parent.logger.info(
-                    f"Znaleziono {len(task_files)} zadań w kolejce. " "Uruchamianie..."
-                )
-
-                try:
-                    # Utwórz nowy wątek z listą zadań
-                    self.training_thread = SingleTrainingThread(task_files[0])
-
-                    # Podłącz sygnały
-                    self.training_thread.task_started.connect(
-                        self._training_task_started
-                    )
-                    self.training_thread.task_progress.connect(
-                        self._training_task_progress
-                    )
-                    self.training_thread.task_completed.connect(
-                        self._training_task_completed
-                    )
-                    self.training_thread.error.connect(self._training_task_error)
-
-                    # Uruchom wątek
-                    self.training_thread.start()
-
-                    # Zaktualizuj UI
-                    self.parent.current_task_info.setText(
-                        "Rozpoczynanie przetwarzania kolejki..."
-                    )
-                    self.parent.logger.info("Uruchomiono przetwarzanie kolejki zadań.")
-
-                except Exception as e:
-                    QtWidgets.QMessageBox.critical(
-                        self, "Błąd", f"Nie udało się uruchomić kolejki zadań: {str(e)}"
-                    )
-                    self.parent.logger.error(
-                        f"Błąd podczas uruchamiania kolejki: {str(e)}"
-                    )
 
     def _clear_task_queue(self):
         """Czyści kolejkę zadań treningowych."""
@@ -1155,7 +1075,6 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             task_files = []
             for row in range(self.tasks_table.rowCount()):
                 task_name = self.tasks_table.item(row, 0).text()
-                task_type = self.tasks_table.item(row, 1).text()
                 status = self.tasks_table.item(row, 2).text()
 
                 if status == "Nowy":
@@ -1204,4 +1123,18 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             self.parent.logger.error(f"Błąd podczas wyboru katalogu: {str(e)}")
             QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Wystąpił błąd podczas wyboru katalogu: {str(e)}"
+            )
+
+    def _show_queue_manager(self):
+        """Uruchamia widget queue_manager."""
+        try:
+            self.queue_manager.show()
+            self.queue_manager.raise_()
+            self.queue_manager.activateWindow()
+        except Exception as e:
+            self.parent.logger.error(
+                f"Błąd podczas uruchamiania Queue Manager: {str(e)}"
+            )
+            QtWidgets.QMessageBox.critical(
+                self, "Błąd", f"Nie udało się uruchomić Queue Manager: {str(e)}"
             )

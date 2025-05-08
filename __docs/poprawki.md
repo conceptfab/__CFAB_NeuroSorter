@@ -1,368 +1,276 @@
-Zmiany w pliku app/gui/dialogs/fine_tuning_task_config_dialog.py
-Zidentyfikowałem kilka problemów w pliku fine_tuning_task_config_dialog.py w porównaniu z poprawnie działającym plikiem training_task_config_dialog.py. Poniżej przedstawiam potrzebne poprawki, które zapewnią prawidłowe działanie funkcji związanych z profilami:
+1.  Istniejące parametry i ich dopuszczalne wartości
+    Sekcja model
+    python"model": {
+    "architecture": "EfficientNet", # wartości: "EfficientNet", "ResNet", "MobileNet", "VGG", "DenseNet", "InceptionV3", "Xception"
+    "variant": "EfficientNet-B0", # wartości dla EfficientNet: "EfficientNet-B0" do "EfficientNet-B7", "EfficientNetV2-S/M/L"
+    "input_size": 224, # wartości dla B0: 224, dla B1-B7: 240, 260, 300, 380, 456, 528, 600
+    "num_classes": 2 # wartości: liczba całkowita > 0
+    }
+    Sekcja training
+    python"training": {
+    "epochs": 100, # wartości: liczba całkowita > 0
+    "batch_size": 32, # wartości: 8, 16, 32, 64, 128, 256
+    "learning_rate": 0.001, # wartości: 0.1, 0.01, 0.001, 0.0001, 0.00001
+    "optimizer": "Adam", # wartości: "Adam", "SGD", "RMSprop", "AdamW", "Adadelta", "Adamax"
+    "scheduler": "None", # wartości: "None", "step", "multistep", "cosine", "reduce_on_plateau", "exponential", "onecycle"
+    "num_workers": 4, # wartości: liczba całkowita >= 0
+    "warmup_epochs": 5, # wartości: liczba całkowita >= 0
+    "mixed_precision": true # wartości: true, false
+    }
+    Sekcja regularization
+    python"regularization": {
+    "weight_decay": 0.0001, # wartości: 0.1, 0.01, 0.001, 0.0001, 0.00001, 0
+    "gradient_clip": 1.0, # wartości: liczba zmiennoprzecinkowa > 0 lub null
+    "label_smoothing": 0.1, # wartości: 0 - 1.0
+    "drop_connect_rate": 0.2, # wartości: 0 - 1.0
+    "dropout_rate": 0.2, # wartości: 0 - 1.0
+    "momentum": 0.9, # wartości: 0 - 1.0
+    "epsilon": 1e-06 # wartości: 1e-8, 1e-7, 1e-6, 1e-5
+    }
+    Sekcja augmentation
+    python"augmentation": {
+    "basic": {
+    "use": true, # wartości: true, false
+    "rotation": 30, # wartości: 0-180
+    "brightness": 0.2, # wartości: 0-1.0
+    "shift": 0.1, # wartości: 0-1.0
+    "zoom": 0.1, # wartości: 0-1.0
+    "horizontal_flip": true, # wartości: true, false
+    "vertical_flip": false # wartości: true, false
+    }
+    }
+    Sekcja monitoring
+    python"monitoring": {
+    "metrics": {
+    "accuracy": false, # wartości: true, false
+    "precision": false, # wartości: true, false
+    "recall": false, # wartości: true, false
+    "f1": false # wartości: true, false
+    }
+    }
+2.  Brakujące parametry i ich dopuszczalne wartości
+    Brakujące parametry w sekcji model
+    RetryMkurwo, a convnext nie istnieje?EditConvNeXt architecture fine-tuning parameters10 resultsGitHub - facebookresearch/ConvNeXt-V2: Code release for ConvNeXt V2 modelgithub.comConvNeXThuggingface.coConvNeXt V2huggingface.coKeras documentation: ConvNeXt Tiny, Small, Base, Large, XLargekeras.ioConvNeXt-V2/main_finetune.py at main · facebookresearch/ConvNeXt-V2github.com[2301.00808] ConvNeXt V2: Co-designing and Scaling ConvNets with Masked Autoencodersarxiv.orgThecvfthecvf.comPapers with Code - Paper tables with annotated results for ConvNeXt V2: Co-designing and Scaling ConvNets with Masked Autoencoderspaperswithcode.comGitHub - facebookresearch/ConvNeXt: Code release for ConvNeXt modelgithub.comConvNeXt V2, the New Model Family That Boosts ConvNet Performancedeeplearning.aiPrzepraszam za moje poprzednie zachowanie. Masz rację - ConvNeXt to bardzo istotna architektura, której brakowało w moim wyliczeniu. Przygotowałem dla Ciebie dokładną analizę profilu do fine-tuningu modeli ze wszystkimi wartościami parametrów i brakującymi kluczami.
+    Analiza profilu fine-tuningu
+3.  Istniejące parametry i ich dopuszczalne wartości
+    Sekcja model
+    python"model": {
+    "architecture": "EfficientNet", # wartości: "EfficientNet", "ResNet", "MobileNet", "VGG", "DenseNet", "ConvNeXt", "ConvNeXtV2", "InceptionV3", "Xception"
+    "variant": "EfficientNet-B0", # wartości dla EfficientNet: "B0" do "B7"; dla ConvNeXt: "Tiny", "Small", "Base", "Large", "XLarge"; dla ConvNeXtV2: "Atto", "Femto", "Pico", "Nano", "Tiny", "Base", "Large", "Huge"
+    "input_size": 224, # wartości: różne w zależności od architektury, dla EfficientNet-B0: 224
+    "num_classes": 2 # wartości: liczba całkowita > 0
+    }
+    Sekcja training
+    python"training": {
+    "epochs": 100, # wartości: liczba całkowita > 0
+    "batch_size": 32, # wartości: 8, 16, 32, 64, 128, 256 (w zależności od dostępnej pamięci GPU)
+    "learning_rate": 0.001, # wartości: 0.1, 0.01, 0.001, 0.0001, 0.00001
+    "optimizer": "Adam", # wartości: "Adam", "SGD", "RMSprop", "AdamW", "Adadelta", "Adamax"
+    "scheduler": "None", # wartości: "None", "step", "multistep", "cosine", "reduce_on_plateau", "exponential", "onecycle"
+    "num_workers": 4, # wartości: liczba całkowita >= 0
+    "warmup_epochs": 5, # wartości: liczba całkowita >= 0
+    "mixed_precision": true # wartości: true, false
+    }
+    Sekcja regularization
+    python"regularization": {
+    "weight_decay": 0.0001, # wartości: 0.1, 0.01, 0.001, 0.0001, 0.00001, 0
+    "gradient_clip": 1.0, # wartości: liczba zmiennoprzecinkowa > 0 lub null
+    "label_smoothing": 0.1, # wartości: 0 - 1.0
+    "drop_connect_rate": 0.2, # wartości: 0 - 1.0
+    "dropout_rate": 0.2, # wartości: 0 - 1.0
+    "momentum": 0.9, # wartości: 0 - 1.0
+    "epsilon": 1e-06 # wartości: 1e-8, 1e-7, 1e-6, 1e-5
+    }
+    Sekcja augmentation
+    python"augmentation": {
+    "basic": {
+    "use": true, # wartości: true, false
+    "rotation": 30, # wartości: 0-180
+    "brightness": 0.2, # wartości: 0-1.0
+    "shift": 0.1, # wartości: 0-1.0
+    "zoom": 0.1, # wartości: 0-1.0
+    "horizontal_flip": true, # wartości: true, false
+    "vertical_flip": false # wartości: true, false
+    }
+    }
+    Sekcja monitoring
+    python"monitoring": {
+    "metrics": {
+    "accuracy": false, # wartości: true, false
+    "precision": false, # wartości: true, false
+    "recall": false, # wartości: true, false
+    "f1": false # wartości: true, false
+    }
+    }
+4.  Brakujące parametry i ich dopuszczalne wartości
+    Brakujące parametry w sekcji model
+    python"model": {
+    // Istniejące parametry...
+    "pretrained": true, # wartości: true, false
+    "pretrained_weights": "imagenet", # wartości: "imagenet", "imagenet21k", "noisy-student", null, "path/to/weights.h5"
+    "feature_extraction_only": false, # wartości: true, false
+    "activation": "swish", # wartości dla EfficientNet: "swish", "relu", "silu", "mish"; dla ConvNeXt: "gelu"
+    "dropout_at_inference": false, # wartości: true, false
+    "global_pool": "avg", # wartości: "avg", "max", "token", "none"
+    "last_layer_activation": "softmax" # wartości: "softmax", "sigmoid", null
+    }
+    Brakujące parametry w sekcji training
+    python"training": {
+    // Istniejące parametry...
+    "scheduler_params": {
+    // dla scheduler="step"
+    "step_size": 30, # wartości: liczba całkowita > 0
+    "gamma": 0.1, # wartości: 0-1.0
+            // dla scheduler="multistep"
+            "milestones": [30, 60, 90], # wartości: lista liczb całkowitych
 
-1.  Zmiana funkcji \_refresh_profile_list
-    pythondef \_refresh_profile_list(self):
-    """Odświeża listę dostępnych profili."""
-    try:
-    self.profile_list.clear()
-    for profile_file in self.profiles_dir.glob("\*.json"):
-    try:
-    with open(profile_file, "r", encoding="utf-8") as f:
-    profile_data = json.load(f)
-    if profile_data.get("typ") == "doszkalanie":
-    name = profile_data.get("name", profile_file.stem)
-    item = QtWidgets.QListWidgetItem(name)
-    item.setData(Qt.ItemDataRole.UserRole, profile_file)
-    self.profile_list.addItem(item)
-    except Exception as e:
-    self.logger.error(
-    f"Błąd podczas wczytywania profilu {profile_file}: {str(e)}",
-    exc_info=True,
-    )
-    except Exception as e:
-    self.logger.error(f"Błąd podczas odświeżania listy profili: {str(e)}")
-2.  Zmiana funkcji \_on_profile_selected
-    pythondef \_on_profile_selected(self, current, previous):
-    """Obsługa wyboru profilu z listy."""
-    try:
-    if current is None:
-    self.profile_info.clear()
-    self.profile_description.clear()
-    self.profile_data_required.clear()
-    self.profile_hardware_required.clear()
-    self.current_profile = None
-    return
+            // dla scheduler="cosine"
+            "T_max": 100, # wartości: równe epochs lub inna liczba całkowita > 0
+            "eta_min": 1e-6, # wartości: liczba zmiennoprzecinkowa >= 0
 
-            profile_file = current.data(Qt.ItemDataRole.UserRole)
-            if not profile_file.exists():
-                self.logger.error(f"Plik profilu nie istnieje: {profile_file}")
-                return
-
-            with open(profile_file, "r", encoding="utf-8") as f:
-                profile_data = json.load(f)
-                self.current_profile = profile_data
-                self.profile_info.setText(profile_data.get("info", ""))
-                self.profile_description.setText(profile_data.get("description", ""))
-                self.profile_data_required.setText(profile_data.get("data_required", ""))
-                self.profile_hardware_required.setText(
-                    profile_data.get("hardware_required", "")
-                )
-
-        except Exception as e:
-            self.logger.error(f"Błąd podczas wyboru profilu: {str(e)}", exc_info=True)
-            self.profile_info.clear()
-            self.profile_description.clear()
-            self.profile_data_required.clear()
-            self.profile_hardware_required.clear()
-            self.current_profile = None
-
-3.  Implementacja funkcji \_edit_profile
-    pythondef \_edit_profile(self):
-    """Edycja wybranego profilu."""
-    if not self.current_profile:
-    QtWidgets.QMessageBox.warning(
-    self, "Ostrzeżenie", "Najpierw wybierz profil do edycji."
-    )
-    return
-
-        try:
-            profile_path = self.profiles_dir / f"{self.profile_list.currentItem().text()}.json"
-            os.startfile(str(profile_path))  # Dla Windows
-        except Exception as e:
-            self.logger.error(
-                f"Błąd podczas otwierania profilu: {str(e)}", exc_info=True
-            )
-            QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie można otworzyć profilu: {str(e)}"
-            )
-
-4.  Implementacja funkcji \_apply_profile
-    pythondef \_apply_profile(self):
-    """Zastosowanie wybranego profilu do konfiguracji."""
-    if not self.current_profile:
-    QtWidgets.QMessageBox.warning(
-    self, "Ostrzeżenie", "Najpierw wybierz profil do zastosowania."
-    )
-    return
-
-        try:
-            config = self.current_profile.get("config", {})
-
-            # Dane i Model
-            if "model" in config:
-                model_config = config["model"]
-                self.arch_combo.setCurrentText(
-                    model_config.get("architecture", "EfficientNet")
-                )
-                self.variant_combo.setCurrentText(
-                    model_config.get("variant", "B0")
-                )
-                self.input_size_spin.setValue(model_config.get("input_size", 224))
-                self.num_classes_spin.setValue(model_config.get("num_classes", 2))
-
-            # Parametry Treningu
-            if "training" in config:
-                training_config = config["training"]
-                self.epochs_spin.setValue(training_config.get("epochs", 100))
-                self.batch_size_spin.setValue(training_config.get("batch_size", 32))
-                self.learning_rate_spin.setValue(training_config.get("learning_rate", 0.001))
-                self.optimizer_combo.setCurrentText(
-                    training_config.get("optimizer", "adam")
-                )
-
-            # Regularyzacja
-            if "regularization" in config:
-                reg_config = config["regularization"]
-                self.weight_decay_spin.setValue(reg_config.get("weight_decay", 0.0001))
-                self.dropout_spin.setValue(reg_config.get("dropout_rate", 0.2))
-
-            # Augmentacja
-            if "augmentation" in config:
-                aug_config = config["augmentation"]
-                basic_config = aug_config.get("basic", {})
-                self.horizontal_flip_check.setChecked(
-                    basic_config.get("horizontal_flip", True)
-                )
-                self.vertical_flip_check.setChecked(
-                    basic_config.get("vertical_flip", False)
-                )
-                self.rotation_check.setChecked(
-                    basic_config.get("rotation", True)
-                )
-
-            # Monitorowanie
-            if "monitoring" in config:
-                monitor_config = config["monitoring"]
-                metrics_config = monitor_config.get("metrics", {})
-                self.accuracy_check.setChecked(metrics_config.get("accuracy", True))
-                self.precision_check.setChecked(metrics_config.get("precision", True))
-                self.recall_check.setChecked(metrics_config.get("recall", True))
-                self.f1_check.setChecked(metrics_config.get("f1", True))
-                self.confusion_matrix_check.setChecked(
-                    metrics_config.get("confusion_matrix", False)
-                )
-                self.roc_auc_check.setChecked(metrics_config.get("roc_auc", False))
-                self.pr_auc_check.setChecked(metrics_config.get("pr_auc", False))
-                self.top_k_check.setChecked(metrics_config.get("top_k", False))
-
-            # PEFT
-            if "peft" in config:
-                peft_config = config["peft"]
-                self.peft_technique.setCurrentText(
-                    peft_config.get("technique", "none")
-                )
-
-                lora_config = peft_config.get("lora", {})
-                self.lora_rank.setValue(lora_config.get("rank", 8))
-                self.lora_alpha.setValue(lora_config.get("alpha", 16))
-                self.lora_dropout.setValue(lora_config.get("dropout", 0.1))
-                self.lora_target_modules.setText(",".join(lora_config.get("target_modules", ["query","key","value"])))
-
-            QtWidgets.QMessageBox.information(
-                self, "Sukces", "Profil został pomyślnie zastosowany."
-            )
-
-        except Exception as e:
-            self.logger.error(
-                f"Błąd podczas stosowania profilu: {str(e)}", exc_info=True
-            )
-            QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie można zastosować profilu: {str(e)}"
-            )
-
-5.  Implementacja funkcji \_clone_profile
-    pythondef \_clone_profile(self):
-    """Klonuje wybrany profil."""
-    if not self.current_profile:
-    QtWidgets.QMessageBox.warning(
-    self, "Ostrzeżenie", "Najpierw wybierz profil do sklonowania."
-    )
-    return
-
-        try:
-            current_name = self.profile_list.currentItem().text()
-            new_name, ok = QtWidgets.QInputDialog.getText(
-                self,
-                "Klonuj profil",
-                "Podaj nazwę dla nowego profilu:",
-                QtWidgets.QLineEdit.EchoMode.Normal,
-                f"{current_name}_clone",
-            )
-
-            if ok and new_name:
-                new_profile = self.current_profile.copy()
-                new_profile["info"] = f"Klon profilu {current_name}"
-                new_profile["description"] = f"Klon profilu {current_name}"
-                new_profile["typ"] = "doszkalanie"  # Upewniamy się, że typ jest ustawiony
-
-                new_path = self.profiles_dir / f"{new_name}.json"
-                with open(new_path, "w", encoding="utf-8") as f:
-                    json.dump(new_profile, f, indent=4, ensure_ascii=False)
-
-                self._refresh_profile_list()
-                QtWidgets.QMessageBox.information(
-                    self, "Sukces", "Profil został pomyślnie sklonowany."
-                )
-
-        except Exception as e:
-            self.logger.error(
-                f"Błąd podczas klonowania profilu: {str(e)}", exc_info=True
-            )
-            QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie można sklonować profilu: {str(e)}"
-            )
-
-6.  Implementacja funkcji _save_profile
-    pythondef \_save_profile(self):
-    """Zapisuje aktualną konfigurację jako nowy profil."""
-    try:
-    name, ok = QtWidgets.QInputDialog.getText(
-    self,
-    "Zapisz profil",
-    "Podaj nazwę dla nowego profilu:",
-    QtWidgets.QLineEdit.EchoMode.Normal,
-    f"{self.arch_combo.currentText()}_{self.variant_combo.currentText()}",
-    )
-
-            if ok and name:
-                profile_data = {
-                    "typ": "doszkalanie",
-                    "info": (
-                        f"Profil dla {self.arch_combo.currentText()} "
-                        f"{self.variant_combo.currentText()}"
-                    ),
-                    "description": "Profil utworzony przez użytkownika",
-                    "data_required": "Standardowe dane treningowe",
-                    "hardware_required": "Standardowy sprzęt",
-                    "config": {
-                        "model": {
-                            "architecture": self.arch_combo.currentText(),
-                            "variant": self.variant_combo.currentText(),
-                            "input_size": self.input_size_spin.value(),
-                            "num_classes": self.num_classes_spin.value(),
-                        },
-                        "training": {
-                            "epochs": self.epochs_spin.value(),
-                            "batch_size": self.batch_size_spin.value(),
-                            "learning_rate": float(self.learning_rate_spin.value()),
-                            "optimizer": self.optimizer_combo.currentText(),
-                        },
-                        "regularization": {
-                            "weight_decay": float(self.weight_decay_spin.value()),
-                            "dropout_rate": self.dropout_spin.value(),
-                        },
-                        "augmentation": {
-                            "basic": {
-                                "horizontal_flip": self.horizontal_flip_check.isChecked(),
-                                "vertical_flip": self.vertical_flip_check.isChecked(),
-                                "rotation": self.rotation_check.isChecked(),
-                            },
-                        },
-                        "monitoring": {
-                            "metrics": {
-                                "accuracy": self.accuracy_check.isChecked(),
-                                "precision": self.precision_check.isChecked(),
-                                "recall": self.recall_check.isChecked(),
-                                "f1": self.f1_check.isChecked(),
-                                "confusion_matrix": self.confusion_matrix_check.isChecked(),
-                                "roc_auc": self.roc_auc_check.isChecked(),
-                                "pr_auc": self.pr_auc_check.isChecked(),
-                                "top_k": self.top_k_check.isChecked(),
-                            },
-                        },
-                        "peft": {
-                            "technique": self.peft_technique.currentText(),
-                            "lora": {
-                                "rank": self.lora_rank.value(),
-                                "alpha": self.lora_alpha.value(),
-                                "dropout": self.lora_dropout.value(),
-                                "target_modules": self.lora_target_modules.text().split(","),
-                            },
-                        },
-                    },
-                }
-
-                profile_path = self.profiles_dir / f"{name}.json"
-                with open(profile_path, "w", encoding="utf-8") as f:
-                    json.dump(profile_data, f, indent=4, ensure_ascii=False)
-
-                self._refresh_profile_list()
-                QtWidgets.QMessageBox.information(
-                    self, "Sukces", "Profil został pomyślnie zapisany."
-                )
-
-        except Exception as e:
-            self.logger.error(
-                f"Błąd podczas zapisywania profilu: {str(e)}", exc_info=True
-            )
-            QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie można zapisać profilu: {str(e)}"
-            )
-
-7.  Implementacja funkcji \_delete_profile
-    pythondef \_delete_profile(self):
-    """Usuwa wybrany profil."""
-    if not self.current_profile:
-    QtWidgets.QMessageBox.warning(
-    self, "Ostrzeżenie", "Najpierw wybierz profil do usunięcia."
-    )
-    return
-
-        try:
-            current_name = self.profile_list.currentItem().text()
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                "Potwierdzenie",
-                f"Czy na pewno chcesz usunąć profil '{current_name}'?",
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
-
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                profile_path = self.profiles_dir / f"{current_name}.json"
-                if profile_path.exists():
-                    profile_path.unlink()
-                    self._refresh_profile_list()
-                    self.current_profile = None
-                    self.profile_info.clear()
-                    self.profile_description.clear()
-                    self.profile_data_required.clear()
-                    self.profile_hardware_required.clear()
-                    QtWidgets.QMessageBox.information(
-                        self, "Sukces", "Profil został pomyślnie usunięty."
-                    )
-
-        except Exception as e:
-            self.logger.error(f"Błąd podczas usuwania profilu: {str(e)}", exc_info=True)
-            QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie można usunąć profilu: {str(e)}"
-            )
-
-8.  Dodanie importu os
-    Dodaj import modułu os na początku pliku:
-    pythonimport os
-9.  Uzupełnienie funkcji \_validate_basic_params
-    pythondef \_validate_basic_params(self):
-    """Walidacja podstawowych parametrów."""
-    try:
-    if not self.train_dir_edit.text():
-    QtWidgets.QMessageBox.warning(
-    self, "Ostrzeżenie", "Wybierz katalog z danymi treningowymi."
-    )
-    return False
-
-            if not self.val_dir_edit.text():
-                QtWidgets.QMessageBox.warning(
-                    self, "Ostrzeżenie", "Wybierz katalog z danymi walidacyjnymi."
-                )
-                return False
-
-            return True
-
-        except Exception as e:
-            self.logger.error(f"Błąd podczas walidacji parametrów: {str(e)}")
-            return False
-
-    Te zmiany poprawią funkcjonalność zarządzania profilami w dialogu konfiguracji zadania fine-tuningu. Główne problemy w oryginalnym pliku były związane z brakiem implementacji tych funkcji lub niewłaściwym użyciem mechanizmu przechowywania danych w elementach QListWidgetItem.
+            // dla scheduler="reduce_on_plateau"
+            "patience": 10, # wartości: liczba całkowita > 0
+            "factor": 0.1, # wartości: 0-1.0
+            "threshold": 0.01, # wartości: liczba zmiennoprzecinkowa > 0
+            "monitor": "val_loss" # wartości: "val_loss", "val_accuracy"
+        },
+        "warmup_lr_init": 1e-6, # wartości: liczba zmiennoprzecinkowa > 0
+        "early_stopping": {
+            "enabled": true, # wartości: true, false
+            "patience": 10, # wartości: liczba całkowita > 0
+            "min_delta": 0.001, # wartości: liczba zmiennoprzecinkowa > 0
+            "monitor": "val_loss" # wartości: "val_loss", "val_accuracy"
+        },
+        "checkpoint": {
+            "save_best_only": true, # wartości: true, false
+            "save_freq": "epoch", # wartości: "epoch", liczba całkowita > 0
+            "monitor": "val_loss" # wartości: "val_loss", "val_accuracy"
+        },
+        "gradient_accumulation_steps": 1, # wartości: liczba całkowita > 0
+        "validation_split": 0.2, # wartości: 0.1-0.5
+        "evaluation_freq": 1, # wartości: liczba całkowita > 0
+        "use_ema": false, # wartości: true, false
+        "ema_decay": 0.9999 # wartości: 0.9-0.9999
+    }
+    Brakujące parametry w sekcji regularization
+    python"regularization": {
+    // Istniejące parametry...
+    "stochastic_depth": {
+    "enabled": false, # wartości: true, false
+    "drop_rate": 0.2, # wartości: 0-1.0
+    "survival_probability": 0.8 # wartości: 0-1.0
+    },
+    "mixup": {
+    "enabled": false, # wartości: true, false
+    "alpha": 0.2, # wartości: liczba zmiennoprzecinkowa > 0
+    "prob": 1.0, # wartości: 0-1.0
+    "mode": "batch" # wartości: "batch", "pair", "elem"
+    },
+    "cutmix": {
+    "enabled": false, # wartości: true, false
+    "alpha": 1.0, # wartości: liczba zmiennoprzecinkowa > 0
+    "prob": 0.5 # wartości: 0-1.0
+    },
+    "random_erase": {
+    "enabled": false, # wartości: true, false
+    "prob": 0.25, # wartości: 0-1.0
+    "mode": "pixel" # wartości: "pixel", "block"
+    }
+    }
+    Brakujące parametry w sekcji augmentation
+    python"augmentation": {
+    "basic": {
+    // Istniejące parametry...
+    "contrast": 0.2, # wartości: 0-1.0
+    "saturation": 0.2, # wartości: 0-1.0
+    "hue": 0.1, # wartości: 0-0.5
+    "shear": 0.1, # wartości: 0-1.0
+    "channel_shift_range": 0.0 # wartości: 0-1.0
+    },
+    "advanced": {
+    "use": false, # wartości: true, false
+    "random_erasing": {
+    "enabled": false, # wartości: true, false
+    "probability": 0.5, # wartości: 0-1.0
+    "max_area": 0.4 # wartości: 0-1.0
+    },
+    "auto_augment": {
+    "enabled": false, # wartości: true, false
+    "policy": "imagenet" # wartości: "imagenet", "cifar10", "svhn", "original"
+    },
+    "rand_augment": {
+    "enabled": false, # wartości: true, false
+    "num_ops": 2, # wartości: 1-10
+    "magnitude": 9 # wartości: 1-10
+    },
+    "trivial_augment": {
+    "enabled": false # wartości: true, false
+    }
+    },
+    "resize_mode": "bilinear", # wartości: "bilinear", "bicubic", "nearest", "area"
+    "normalization": {
+    "mean": [0.485, 0.456, 0.406], # wartości: lista 3 liczb
+    "std": [0.229, 0.224, 0.225] # wartości: lista 3 liczb
+    }
+    }
+    Brakujące parametry w sekcji monitoring
+    python"monitoring": {
+    "metrics": {
+    // Istniejące parametry...
+    "auc": false, # wartości: true, false
+    "confusion_matrix": false, # wartości: true, false
+    "top_k_accuracy": {
+    "enabled": false, # wartości: true, false
+    "k": 5 # wartości: liczba całkowita > 1
+    }
+    },
+    "logging": {
+    "tensorboard": false, # wartości: true, false
+    "wandb": false, # wartości: true, false
+    "csv": true, # wartości: true, false
+    "log_freq": "epoch" # wartości: "epoch", "batch", liczba całkowita > 0
+    },
+    "visualization": {
+    "gradcam": false, # wartości: true, false
+    "feature_maps": false, # wartości: true, false
+    "prediction_samples": false, # wartości: true, false
+    "num_samples": 10 # wartości: liczba całkowita > 0
+    }
+    }
+    Brakujące sekcje
+    python"data": {
+    "train_path": "data/train", # wartości: ścieżka do katalogu z danymi treningowymi
+    "val_path": "data/validation", # wartości: ścieżka do katalogu z danymi walidacyjnymi
+    "test_path": "data/test", # wartości: ścieżka do katalogu z danymi testowymi
+    "class_weights": "balanced", # wartości: "balanced", null, słownik wag klas
+    "sampler": "weighted_random", # wartości: "weighted_random", "uniform", null
+    "image_channels": 3, # wartości: 1, 3, 4
+    "cache_dataset": false, # wartości: true, false
+    "preprocessing": {
+    "resize_mode": "bilinear", # wartości: "bilinear", "bicubic", "nearest", "area"
+    "center_crop": true, # wartości: true, false
+    "to_rgb": true # wartości: true, false
+    }
+    },
+    "distributed": {
+    "use_distributed": false, # wartości: true, false
+    "backend": "nccl", # wartości: "nccl", "gloo"
+    "sync_bn": true, # wartości: true, false
+    "find_unused_parameters": false # wartości: true, false
+    },
+    "inference": {
+    "test_time_augmentation": {
+    "enabled": false, # wartości: true, false
+    "num_augments": 5 # wartości: liczba całkowita > 0
+    },
+    "onnx_export": false, # wartości: true, false
+    "quantization": {
+    "enabled": false, # wartości: true, false
+    "precision": "int8" # wartości: "int8", "fp16", "bf16"
+    }
+    },
+    "seed": 42, # wartości: liczba całkowita >= 0
+    "deterministic": true # wartości: true, false
+    Podsumowanie
+    Istniejący profil zawiera podstawowe parametry dla modelu EfficientNet-B0, ale brakuje wielu istotnych opcji konfiguracyjnych, które są potrzebne przy fine-tuningu modeli głębokich. Zalecane jest dodanie wszystkich brakujących parametrów oraz rozszerzenie listy dostępnych architektur o modele takie jak ConvNeXt (ważna architektura CNN, która osiąga wyniki porównywalne z Transformerami).
+    Podstawowe metryki monitorowania (accuracy, precision, recall, f1) są obecnie wyłączone (false), co uniemożliwia śledzenie wydajności modelu. Zalecam ustawienie tych wartości na true oraz dodanie brakujących sekcji do konfiguracji.
