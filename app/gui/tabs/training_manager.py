@@ -3,9 +3,11 @@ import glob
 import json
 import logging
 import os
+import traceback
 from pathlib import Path
 
 from PyQt6 import QtCore, QtWidgets
+from PyQt6.QtCore import Qt
 
 from app.core.workers.batch_training_thread import BatchTrainingThread
 from app.core.workers.single_training_thread import SingleTrainingThread
@@ -528,6 +530,11 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             )
             return
 
+        # Wyczyść wizualizację przed rozpoczęciem kolejki
+        if hasattr(self, "training_visualization") and self.training_visualization:
+            self.training_visualization.clear_data()
+            self.training_visualization.reset_plot()
+
         self.parent.logger.info(
             f"Znaleziono {len(task_files)} zadań w kolejce. Uruchamianie..."
         )
@@ -756,6 +763,9 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                         self.parent.logger.info(
                             f"Wykres treningu zapisany w: {plot_path}"
                         )
+                        # Reset wizualizacji po zapisaniu
+                        self.training_visualization.clear_data()
+                        self.training_visualization.reset_plot()
                     else:
                         self.parent.logger.error(
                             "Nie udało się zapisać wykresu treningu"
@@ -792,10 +802,13 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         self.parent.task_progress_bar.setValue(0)
         self.parent.task_progress_details.setText("Oczekiwanie na zadania...")
 
+        # Reset wizualizacji po zakończeniu wszystkich zadań
+        if hasattr(self, "training_visualization") and self.training_visualization:
+            self.training_visualization.clear_data()
+            self.training_visualization.reset_plot()
+
         # Odśwież kolejkę, aby zaktualizować statusy zadań
         self._refresh_task_queue()
-
-        # Tutaj można dodać logikę, np. opcję zapisania wykresu
 
     def _training_task_error(self, task_name, error_message):
         """Obsługa błędu zadania treningowego."""
@@ -842,14 +855,14 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             if isinstance(cpu_info, str):
                 try:
                     cpu_info = json.loads(cpu_info)
-                except:
+                except json.JSONDecodeError:
                     cpu_info = {}
 
             gpu_info = profile.get("gpu_info", {})
             if isinstance(gpu_info, str):
                 try:
                     gpu_info = json.loads(gpu_info)
-                except:
+                except json.JSONDecodeError:
                     gpu_info = {}
 
             info_text = "Status profilu: Aktywny\n"

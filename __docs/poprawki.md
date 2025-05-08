@@ -1,224 +1,347 @@
-Analiza profilu fine-tuningu
+Zmiany w pliku app/gui/dialogs/fine_tuning_task_config_dialog.py
+1. Poprawa obsługi zmiennej task_config
+pythondef _on_accept(self):
+    """Obsługa akceptacji konfiguracji."""
+    try:
+        if not self._validate_basic_params():
+            return
 
-1.  Istniejące parametry i ich dopuszczalne wartości
-    Sekcja model
-    python"model": {
-    "architecture": "EfficientNet", # wartości: "EfficientNet", "ResNet", "MobileNet", "VGG", "DenseNet", "ConvNeXt", "ConvNeXtV2", "InceptionV3", "Xception"
-    "variant": "EfficientNet-B0", # wartości dla EfficientNet: "B0" do "B7"; dla ConvNeXt: "Tiny", "Small", "Base", "Large", "XLarge"; dla ConvNeXtV2: "Atto", "Femto", "Pico", "Nano", "Tiny", "Base", "Large", "Huge"
-    "input_size": 224, # wartości: różne w zależności od architektury, dla EfficientNet-B0: 224
-    "num_classes": 2 # wartości: liczba całkowita > 0
-    }
-    Sekcja training
-    python"training": {
-    "epochs": 100, # wartości: liczba całkowita > 0
-    "batch_size": 32, # wartości: 8, 16, 32, 64, 128, 256 (w zależności od dostępnej pamięci GPU)
-    "learning_rate": 0.001, # wartości: 0.1, 0.01, 0.001, 0.0001, 0.00001
-    "optimizer": "Adam", # wartości: "Adam", "SGD", "RMSprop", "AdamW", "Adadelta", "Adamax"
-    "scheduler": "None", # wartości: "None", "step", "multistep", "cosine", "reduce_on_plateau", "exponential", "onecycle"
-    "num_workers": 4, # wartości: liczba całkowita >= 0
-    "warmup_epochs": 5, # wartości: liczba całkowita >= 0
-    "mixed_precision": true # wartości: true, false
-    }
-    Sekcja regularization
-    python"regularization": {
-    "weight_decay": 0.0001, # wartości: 0.1, 0.01, 0.001, 0.0001, 0.00001, 0
-    "gradient_clip": 1.0, # wartości: liczba zmiennoprzecinkowa > 0 lub null
-    "label_smoothing": 0.1, # wartości: 0 - 1.0
-    "drop_connect_rate": 0.2, # wartości: 0 - 1.0
-    "dropout_rate": 0.2, # wartości: 0 - 1.0
-    "momentum": 0.9, # wartości: 0 - 1.0
-    "epsilon": 1e-06 # wartości: 1e-8, 1e-7, 1e-6, 1e-5
-    }
-    Sekcja augmentation
-    python"augmentation": {
-    "basic": {
-    "use": true, # wartości: true, false
-    "rotation": 30, # wartości: 0-180
-    "brightness": 0.2, # wartości: 0-1.0
-    "shift": 0.1, # wartości: 0-1.0
-    "zoom": 0.1, # wartości: 0-1.0
-    "horizontal_flip": true, # wartości: true, false
-    "vertical_flip": false # wartości: true, false
-    }
-    }
-    Sekcja monitoring
-    python"monitoring": {
-    "metrics": {
-    "accuracy": false, # wartości: true, false
-    "precision": false, # wartości: true, false
-    "recall": false, # wartości: true, false
-    "f1": false # wartości: true, false
-    }
-    }
-2.  Brakujące parametry i ich dopuszczalne wartości
-    Brakujące parametry w sekcji model
-    python"model": {
-    // Istniejące parametry...
-    "pretrained": true, # wartości: true, false
-    "pretrained_weights": "imagenet", # wartości: "imagenet", "imagenet21k", "noisy-student", null, "path/to/weights.h5"
-    "feature_extraction_only": false, # wartości: true, false
-    "activation": "swish", # wartości dla EfficientNet: "swish", "relu", "silu", "mish"; dla ConvNeXt: "gelu"
-    "dropout_at_inference": false, # wartości: true, false
-    "global_pool": "avg", # wartości: "avg", "max", "token", "none"
-    "last_layer_activation": "softmax" # wartości: "softmax", "sigmoid", null
-    }
-    Brakujące parametry w sekcji training
-    python"training": {
-    // Istniejące parametry...
-    "scheduler_params": {
-    // dla scheduler="step"
-    "step_size": 30, # wartości: liczba całkowita > 0
-    "gamma": 0.1, # wartości: 0-1.0
-            // dla scheduler="multistep"
-            "milestones": [30, 60, 90], # wartości: lista liczb całkowitych
+        # Przygotowanie konfiguracji
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        model_name = (
+            f"{self.arch_combo.currentText()}_{self.variant_combo.currentText()}"
+        )
+        task_name = f"{model_name}_{timestamp}.json"
 
-            // dla scheduler="cosine"
-            "T_max": 100, # wartości: równe epochs lub inna liczba całkowita > 0
-            "eta_min": 1e-6, # wartości: liczba zmiennoprzecinkowa >= 0
+        self.task_config = {  # Zmiana: Użycie self.task_config zamiast self.config
+            "name": task_name,
+            "type": "Fine-tuning",
+            "status": "Nowy",
+            "priority": 0,
+            "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "config": {
+                # Pozostała zawartość konfiguracji...
+            }
+        }
 
-            // dla scheduler="reduce_on_plateau"
-            "patience": 10, # wartości: liczba całkowita > 0
-            "factor": 0.1, # wartości: 0-1.0
-            "threshold": 0.01, # wartości: liczba zmiennoprzecinkowa > 0
-            "monitor": "val_loss" # wartości: "val_loss", "val_accuracy"
+        self.logger.info(f"Utworzono konfigurację zadania: {task_name}")
+        QtWidgets.QMessageBox.information(
+            self, "Sukces", "Zadanie zostało pomyślnie dodane."
+        )
+
+    except Exception as e:
+        self.logger.error("Błąd podczas zapisywania konfiguracji", exc_info=True)
+        QtWidgets.QMessageBox.critical(
+            self,
+            "Błąd",
+            f"Wystąpił błąd podczas zapisywania konfiguracji: {str(e)}",
+        )
+2. Brakujące inicjalizacje elementów UI
+Dodanie inicjalizacji brakujących elementów w metodzie _create_monitoring_tab():
+pythondef _create_monitoring_tab(self):
+    # Dodanie brakujących elementów UI:
+    self.roc_auc_check = QtWidgets.QCheckBox("ROC AUC")
+    self.pr_auc_check = QtWidgets.QCheckBox("PR AUC")
+    self.top_k_check = QtWidgets.QCheckBox("Top-K Accuracy")
+    
+    # Dodanie tych elementów do layoutu:
+    metrics_layout.addWidget(self.roc_auc_check)
+    metrics_layout.addWidget(self.pr_auc_check)
+    metrics_layout.addWidget(self.top_k_check)
+    
+    # Pozostała część kodu...
+3. Poprawa w metodzie _create_data_model_tab()
+Dodanie brakującego parametru self.profile_hardware_required:
+pythondef _create_data_model_tab(self):
+    # W sekcji "Informacje o profilu":
+    self.profile_hardware_required = QtWidgets.QTextEdit()
+    self.profile_hardware_required.setReadOnly(True)
+    self.profile_hardware_required.setMaximumHeight(60)
+    info_layout.addRow("Wymagany sprzęt:", self.profile_hardware_required)
+    
+    # Pozostała część kodu...
+4. Poprawa w metodzie _on_profile_selected()
+Dodanie uzupełnienia pola profile_hardware_required:
+pythondef _on_profile_selected(self, current, previous):
+    """Obsługa wyboru profilu."""
+    try:
+        if not current:
+            return
+
+        profile_path = self.profiles_dir / f"{current.text()}.json"
+        with open(profile_path, "r", encoding="utf-8") as f:
+            profile_data = json.load(f)
+
+        self.current_profile = profile_data
+        self.profile_info.setText(profile_data.get("info", ""))
+        self.profile_description.setText(profile_data.get("description", ""))
+        self.profile_data_required.setText(profile_data.get("data_required", ""))
+        self.profile_hardware_required.setText(profile_data.get("hardware_required", ""))
+
+    except Exception as e:
+        msg = "Błąd podczas ładowania profilu"
+        self.logger.error(f"{msg}: {str(e)}", exc_info=True)
+5. Dodanie brakujących pól formularza w metodzie _apply_profile()
+pythondef _apply_profile(self):
+    # Dodanie inicjalizacji brakujących pól
+    if not hasattr(self, 'roc_auc_check'):
+        self.roc_auc_check = QtWidgets.QCheckBox("ROC AUC")
+    if not hasattr(self, 'pr_auc_check'):
+        self.pr_auc_check = QtWidgets.QCheckBox("PR AUC")
+    if not hasattr(self, 'top_k_check'):
+        self.top_k_check = QtWidgets.QCheckBox("Top-K Accuracy")
+    
+    # Pozostała część kodu...
+6. Poprawka dla metody _select_model_dir()
+Dodanie brakującego pola:
+pythondef _create_monitoring_tab(self):
+    # W sekcji "Katalog zapisu i logi":
+    self.model_dir_edit = QtWidgets.QLineEdit()
+    model_dir_btn = QtWidgets.QPushButton("Przeglądaj...")
+    model_dir_btn.clicked.connect(self._select_model_dir)
+    model_dir_layout = QtWidgets.QHBoxLayout()
+    model_dir_layout.addWidget(self.model_dir_edit)
+    model_dir_layout.addWidget(model_dir_btn)
+    
+    # Pozostała część kodu...
+7. Synchronizacja struktury danych zadań
+Synchronizacja struktury JSON zapisywanej w _on_accept():
+pythondef _on_accept(self):
+    # Upewnij się, że struktura danych jest zgodna z tą z training_task_config_dialog.py
+    self.task_config = {
+        "name": task_name,
+        "type": "Fine-tuning",  # Zachowanie typu specyficznego dla fine-tuningu
+        "status": "Nowy",
+        "priority": 0,
+        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "config": {
+            "train_dir": str(self.train_dir_edit.text()),
+            "data_dir": str(self.train_dir_edit.text()),
+            "val_dir": str(self.val_dir_edit.text()),
+            # Pozostała część konfiguracji...
+        }
+    }
+8. Dodanie parametrów specyficznych dla fine-tuningu w strukturze zadania
+pythondef _on_accept(self):
+    # W sekcji "config" dodanie parametrów specyficznych dla fine-tuningu:
+    "peft": {
+        "technique": self.peft_technique.currentText() if hasattr(self, "peft_technique") else "none",
+        "lora": {
+            "rank": self.lora_rank.value() if hasattr(self, "lora_rank") else 8,
+            "alpha": self.lora_alpha.value() if hasattr(self, "lora_alpha") else 16,
+            "dropout": self.lora_dropout.value() if hasattr(self, "lora_dropout") else 0.1,
+            "target_modules": self.lora_target_modules.text().split(",") if hasattr(self, "lora_target_modules") else ["query", "key", "value"]
         },
-        "warmup_lr_init": 1e-6, # wartości: liczba zmiennoprzecinkowa > 0
-        "early_stopping": {
-            "enabled": true, # wartości: true, false
-            "patience": 10, # wartości: liczba całkowita > 0
-            "min_delta": 0.001, # wartości: liczba zmiennoprzecinkowa > 0
-            "monitor": "val_loss" # wartości: "val_loss", "val_accuracy"
+        "adapter": {
+            "hidden_size": self.adapter_hidden_size.value() if hasattr(self, "adapter_hidden_size") else 64,
+            "adapter_type": self.adapter_type.currentText() if hasattr(self, "adapter_type") else "houlsby",
+            "adapter_activation": self.adapter_activation.currentText() if hasattr(self, "adapter_activation") else "relu"
         },
-        "checkpoint": {
-            "save_best_only": true, # wartości: true, false
-            "save_freq": "epoch", # wartości: "epoch", liczba całkowita > 0
-            "monitor": "val_loss" # wartości: "val_loss", "val_accuracy"
-        },
-        "gradient_accumulation_steps": 1, # wartości: liczba całkowita > 0
-        "validation_split": 0.2, # wartości: 0.1-0.5
-        "evaluation_freq": 1, # wartości: liczba całkowita > 0
-        "use_ema": false, # wartości: true, false
-        "ema_decay": 0.9999 # wartości: 0.9-0.9999
+        "prompt_tuning": {
+            "num_virtual_tokens": self.num_virtual_tokens.value() if hasattr(self, "num_virtual_tokens") else 20,
+            "prompt_init": self.prompt_init.currentText() if hasattr(self, "prompt_init") else "random"
+        }
     }
-    Brakujące parametry w sekcji regularization
-    python"regularization": {
-    // Istniejące parametry...
-    "stochastic_depth": {
-    "enabled": false, # wartości: true, false
-    "drop_rate": 0.2, # wartości: 0-1.0
-    "survival_probability": 0.8 # wartości: 0-1.0
-    },
-    "mixup": {
-    "enabled": false, # wartości: true, false
-    "alpha": 0.2, # wartości: liczba zmiennoprzecinkowa > 0
-    "prob": 1.0, # wartości: 0-1.0
-    "mode": "batch" # wartości: "batch", "pair", "elem"
-    },
-    "cutmix": {
-    "enabled": false, # wartości: true, false
-    "alpha": 1.0, # wartości: liczba zmiennoprzecinkowa > 0
-    "prob": 0.5 # wartości: 0-1.0
-    },
-    "random_erase": {
-    "enabled": false, # wartości: true, false
-    "prob": 0.25, # wartości: 0-1.0
-    "mode": "pixel" # wartości: "pixel", "block"
-    }
-    }
-    Brakujące parametry w sekcji augmentation
-    python"augmentation": {
-    "basic": {
-    // Istniejące parametry...
-    "contrast": 0.2, # wartości: 0-1.0
-    "saturation": 0.2, # wartości: 0-1.0
-    "hue": 0.1, # wartości: 0-0.5
-    "shear": 0.1, # wartości: 0-1.0
-    "channel_shift_range": 0.0 # wartości: 0-1.0
-    },
-    "advanced": {
-    "use": false, # wartości: true, false
-    "random_erasing": {
-    "enabled": false, # wartości: true, false
-    "probability": 0.5, # wartości: 0-1.0
-    "max_area": 0.4 # wartości: 0-1.0
-    },
-    "auto_augment": {
-    "enabled": false, # wartości: true, false
-    "policy": "imagenet" # wartości: "imagenet", "cifar10", "svhn", "original"
-    },
-    "rand_augment": {
-    "enabled": false, # wartości: true, false
-    "num_ops": 2, # wartości: 1-10
-    "magnitude": 9 # wartości: 1-10
-    },
-    "trivial_augment": {
-    "enabled": false # wartości: true, false
-    }
-    },
-    "resize_mode": "bilinear", # wartości: "bilinear", "bicubic", "nearest", "area"
-    "normalization": {
-    "mean": [0.485, 0.456, 0.406], # wartości: lista 3 liczb
-    "std": [0.229, 0.224, 0.225] # wartości: lista 3 liczb
-    }
-    }
-    Brakujące parametry w sekcji monitoring
-    python"monitoring": {
-    "metrics": {
-    // Istniejące parametry...
-    "auc": false, # wartości: true, false
-    "confusion_matrix": false, # wartości: true, false
-    "top_k_accuracy": {
-    "enabled": false, # wartości: true, false
-    "k": 5 # wartości: liczba całkowita > 1
-    }
-    },
-    "logging": {
-    "tensorboard": false, # wartości: true, false
-    "wandb": false, # wartości: true, false
-    "csv": true, # wartości: true, false
-    "log_freq": "epoch" # wartości: "epoch", "batch", liczba całkowita > 0
-    },
-    "visualization": {
-    "gradcam": false, # wartości: true, false
-    "feature_maps": false, # wartości: true, false
-    "prediction_samples": false, # wartości: true, false
-    "num_samples": 10 # wartości: liczba całkowita > 0
-    }
-    }
-    Brakujące sekcje
-    python"data": {
-    "train_path": "data/train", # wartości: ścieżka do katalogu z danymi treningowymi
-    "val_path": "data/validation", # wartości: ścieżka do katalogu z danymi walidacyjnymi
-    "test_path": "data/test", # wartości: ścieżka do katalogu z danymi testowymi
-    "class_weights": "balanced", # wartości: "balanced", null, słownik wag klas
-    "sampler": "weighted_random", # wartości: "weighted_random", "uniform", null
-    "image_channels": 3, # wartości: 1, 3, 4
-    "cache_dataset": false, # wartości: true, false
-    "preprocessing": {
-    "resize_mode": "bilinear", # wartości: "bilinear", "bicubic", "nearest", "area"
-    "center_crop": true, # wartości: true, false
-    "to_rgb": true # wartości: true, false
-    }
-    },
-    "distributed": {
-    "use_distributed": false, # wartości: true, false
-    "backend": "nccl", # wartości: "nccl", "gloo"
-    "sync_bn": true, # wartości: true, false
-    "find_unused_parameters": false # wartości: true, false
-    },
-    "inference": {
-    "test_time_augmentation": {
-    "enabled": false, # wartości: true, false
-    "num_augments": 5 # wartości: liczba całkowita > 0
-    },
-    "onnx_export": false, # wartości: true, false
-    "quantization": {
-    "enabled": false, # wartości: true, false
-    "precision": "int8" # wartości: "int8", "fp16", "bf16"
-    }
-    },
-    "seed": 42, # wartości: liczba całkowita >= 0
-    "deterministic": true # wartości: true, false
-    Podsumowanie
-    Istniejący profil zawiera podstawowe parametry dla modelu EfficientNet-B0, ale brakuje wielu istotnych opcji konfiguracyjnych, które są potrzebne przy fine-tuningu modeli głębokich. Zalecane jest dodanie wszystkich brakujących parametrów oraz rozszerzenie listy dostępnych architektur o modele takie jak ConvNeXt (ważna architektura CNN, która osiąga wyniki porównywalne z Transformerami).
-    Podstawowe metryki monitorowania (accuracy, precision, recall, f1) są obecnie wyłączone (false), co uniemożliwia śledzenie wydajności modelu. Zalecam ustawienie tych wartości na true oraz dodanie brakujących sekcji do konfiguracji.
+9. Dodanie metody _apply_metrics_config() jeśli brakuje
+pythondef _apply_metrics_config(self, metrics):
+    """Stosuje konfigurację metryk."""
+    # Upewnij się, że wszystkie pola formularza istnieją
+    if not hasattr(self, 'accuracy_check'):
+        self.accuracy_check = QtWidgets.QCheckBox("Accuracy")
+    if not hasattr(self, 'precision_check'):
+        self.precision_check = QtWidgets.QCheckBox("Precision")
+    if not hasattr(self, 'recall_check'):
+        self.recall_check = QtWidgets.QCheckBox("Recall")
+    if not hasattr(self, 'f1_check'):
+        self.f1_check = QtWidgets.QCheckBox("F1")
+    if not hasattr(self, 'confusion_matrix_check'):
+        self.confusion_matrix_check = QtWidgets.QCheckBox("Confusion Matrix")
+    if not hasattr(self, 'roc_auc_check'):
+        self.roc_auc_check = QtWidgets.QCheckBox("ROC AUC")
+    if not hasattr(self, 'pr_auc_check'):
+        self.pr_auc_check = QtWidgets.QCheckBox("PR AUC")
+    if not hasattr(self, 'top_k_check'):
+        self.top_k_check = QtWidgets.QCheckBox("Top-K Accuracy")
+    
+    self.accuracy_check.setChecked("accuracy" in metrics)
+    self.precision_check.setChecked("precision" in metrics)
+    self.recall_check.setChecked("recall" in metrics)
+    self.f1_check.setChecked("f1" in metrics)
+    self.confusion_matrix_check.setChecked("confusion_matrix" in metrics)
+    self.roc_auc_check.setChecked("roc_auc" in metrics)
+    self.pr_auc_check.setChecked("pr_auc" in metrics)
+    self.top_k_check.setChecked("top_k_accuracy" in metrics)
+10. Dodatkowo stworzenie zakładki PEFT dla technik fine-tuningu
+pythondef _create_peft_tab(self):
+    """Tworzenie zakładki Parameter-Efficient Fine-Tuning (PEFT)."""
+    try:
+        self.logger.debug("Tworzenie zakładki PEFT")
+        tab = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(tab)
+        
+        # Wybór techniki PEFT
+        peft_group = QtWidgets.QGroupBox("Technika PEFT")
+        peft_layout = QtWidgets.QFormLayout()
+        
+        self.peft_technique = QtWidgets.QComboBox()
+        self.peft_technique.addItems(["none", "lora", "prefix_tuning", "adapter", "prompt_tuning"])
+        self.peft_technique.currentTextChanged.connect(self._on_peft_technique_changed)
+        
+        peft_layout.addRow("Technika:", self.peft_technique)
+        peft_group.setLayout(peft_layout)
+        
+        # Konfiguracja LoRA
+        lora_group = QtWidgets.QGroupBox("LoRA")
+        lora_layout = QtWidgets.QFormLayout()
+        
+        self.lora_rank = QtWidgets.QSpinBox()
+        self.lora_rank.setRange(1, 64)
+        self.lora_rank.setValue(8)
+        
+        self.lora_alpha = QtWidgets.QSpinBox()
+        self.lora_alpha.setRange(1, 64)
+        self.lora_alpha.setValue(16)
+        
+        self.lora_dropout = QtWidgets.QDoubleSpinBox()
+        self.lora_dropout.setRange(0.0, 0.5)
+        self.lora_dropout.setValue(0.1)
+        self.lora_dropout.setDecimals(2)
+        
+        self.lora_target_modules = QtWidgets.QLineEdit()
+        self.lora_target_modules.setText("query,key,value")
+        
+        lora_layout.addRow("Rank:", self.lora_rank)
+        lora_layout.addRow("Alpha:", self.lora_alpha)
+        lora_layout.addRow("Dropout:", self.lora_dropout)
+        lora_layout.addRow("Target Modules:", self.lora_target_modules)
+        lora_group.setLayout(lora_layout)
+        
+        # Konfiguracja Adaptera
+        adapter_group = QtWidgets.QGroupBox("Adapter")
+        adapter_layout = QtWidgets.QFormLayout()
+        
+        self.adapter_hidden_size = QtWidgets.QSpinBox()
+        self.adapter_hidden_size.setRange(1, 256)
+        self.adapter_hidden_size.setValue(64)
+        
+        self.adapter_type = QtWidgets.QComboBox()
+        self.adapter_type.addItems(["houlsby", "pfeiffer"])
+        
+        self.adapter_activation = QtWidgets.QComboBox()
+        self.adapter_activation.addItems(["relu", "gelu", "sigmoid", "tanh"])
+        
+        adapter_layout.addRow("Hidden Size:", self.adapter_hidden_size)
+        adapter_layout.addRow("Typ:", self.adapter_type)
+        adapter_layout.addRow("Aktywacja:", self.adapter_activation)
+        adapter_group.setLayout(adapter_layout)
+        
+        # Konfiguracja Prompt Tuning
+        prompt_group = QtWidgets.QGroupBox("Prompt Tuning")
+        prompt_layout = QtWidgets.QFormLayout()
+        
+        self.num_virtual_tokens = QtWidgets.QSpinBox()
+        self.num_virtual_tokens.setRange(1, 100)
+        self.num_virtual_tokens.setValue(20)
+        
+        self.prompt_init = QtWidgets.QComboBox()
+        self.prompt_init.addItems(["random", "text", "embedding"])
+        
+        prompt_layout.addRow("Liczba tokenów:", self.num_virtual_tokens)
+        prompt_layout.addRow("Inicjalizacja:", self.prompt_init)
+        prompt_group.setLayout(prompt_layout)
+        
+        layout.addWidget(peft_group)
+        layout.addWidget(lora_group)
+        layout.addWidget(adapter_group)
+        layout.addWidget(prompt_group)
+        
+        return tab
+    
+    except Exception as e:
+        msg = "Błąd podczas tworzenia zakładki PEFT"
+        self.logger.error(f"{msg}: {str(e)}", exc_info=True)
+        raise
+        
+def _on_peft_technique_changed(self, technique):
+    """Obsługa zmiany techniki PEFT."""
+    # Włączanie/wyłączanie odpowiednich grup w zależności od wybranej techniki
+    # Ta metoda może być zaimplementowana później
+    pass
+11. Dodanie zakładki PEFT do głównego UI
+pythondef _init_ui(self):
+    """Inicjalizacja interfejsu użytkownika z zakładkami."""
+    try:
+        self.logger.debug("Rozpoczęcie inicjalizacji UI")
+        layout = QtWidgets.QVBoxLayout(self)
+
+        # Utworzenie zakładek
+        self.tabs = QtWidgets.QTabWidget()
+
+        # 1. Zakładka: Dane i Model
+        tab = self._create_data_model_tab()
+        self.tabs.addTab(tab, "Dane i Model")
+
+        # 2. Zakładka: Parametry Treningu
+        tab = self._create_training_params_tab()
+        self.tabs.addTab(tab, "Parametry")
+
+        # 3. Zakładka: Regularyzacja i Optymalizacja
+        tab = self._create_regularization_tab()
+        name = "Regularyzacja"
+        self.tabs.addTab(tab, name)
+
+        # 4. Zakładka: Augmentacja Danych
+        tab = self._create_augmentation_tab()
+        self.tabs.addTab(tab, "Augmentacja")
+
+        # 5. Zakładka: Preprocessing
+        tab = self._create_preprocessing_tab()
+        self.tabs.addTab(tab, "Preprocessing")
+
+        # 6. Zakładka: PEFT (Nowa zakładka)
+        tab = self._create_peft_tab()
+        self.tabs.addTab(tab, "PEFT")
+
+        # 7. Zakładka: Monitorowanie i Zapis
+        tab = self._create_monitoring_tab()
+        self.tabs.addTab(tab, "Monitorowanie")
+
+        # 8. Zakładka: Zaawansowane
+        tab = self._create_advanced_tab()
+        self.tabs.addTab(tab, "Zaawansowane")
+
+        layout.addWidget(self.tabs)
+
+        # Przyciski
+        buttons_layout = QtWidgets.QHBoxLayout()
+
+        # Przycisk "Dodaj zadanie"
+        add_task_btn = QtWidgets.QPushButton("Dodaj zadanie")
+        add_task_btn.clicked.connect(self._on_accept)
+        buttons_layout.addWidget(add_task_btn)
+
+        # Przycisk "Zamknij"
+        close_btn = QtWidgets.QPushButton("Zamknij")
+        close_btn.clicked.connect(self.accept)
+        buttons_layout.addWidget(close_btn)
+
+        layout.addLayout(buttons_layout)
+
+        self.logger.debug("Zakończono inicjalizację UI")
+
+    except Exception as e:
+        msg = "Błąd podczas inicjalizacji UI"
+        self.logger.error(f"{msg}: {str(e)}", exc_info=True)
+        raise
+Podsumowanie wprowadzonych zmian:
+
+Poprawiono nazwę zmiennej task_config (zamiast config) w metodzie _on_accept(), aby była zgodna z tą używaną w training_task_config_dialog.py.
+Dodano brakujące pola formularza, szczególnie w sekcji monitorowania i metrykach.
+Dodano pole profile_hardware_required i jego obsługę w metodach związanych z profilem.
+Naprawiono inicjalizację wszystkich elementów UI, które są używane później w kodzie.
+Dodano zakładkę PEFT specyficzną dla fine-tuningu, która nie występuje w training_task_config_dialog.py.
+Poprawiono strukturę zadania zapisywanego w _on_accept(), aby była zgodna ze strukturą w training_task_config_dialog.py.
+Dodano obsługę parametrów specyficznych dla fine-tuningu w strukturze zadania.
+Implementacja _apply_metrics_config() jeśli brakuje.
+
+Te zmiany powinny sprawić, że fine_tuning_task_config_dialog.py będzie działał podobnie do training_task_config_dialog.py, zachowując jednocześnie funkcjonalność specyficzną dla fine-tuningu.
