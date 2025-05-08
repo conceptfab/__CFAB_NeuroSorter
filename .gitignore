@@ -52,4 +52,7 @@ logs/
 *.tmp
 *.temp
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Wykresy
+plots/ 
