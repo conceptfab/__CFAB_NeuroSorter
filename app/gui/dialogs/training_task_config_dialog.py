@@ -650,7 +650,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                         "scheduler": self.scheduler_combo.currentText(),
                         "num_workers": self.num_workers_spin.value(),
                         "warmup_epochs": self.warmup_epochs_spin.value(),
-                        "mixed_precision": self.mixed_precision_check.isChecked(),
+                        "mixed_precision": (self.mixed_precision_check.isChecked()),
                     },
                     "regularization": {
                         "weight_decay": float(self.weight_decay_spin.value()),

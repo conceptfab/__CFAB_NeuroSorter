@@ -1,9 +1,9 @@
 {
-    "name": "EfficientNet_EfficientNet-B0_20250508_150444.json",
+    "name": "EfficientNet_EfficientNet-B0_20250508_151504.json",
     "type": "Trening",
     "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-08 15:04:44",
+    "created_at": "2025-05-08 15:15:04",
     "config": {
         "train_dir": "F:/_set_A/__dane_treningowe",
         "data_dir": "F:/_set_A/__dane_treningowe",

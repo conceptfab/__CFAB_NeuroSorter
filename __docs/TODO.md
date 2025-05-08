@@ -1,4 +1,9 @@
 profile
+wszystkie modele:
+resnet50
+vit
+mobilenet
+
 automatyczne zapisywanie wizualizacji treningu
 
 - doszkalanie ; 

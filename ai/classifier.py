@@ -8,6 +8,8 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from PIL import Image
 
+from ai.models import get_model
+
 
 class ImageClassifier:
     def __init__(self, model_type="efficientnet", num_classes=10, weights_path=None):
@@ -55,67 +57,19 @@ class ImageClassifier:
 
     def _create_model(self):
         """Tworzenie modelu bazowego z pretrenowanymi wagami"""
-        if self.model_type == "resnet50":
-            model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
-        elif self.model_type == "efficientnet":
-            model = models.efficientnet_b0(
-                weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1
+        try:
+            # Użyj funkcji get_model z models.py
+            model = get_model(
+                model_arch=self.model_type, num_classes=self.num_classes, logger=print
             )
 
-            # Sprawdź czy model ma już złożoną strukturę klasyfikatora
-            if not isinstance(model.classifier, nn.Sequential):
-                # Jeśli nie, utwórz prostszą strukturę klasyfikatora
-                in_features = model.classifier[1].in_features
-                model.classifier = nn.Sequential(
-                    nn.Dropout(0.2), nn.Linear(in_features, self.num_classes)
-                )
-            else:
-                # Jeśli tak, znajdź warstwę liniową w klasyfikatorze
-                for layer in reversed(model.classifier):
-                    if isinstance(layer, nn.Linear):
-                        in_features = layer.in_features
-                        break
-                else:
-                    # Jeśli nie znaleziono warstwy liniowej, użyj domyślnej wartości
-                    in_features = 1280  # Domyślna wartość dla EfficientNet-B0
+            # Przenieś model na odpowiednie urządzenie
+            model = model.to(device=self.device)
 
-                # Utwórz nowy klasyfikator
-                model.classifier = nn.Sequential(
-                    nn.Dropout(0.2), nn.Linear(in_features, self.num_classes)
-                )
+            return model
 
-            # Zamrożenie warstw bazowych dla lepszej generalizacji
-            for param in list(model.parameters())[:-10]:
-                param.requires_grad = False
-        elif self.model_type == "mobilenet":
-            model = models.mobilenet_v3_large(
-                weights=models.MobileNet_V3_Large_Weights.IMAGENET1K_V1
-            )
-            model.classifier[3] = nn.Linear(
-                model.classifier[3].in_features,
-                self.num_classes,
-            )
-        elif self.model_type == "vit":
-            model = models.vit_b_16(weights=models.ViT_B_16_Weights.IMAGENET1K_V1)
-            model.heads.head = nn.Linear(
-                model.heads.head.in_features,
-                self.num_classes,
-            )
-        elif self.model_type == "convnext":
-            model = models.convnext_tiny(
-                weights=models.ConvNeXt_Tiny_Weights.IMAGENET1K_V1
-            )
-            model.classifier[2] = nn.Linear(
-                model.classifier[2].in_features,
-                self.num_classes,
-            )
-        else:
+        except Exception as e:
             raise ValueError(f"Nieobsługiwany typ modelu: {self.model_type}")
-
-        # Przenieś model na odpowiednie urządzenie (bez zmiany typu danych)
-        model = model.to(device=self.device)
-
-        return model
 
     def _load_weights(self, weights_path):
         """Ładowanie wag modelu"""
