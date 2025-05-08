@@ -72,11 +72,15 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             tab = self._create_augmentation_tab()
             self.tabs.addTab(tab, "Augmentacja")
 
-            # 5. Zakładka: Monitorowanie i Zapis
+            # 5. Zakładka: Preprocessing
+            tab = self._create_preprocessing_tab()
+            self.tabs.addTab(tab, "Preprocessing")
+
+            # 6. Zakładka: Monitorowanie i Zapis
             tab = self._create_monitoring_tab()
             self.tabs.addTab(tab, "Monitorowanie")
 
-            # 6. Zakładka: Zaawansowane
+            # 7. Zakładka: Zaawansowane
             tab = self._create_advanced_tab()
             self.tabs.addTab(tab, "Zaawansowane")
 
@@ -404,11 +408,17 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.zoom_spin.setRange(0.0, 1.0)
             self.zoom_spin.setValue(0.1)
 
+            # Dodanie nowych parametrów
+            self.horizontal_flip_check = QtWidgets.QCheckBox("Odwrócenie poziome")
+            self.vertical_flip_check = QtWidgets.QCheckBox("Odwrócenie pionowe")
+
             basic_layout.addRow("", self.basic_aug_check)
             basic_layout.addRow("Kąt rotacji:", self.rotation_spin)
             basic_layout.addRow("Jasność:", self.brightness_spin)
             basic_layout.addRow("Przesunięcie:", self.shift_spin)
             basic_layout.addRow("Przybliżenie:", self.zoom_spin)
+            basic_layout.addRow("", self.horizontal_flip_check)
+            basic_layout.addRow("", self.vertical_flip_check)
             basic_group.setLayout(basic_layout)
 
             # Zaawansowana augmentacja
@@ -425,14 +435,81 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.cutmix_alpha_spin.setRange(0.0, 1.0)
             self.cutmix_alpha_spin.setValue(1.0)
 
+            # Dodanie AutoAugment i RandAugment
+            self.autoaugment_check = QtWidgets.QCheckBox("Używaj AutoAugment")
+            self.randaugment_check = QtWidgets.QCheckBox("Używaj RandAugment")
+            self.randaugment_n_spin = QtWidgets.QSpinBox()
+            self.randaugment_n_spin.setRange(1, 10)
+            self.randaugment_n_spin.setValue(2)
+            self.randaugment_m_spin = QtWidgets.QSpinBox()
+            self.randaugment_m_spin.setRange(1, 30)
+            self.randaugment_m_spin.setValue(9)
+
             advanced_layout.addRow("", self.mixup_check)
             advanced_layout.addRow("Alpha:", self.mixup_alpha_spin)
             advanced_layout.addRow("", self.cutmix_check)
             advanced_layout.addRow("Alpha:", self.cutmix_alpha_spin)
+            advanced_layout.addRow("", self.autoaugment_check)
+            advanced_layout.addRow("", self.randaugment_check)
+            advanced_layout.addRow("N:", self.randaugment_n_spin)
+            advanced_layout.addRow("M:", self.randaugment_m_spin)
             advanced_group.setLayout(advanced_layout)
 
             layout.addWidget(basic_group)
             layout.addWidget(advanced_group)
+            return tab
+
+        except Exception as e:
+            msg = "Błąd podczas tworzenia zakładki"
+            self.logger.error(f"{msg}: {str(e)}", exc_info=True)
+            raise
+
+    def _create_preprocessing_tab(self):
+        """Tworzenie zakładki Preprocessing."""
+        try:
+            self.logger.debug("Tworzenie zakładki preprocessing")
+            tab = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(tab)
+            form = QtWidgets.QFormLayout()
+
+            # Normalizacja
+            self.normalization_combo = QtWidgets.QComboBox()
+            self.normalization_combo.addItems(["RGB", "BGR"])
+            form.addRow("Normalizacja:", self.normalization_combo)
+
+            # Skalowanie obrazu
+            scaling_group = QtWidgets.QGroupBox("Skalowanie obrazu")
+            scaling_layout = QtWidgets.QFormLayout()
+
+            self.scaling_method = QtWidgets.QComboBox()
+            self.scaling_method.addItems(
+                ["Bilinear", "Bicubic", "Lanczos", "Nearest", "Area"]
+            )
+            self.scaling_method.setCurrentText("Bilinear")
+
+            self.maintain_aspect_ratio = QtWidgets.QCheckBox("Zachowaj proporcje")
+            self.maintain_aspect_ratio.setChecked(True)
+
+            self.pad_to_square = QtWidgets.QCheckBox("Uzupełnij do kwadratu")
+            self.pad_to_square.setChecked(False)
+
+            self.pad_mode = QtWidgets.QComboBox()
+            self.pad_mode.addItems(["constant", "edge", "reflect", "symmetric"])
+            self.pad_mode.setCurrentText("constant")
+
+            self.pad_value = QtWidgets.QSpinBox()
+            self.pad_value.setRange(0, 255)
+            self.pad_value.setValue(0)
+
+            scaling_layout.addRow("Metoda skalowania:", self.scaling_method)
+            scaling_layout.addRow("", self.maintain_aspect_ratio)
+            scaling_layout.addRow("", self.pad_to_square)
+            scaling_layout.addRow("Tryb uzupełniania:", self.pad_mode)
+            scaling_layout.addRow("Wartość uzupełniania:", self.pad_value)
+            scaling_group.setLayout(scaling_layout)
+
+            layout.addLayout(form)
+            layout.addWidget(scaling_group)
             return tab
 
         except Exception as e:
@@ -456,12 +533,14 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.recall_check = QtWidgets.QCheckBox("Recall")
             self.f1_check = QtWidgets.QCheckBox("F1 Score")
             self.topk_check = QtWidgets.QCheckBox("Top-k Accuracy")
+            self.confusion_matrix_check = QtWidgets.QCheckBox("Confusion Matrix")
 
             metrics_layout.addWidget(self.accuracy_check)
             metrics_layout.addWidget(self.precision_check)
             metrics_layout.addWidget(self.recall_check)
             metrics_layout.addWidget(self.f1_check)
             metrics_layout.addWidget(self.topk_check)
+            metrics_layout.addWidget(self.confusion_matrix_check)
             metrics_group.setLayout(metrics_layout)
 
             # Wczesne zatrzymanie
@@ -471,6 +550,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.patience_spin = QtWidgets.QSpinBox()
             self.patience_spin.setRange(1, 100)
             self.patience_spin.setValue(10)
+
+            self.min_delta_spin = QtWidgets.QDoubleSpinBox()
+            self.min_delta_spin.setRange(0.0, 1.0)
+            self.min_delta_spin.setValue(0.001)
+            self.min_delta_spin.setDecimals(4)
 
             self.monitor_combo = QtWidgets.QComboBox()
             metrics = [
@@ -483,6 +567,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.monitor_combo.addItems(metrics)
 
             early_stop_layout.addRow("Epoki bez poprawy:", self.patience_spin)
+            early_stop_layout.addRow("Minimalna poprawa:", self.min_delta_spin)
             early_stop_layout.addRow("Metryka:", self.monitor_combo)
             early_stop_group.setLayout(early_stop_layout)
 
@@ -495,9 +580,27 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.save_freq_spin.setRange(1, 50)
             self.save_freq_spin.setValue(1)
 
+            self.checkpoint_metric_combo = QtWidgets.QComboBox()
+            self.checkpoint_metric_combo.addItems(metrics)
+
             checkpoint_layout.addRow("", self.best_only_check)
             checkpoint_layout.addRow("Częstość zapisu:", self.save_freq_spin)
+            checkpoint_layout.addRow("Metryka:", self.checkpoint_metric_combo)
             checkpoint_group.setLayout(checkpoint_layout)
+
+            # TensorBoard
+            tensorboard_group = QtWidgets.QGroupBox("TensorBoard")
+            tensorboard_layout = QtWidgets.QFormLayout()
+
+            self.use_tensorboard_check = QtWidgets.QCheckBox("Używaj TensorBoard")
+            self.tensorboard_dir_edit = QtWidgets.QLineEdit()
+            self.tensorboard_dir_edit.setPlaceholderText(
+                "Katalog dla logów TensorBoard"
+            )
+
+            tensorboard_layout.addRow("", self.use_tensorboard_check)
+            tensorboard_layout.addRow("Katalog:", self.tensorboard_dir_edit)
+            tensorboard_group.setLayout(tensorboard_layout)
 
             # Katalog zapisu i logi
             save_group = QtWidgets.QGroupBox("Zapis modelu i logów")
@@ -518,6 +621,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             layout.addWidget(metrics_group)
             layout.addWidget(early_stop_group)
             layout.addWidget(checkpoint_group)
+            layout.addWidget(tensorboard_group)
             layout.addWidget(save_group)
             return tab
 
@@ -549,10 +653,33 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.min_lr.setRange(1e-6, 1e-2)
             self.min_lr.setValue(1e-6)
 
+            self.scheduler_cooldown = QtWidgets.QSpinBox()
+            self.scheduler_cooldown.setRange(0, 10)
+            self.scheduler_cooldown.setValue(0)
+
             scheduler_layout.addRow("Patience:", self.scheduler_patience)
             scheduler_layout.addRow("Factor:", self.scheduler_factor)
             scheduler_layout.addRow("Min LR:", self.min_lr)
+            scheduler_layout.addRow("Cooldown:", self.scheduler_cooldown)
             scheduler_group.setLayout(scheduler_layout)
+
+            # Transfer learning
+            transfer_group = QtWidgets.QGroupBox("Transfer Learning")
+            transfer_layout = QtWidgets.QFormLayout()
+
+            self.freeze_base_model = QtWidgets.QCheckBox("Zamroź model bazowy")
+            self.unfreeze_layers = QtWidgets.QLineEdit()
+            self.unfreeze_layers.setPlaceholderText("np. 2,3,4")
+
+            self.unfreeze_strategy = QtWidgets.QComboBox()
+            self.unfreeze_strategy.addItems(
+                ["Wszystkie na raz", "Stopniowo od końca", "Stopniowo od początku"]
+            )
+
+            transfer_layout.addRow("", self.freeze_base_model)
+            transfer_layout.addRow("Warstwy do odmrożenia:", self.unfreeze_layers)
+            transfer_layout.addRow("Strategia:", self.unfreeze_strategy)
+            transfer_group.setLayout(transfer_layout)
 
             # Inicjalizacja wag
             weights_group = QtWidgets.QGroupBox("Inicjalizacja wag")
@@ -573,20 +700,71 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             weights_layout.addRow("", self.freeze_layers)
             weights_group.setLayout(weights_layout)
 
-            # Dodatkowe parametry
-            extra_group = QtWidgets.QGroupBox("Parametry specyficzne")
-            extra_layout = QtWidgets.QFormLayout()
+            # Walidacja krzyżowa
+            cv_group = QtWidgets.QGroupBox("Walidacja krzyżowa")
+            cv_layout = QtWidgets.QFormLayout()
 
-            self.extra_params = QtWidgets.QLineEdit()
-            placeholder = '{"param1": value1, "param2": value2}'
-            self.extra_params.setPlaceholderText(placeholder)
+            self.use_cv = QtWidgets.QCheckBox("Używaj walidacji krzyżowej")
+            self.cv_folds = QtWidgets.QSpinBox()
+            self.cv_folds.setRange(2, 10)
+            self.cv_folds.setValue(5)
 
-            extra_layout.addRow("JSON:", self.extra_params)
-            extra_group.setLayout(extra_layout)
+            cv_layout.addRow("", self.use_cv)
+            cv_layout.addRow("Liczba foldów:", self.cv_folds)
+            cv_group.setLayout(cv_layout)
+
+            # Trening dystrybuowany
+            dist_group = QtWidgets.QGroupBox("Trening dystrybuowany")
+            dist_layout = QtWidgets.QFormLayout()
+
+            self.use_dist = QtWidgets.QCheckBox("Używaj treningu dystrybuowanego")
+            self.dist_backend = QtWidgets.QComboBox()
+            self.dist_backend.addItems(["nccl", "gloo"])
+            self.dist_strategy = QtWidgets.QComboBox()
+            self.dist_strategy.addItems(["ddp", "dp"])
+
+            dist_layout.addRow("", self.use_dist)
+            dist_layout.addRow("Backend:", self.dist_backend)
+            dist_layout.addRow("Strategia:", self.dist_strategy)
+            dist_group.setLayout(dist_layout)
+
+            # Gradienty
+            grad_group = QtWidgets.QGroupBox("Gradienty")
+            grad_layout = QtWidgets.QFormLayout()
+
+            self.grad_clip = QtWidgets.QDoubleSpinBox()
+            self.grad_clip.setRange(0.0, 10.0)
+            self.grad_clip.setValue(1.0)
+            self.grad_clip.setDecimals(3)
+
+            self.grad_accum = QtWidgets.QSpinBox()
+            self.grad_accum.setRange(1, 32)
+            self.grad_accum.setValue(1)
+
+            grad_layout.addRow("Gradient Clipping:", self.grad_clip)
+            grad_layout.addRow("Gradient Accumulation:", self.grad_accum)
+            grad_group.setLayout(grad_layout)
+
+            # Walidacja online
+            online_val_group = QtWidgets.QGroupBox("Walidacja online")
+            online_val_layout = QtWidgets.QFormLayout()
+
+            self.use_online_val = QtWidgets.QCheckBox("Używaj walidacji online")
+            self.online_val_freq = QtWidgets.QSpinBox()
+            self.online_val_freq.setRange(1, 100)
+            self.online_val_freq.setValue(10)
+
+            online_val_layout.addRow("", self.use_online_val)
+            online_val_layout.addRow("Częstość:", self.online_val_freq)
+            online_val_group.setLayout(online_val_layout)
 
             layout.addWidget(scheduler_group)
+            layout.addWidget(transfer_group)
             layout.addWidget(weights_group)
-            layout.addWidget(extra_group)
+            layout.addWidget(cv_group)
+            layout.addWidget(dist_group)
+            layout.addWidget(grad_group)
+            layout.addWidget(online_val_group)
             return tab
 
         except Exception as e:
@@ -650,7 +828,10 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                         "scheduler": self.scheduler_combo.currentText(),
                         "num_workers": self.num_workers_spin.value(),
                         "warmup_epochs": self.warmup_epochs_spin.value(),
-                        "mixed_precision": (self.mixed_precision_check.isChecked()),
+                        "mixed_precision": self.mixed_precision_check.isChecked(),
+                        "freeze_base_model": self.freeze_base_model.isChecked(),
+                        "unfreeze_layers": self.unfreeze_layers.text(),
+                        "unfreeze_strategy": self.unfreeze_strategy.currentText(),
                     },
                     "regularization": {
                         "weight_decay": float(self.weight_decay_spin.value()),
@@ -672,6 +853,8 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                             "brightness": self.brightness_spin.value(),
                             "shift": self.shift_spin.value(),
                             "zoom": self.zoom_spin.value(),
+                            "horizontal_flip": self.horizontal_flip_check.isChecked(),
+                            "vertical_flip": self.vertical_flip_check.isChecked(),
                         },
                         "mixup": {
                             "use": self.mixup_check.isChecked(),
@@ -681,6 +864,24 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                             "use": self.cutmix_check.isChecked(),
                             "alpha": self.cutmix_alpha_spin.value(),
                         },
+                        "autoaugment": {
+                            "use": self.autoaugment_check.isChecked(),
+                        },
+                        "randaugment": {
+                            "use": self.randaugment_check.isChecked(),
+                            "n": self.randaugment_n_spin.value(),
+                            "m": self.randaugment_m_spin.value(),
+                        },
+                    },
+                    "preprocessing": {
+                        "normalization": self.normalization_combo.currentText(),
+                        "scaling": {
+                            "method": self.scaling_method.currentText(),
+                            "maintain_aspect_ratio": self.maintain_aspect_ratio.isChecked(),
+                            "pad_to_square": self.pad_to_square.isChecked(),
+                            "pad_mode": self.pad_mode.currentText(),
+                            "pad_value": self.pad_value.value(),
+                        },
                     },
                     "monitoring": {
                         "metrics": {
@@ -689,14 +890,21 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                             "recall": self.recall_check.isChecked(),
                             "f1": self.f1_check.isChecked(),
                             "topk": self.topk_check.isChecked(),
+                            "confusion_matrix": self.confusion_matrix_check.isChecked(),
                         },
                         "early_stopping": {
                             "patience": self.patience_spin.value(),
+                            "min_delta": self.min_delta_spin.value(),
                             "monitor": self.monitor_combo.currentText(),
                         },
                         "checkpointing": {
                             "best_only": self.best_only_check.isChecked(),
                             "save_frequency": self.save_freq_spin.value(),
+                            "metric": self.checkpoint_metric_combo.currentText(),
+                        },
+                        "tensorboard": {
+                            "use": self.use_tensorboard_check.isChecked(),
+                            "log_dir": self.tensorboard_dir_edit.text(),
                         },
                         "save_dir": self.model_dir_edit.text(),
                         "save_logs": self.save_logs_check.isChecked(),
@@ -706,12 +914,29 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                             "patience": self.scheduler_patience.value(),
                             "factor": self.scheduler_factor.value(),
                             "min_lr": self.min_lr.value(),
+                            "cooldown": self.scheduler_cooldown.value(),
                         },
                         "weights": {
                             "init_method": self.init_weights.currentText(),
                             "freeze_cnn": self.freeze_layers.isChecked(),
                         },
-                        "extra_params": self.extra_params.text(),
+                        "cross_validation": {
+                            "use": self.use_cv.isChecked(),
+                            "folds": self.cv_folds.value(),
+                        },
+                        "distributed": {
+                            "use": self.use_dist.isChecked(),
+                            "backend": self.dist_backend.currentText(),
+                            "strategy": self.dist_strategy.currentText(),
+                        },
+                        "gradients": {
+                            "clip": self.grad_clip.value(),
+                            "accumulation": self.grad_accum.value(),
+                        },
+                        "online_validation": {
+                            "use": self.use_online_val.isChecked(),
+                            "frequency": self.online_val_freq.value(),
+                        },
                     },
                 },
             }
