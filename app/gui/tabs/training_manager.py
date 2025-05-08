@@ -166,7 +166,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                     )
 
                     # Typ zadania
-                    task_type = task_data.get("type", "Trening")
+                    task_type = task_data.get("typ", "trening")
                     self.tasks_table.setItem(
                         row, 1, QtWidgets.QTableWidgetItem(task_type)
                     )
@@ -425,9 +425,9 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         try:
             # Pobierz typ zadania
             task_type_index = self.task_type_combo.currentIndex()
-            task_type = "Trening" if task_type_index == 0 else "Doszkalanie"
+            task_type = "trening" if task_type_index == 0 else "Doszkalanie"
 
-            if task_type == "Trening":
+            if task_type == "trening":
                 # Użyj nowego dialogu
                 dialog = TrainingTaskConfigDialog(
                     parent=self,
@@ -480,7 +480,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                     QtCore.Qt.UserRole,
                     {
                         "name": task_name,
-                        "type": "Doszkalanie",
+                        "typ": "doszkalanie",
                         "status": "Nowy",
                         "priority": 0,
                         "created_at": datetime.datetime.now().strftime(

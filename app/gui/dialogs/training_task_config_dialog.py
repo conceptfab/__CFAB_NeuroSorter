@@ -1346,7 +1346,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             self.task_config = {
                 "name": task_name,
-                "type": "Trening",
+                "typ": "trening",
                 "status": "Nowy",
                 "priority": 0,
                 "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

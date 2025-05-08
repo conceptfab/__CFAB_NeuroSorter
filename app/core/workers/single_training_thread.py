@@ -60,13 +60,16 @@ class SingleTrainingThread(QThread):
                 task_path = None
 
             task_name = task_data.get("name", "Bez nazwy")
-            task_type = task_data.get("type", "Trening")
+            task_type = task_data.get("typ", "trening")
 
             # Ujednolicenie formatu typu zadania
-            if task_type.lower() in ["doszkalanie", "finetuning"]:
-                task_type = "Doszkalanie"
+            if task_type.lower() in ["doszkalanie", "fine-tuning"]:
+                task_type = "doszkalanie"
             elif task_type.lower() in ["trening", "training"]:
-                task_type = "Trening"
+                task_type = "trening"
+            else:
+                self.logger.warning(f"Nieznany typ zadania: {task_type}")
+                return
 
             self.logger.info(f"Rozpoznany typ zadania: {task_type}")
 
@@ -78,10 +81,10 @@ class SingleTrainingThread(QThread):
 
             # Wykonaj zadanie w zależności od typu
             result = None
-            if task_type == "Trening":
+            if task_type == "trening":
                 self.logger.info(f"  - Wykonywanie zadania treningu: {task_name}")
                 result = self._run_training_task(task_data, task_name, task_path)
-            elif task_type == "Doszkalanie":
+            elif task_type == "doszkalanie":
                 self.logger.info(f"  - Wykonywanie zadania doszkalania: {task_name}")
                 result = self._run_finetuning_task(task_data, task_name, task_path)
             else:
