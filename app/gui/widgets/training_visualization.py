@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt
@@ -372,8 +374,13 @@ class TrainingVisualization(QWidget):
             if self.data_updated:
                 self.update_plot()
 
-            # Zapisz wykres do pliku
-            self.plot_widget.export(filename)
+            # Zapisz wykres w formacie PNG z minimalną szerokością 3000px
+            self.plot_widget.setFixedWidth(3000)  # Ustaw minimalną szerokość
+            self.plot_widget.grab().save(filename)
+
+            # Przywróć oryginalny rozmiar
+            self.plot_widget.setFixedWidth(-1)  # Przywróć automatyczny rozmiar
+
             return True
         except Exception as e:
             print(f"Błąd podczas zapisywania wykresu: {e}")

@@ -12,8 +12,20 @@ from ai.models import get_model
 
 
 class ImageClassifier:
-    def __init__(self, model_type="efficientnet", num_classes=10, weights_path=None):
-        self.model_type = model_type
+    def __init__(self, model_type="b0", num_classes=10, weights_path=None):
+        # Normalizacja nazwy modelu
+        self.model_type = model_type.lower()
+        self.model_type = self.model_type.replace("efficientnet-", "").replace(
+            "efficientnet_", ""
+        )
+        self.model_type = self.model_type.replace("resnet", "")
+        self.model_type = self.model_type.replace("mobilenet", "mobile")
+        self.model_type = self.model_type.replace("convnext", "")
+        self.model_type = self.model_type.replace("vit", "")
+        self.model_type = self.model_type.strip(
+            "-_"
+        )  # Usuń ewentualne myślniki i podkreślniki na końcach
+
         self.num_classes = num_classes
         self.class_names = {}
 
@@ -654,11 +666,9 @@ class ImageClassifier:
     ):
         """
         Automatycznie wybiera optymalną architekturę modelu.
-        Zgodnie z dokumentacją, zawsze zwraca efficientnet jako rekomendowaną architekturę.
+        Zgodnie z dokumentacją, zawsze zwraca efficientnet_b0 jako rekomendowaną architekturę.
         """
-        return (
-            "efficientnet"  # Zawsze zwracamy efficientnet jako optymalną architekturę
-        )
+        return "efficientnet_b0"  # Zawsze zwracamy efficientnet_b0 jako optymalną architekturę
 
     def debug_category_mapping(self, directory, top_n=5):
         """

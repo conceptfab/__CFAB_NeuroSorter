@@ -1,6 +1,7 @@
 import numpy as np
 import torchvision.transforms as transforms
 from PIL import Image
+from torchvision.transforms import AutoAugment, AutoAugmentPolicy, TrivialAugmentWide
 
 
 def get_default_transforms(image_size=(224, 224)):
@@ -74,6 +75,13 @@ def get_extended_augmentation_transforms(image_size=(224, 224), params=None):
     grayscale = params.get("grayscale", False)
     perspective = params.get("perspective", False)
 
+    # Nowe parametry dla TrivialAugment i AutoAugment
+    use_trivial_augment = params.get("trivialaugment", {}).get("use", False)
+    use_autoaugment = params.get("autoaugment", {}).get("use", False)
+    use_randaugment = params.get("randaugment", {}).get("use", False)
+    randaugment_n = params.get("randaugment", {}).get("n", 2)
+    randaugment_m = params.get("randaugment", {}).get("m", 9)
+
     transform_list = [
         transforms.RandomResizedCrop(image_size),
         transforms.RandomHorizontalFlip(),
@@ -86,6 +94,19 @@ def get_extended_augmentation_transforms(image_size=(224, 224), params=None):
     if rotation > 0:
         transform_list.append(transforms.RandomRotation(rotation))
 
+    # Dodaj TrivialAugment jeśli włączony
+    if use_trivial_augment:
+        transform_list.append(TrivialAugmentWide())
+
+    # Dodaj AutoAugment jeśli włączony
+    if use_autoaugment:
+        transform_list.append(AutoAugment(AutoAugmentPolicy.IMAGENET))
+
+    # Dodaj RandAugment jeśli włączony
+    if use_randaugment:
+        transform_list.append(transforms.RandAugment(n=randaugment_n, m=randaugment_m))
+
+    # Dodaj standardowe transformacje kolorów
     transform_list.append(
         transforms.ColorJitter(
             brightness=brightness, contrast=contrast, saturation=saturation, hue=hue

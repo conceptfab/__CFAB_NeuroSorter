@@ -16,6 +16,12 @@ from app.utils.file_utils import (
 class TrainingTaskConfigDialog(QtWidgets.QDialog):
     """Dialog konfiguracji zadania treningu."""
 
+    # Strategie odmrażania warstw
+    UNFREEZE_ALL = "unfreeze_all"
+    UNFREEZE_GRADUAL_END = "unfreeze_gradual_end"
+    UNFREEZE_GRADUAL_START = "unfreeze_gradual_start"
+    UNFREEZE_AFTER_EPOCHS = "unfreeze_after_epoochs"
+
     def __init__(self, parent=None, settings=None, hardware_profile=None):
         super().__init__(parent)
         self.settings = settings
@@ -325,6 +331,31 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 self.mixed_precision_check.setChecked(
                     training_config.get("mixed_precision", True)
                 )
+                self.freeze_base_model.setChecked(
+                    training_config.get("freeze_base_model", True)
+                )
+                self.unfreeze_layers.setText(
+                    str(training_config.get("unfreeze_layers", ""))
+                )
+
+                # Konwersja strategii odmrażania
+                strategy = training_config.get("unfreeze_strategy", "")
+                if "Po" in strategy and "epokach" in strategy:
+                    self.unfreeze_strategy.setCurrentText(
+                        "Po określonej liczbie epok (unfreeze_after_epoochs)"
+                    )
+                elif "Stopniowo" in strategy and "końca" in strategy:
+                    self.unfreeze_strategy.setCurrentText(
+                        "Stopniowo od końca (unfreeze_gradual_end)"
+                    )
+                elif "Stopniowo" in strategy and "początku" in strategy:
+                    self.unfreeze_strategy.setCurrentText(
+                        "Stopniowo od początku (unfreeze_gradual_start)"
+                    )
+                else:
+                    self.unfreeze_strategy.setCurrentText(
+                        "Wszystkie na raz (unfreeze_all)"
+                    )
 
             # Regularyzacja
             if "regularization" in config:
@@ -672,6 +703,8 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 "StepLR",
                 "ReduceLROnPlateau",
                 "CosineAnnealingLR",
+                "OneCycleLR",
+                "CosineAnnealingWarmRestarts",
             ]
             self.scheduler_combo.addItems(schedulers)
             form.addRow("Harmonogram uczenia:", self.scheduler_combo)
@@ -1075,7 +1108,12 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             self.unfreeze_strategy = QtWidgets.QComboBox()
             self.unfreeze_strategy.addItems(
-                ["Wszystkie na raz", "Stopniowo od końca", "Stopniowo od początku"]
+                [
+                    "Wszystkie na raz (unfreeze_all)",
+                    "Stopniowo od końca (unfreeze_gradual_end)",
+                    "Stopniowo od początku (unfreeze_gradual_start)",
+                    "Po określonej liczbie epok (unfreeze_after_epoochs)",
+                ]
             )
 
             transfer_layout.addRow("", self.freeze_base_model)
@@ -1174,6 +1212,43 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.logger.error(f"{msg}: {str(e)}", exc_info=True)
             raise
 
+    def _get_unfreeze_strategy_value(self, display_text):
+        """Konwertuje wyświetlaną wartość strategii odmrażania na wartość wewnętrzną."""
+        if "unfreeze_all" in display_text:
+            return self.UNFREEZE_ALL
+        elif "unfreeze_gradual_end" in display_text:
+            return self.UNFREEZE_GRADUAL_END
+        elif "unfreeze_gradual_start" in display_text:
+            return self.UNFREEZE_GRADUAL_START
+        elif "unfreeze_after_epoochs" in display_text:
+            return self.UNFREEZE_AFTER_EPOCHS
+        return self.UNFREEZE_ALL  # domyślna wartość
+
+    def _get_unfreeze_layers_value(self, value):
+        """Konwertuje wartość unfreeze_layers na odpowiedni format."""
+        if not value:
+            return "all"
+        try:
+            # Próba konwersji na int
+            return int(value)
+        except ValueError:
+            # Jeśli nie da się przekonwertować, zwracamy string
+            return value
+
+    def _get_scheduler_value(self, display_text):
+        """Konwertuje wyświetlaną wartość schedulera na wartość wewnętrzną."""
+        if "OneCycleLR" in display_text:
+            return "OneCycleLR"
+        elif "CosineAnnealingWarmRestarts" in display_text:
+            return "CosineAnnealingWarmRestarts"
+        elif "StepLR" in display_text:
+            return "StepLR"
+        elif "ReduceLROnPlateau" in display_text:
+            return "ReduceLROnPlateau"
+        elif "CosineAnnealingLR" in display_text:
+            return "CosineAnnealingLR"
+        return "None"  # domyślna wartość
+
     def _on_accept(self):
         """Obsługa zatwierdzenia konfiguracji."""
         try:
@@ -1227,13 +1302,19 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                         "batch_size": self.batch_size_spin.value(),
                         "learning_rate": float(self.lr_spin.value()),
                         "optimizer": self.optimizer_combo.currentText(),
-                        "scheduler": self.scheduler_combo.currentText(),
+                        "scheduler": self._get_scheduler_value(
+                            self.scheduler_combo.currentText()
+                        ),
                         "num_workers": self.num_workers_spin.value(),
                         "warmup_epochs": self.warmup_epochs_spin.value(),
                         "mixed_precision": self.mixed_precision_check.isChecked(),
                         "freeze_base_model": self.freeze_base_model.isChecked(),
-                        "unfreeze_layers": self.unfreeze_layers.text(),
-                        "unfreeze_strategy": self.unfreeze_strategy.currentText(),
+                        "unfreeze_layers": self._get_unfreeze_layers_value(
+                            self.unfreeze_layers.text()
+                        ),
+                        "unfreeze_strategy": self._get_unfreeze_strategy_value(
+                            self.unfreeze_strategy.currentText()
+                        ),
                     },
                     "regularization": {
                         "weight_decay": float(self.weight_decay_spin.value()),

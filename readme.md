@@ -42,7 +42,7 @@ CFAB NeuroSorter to aplikacja, która posiada rozbudowaną mechanikę szkolenia 
 
 Aplikacja oferuje kilka zaawansowanych architektur sieci neuronowych do wyboru, każda z nich jest wstępnie trenowana na zbiorze danych ImageNet:
 
-### ResNet50 (domyślny)
+### Model 50 (domyślny)
 
 - Głęboka sieć rezydualna o 50 warstwach
 - Zbalansowana wydajność i dokładność
@@ -50,28 +50,28 @@ Aplikacja oferuje kilka zaawansowanych architektur sieci neuronowych do wyboru, 
 - Relatywnie niskie zużycie pamięci w porównaniu do wydajności
 - Domyślny wybór dla większości zastosowań
 
-### EfficientNet B0
+### Model B0
 
 - Lekka i wydajna architektura zaprojektowana do optymalizacji dokładności przy ograniczonych zasobach
 - Wykorzystuje techniki skalowania złożonego (compound scaling)
-- Mniejsze zużycie pamięci i szybsza inferecja niż ResNet50
+- Mniejsze zużycie pamięci i szybsza inferecja niż Model 50
 - Idealna do urządzeń z ograniczonymi zasobami
 
-### MobileNet V3 Large
+### Model Mobile3L
 
 - Zoptymalizowana do pracy na urządzeniach mobilnych
 - Bardzo szybka inferecja przy zachowaniu dobrej dokładności
 - Najniższe zużycie pamięci spośród wszystkich dostępnych modeli
 - Zalecana do aplikacji działających w czasie rzeczywistym
 
-### Vision Transformer (ViT)
+### Model ViTB16
 
 - Nowoczesna architektura oparta na mechanizmie uwagi (attention)
 - Doskonale radzi sobie ze złożonymi wzorcami i zależnościami przestrzennymi
 - Wysoka dokładność na zróżnicowanych danych
 - Większe zużycie zasobów, ale często lepsze wyniki na trudnych zbiorach danych
 
-### ConvNeXt Tiny
+### Model Tiny
 
 - Hybryda między klasycznymi sieciami konwolucyjnymi a transformerami
 - Nowoczesny design z wydajnością ViT przy niższym zużyciu zasobów
@@ -256,7 +256,7 @@ Funkcjonalność sortowania jest dostępna bezpośrednio w interfejsie graficzny
 
 ### Opcje treningowe
 
-- Wybór typu modelu (ResNet50, EfficientNet, MobileNet, ViT, ConvNeXt)
+- Wybór typu modelu (Model 50, Model B0, Model Mobile3L, Model ViTB16, Model Tiny)
 - Konfiguracja augmentacji danych (jasność, kontrast, nasycenie, obrót, odbicie itp.)
 - Tryby augmentacji: brak, podstawowy, rozszerzony
 - Możliwość dostosowania parametrów uczenia (learning rate, batch size, liczba epok)

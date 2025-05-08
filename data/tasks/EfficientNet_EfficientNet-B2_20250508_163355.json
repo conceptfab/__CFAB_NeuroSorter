@@ -1,58 +1,58 @@
 {
-    "name": "EfficientNet_EfficientNet-B7_20250508_154015.json",
+    "name": "EfficientNet_EfficientNet-B2_20250508_163355.json",
     "type": "Trening",
     "status": "Zakończony",
     "priority": 0,
-    "created_at": "2025-05-08 15:40:15",
+    "created_at": "2025-05-08 16:33:55",
     "config": {
         "train_dir": "F:/_set_A/__dane_treningowe",
         "data_dir": "F:/_set_A/__dane_treningowe",
         "val_dir": "F:/_set_A/__dane_walidacyjne",
         "model": {
             "architecture": "EfficientNet",
-            "variant": "EfficientNet-B7",
-            "input_size": 600,
+            "variant": "EfficientNet-B2",
+            "input_size": 288,
             "num_classes": 38
         },
         "training": {
-            "epochs": 100,
-            "batch_size": 16,
-            "learning_rate": 0.0005,
+            "epochs": 180,
+            "batch_size": 32,
+            "learning_rate": 0.0002,
             "optimizer": "AdamW",
-            "scheduler": "CosineAnnealingLR",
-            "num_workers": 8,
+            "scheduler": "CosineAnnealingWarmRestarts",
+            "num_workers": 12,
             "warmup_epochs": 10,
             "mixed_precision": true,
-            "freeze_base_model": false,
-            "unfreeze_layers": "",
-            "unfreeze_strategy": "Wszystkie na raz"
+            "freeze_base_model": true,
+            "unfreeze_layers": 12,
+            "unfreeze_strategy": "unfreeze_all"
         },
         "regularization": {
-            "weight_decay": 1e-05,
+            "weight_decay": 0.0001,
             "gradient_clip": 1.0,
-            "label_smoothing": 0.1,
-            "drop_connect_rate": 0.2,
-            "dropout_rate": 0.3,
+            "label_smoothing": 0.15,
+            "drop_connect_rate": 0.3,
+            "dropout_rate": 0.5,
             "momentum": 0.9,
             "epsilon": 1e-06,
             "swa": {
                 "use": true,
-                "start_epoch": 70
+                "start_epoch": 80
             }
         },
         "augmentation": {
             "basic": {
                 "use": true,
-                "rotation": 20,
+                "rotation": 30,
                 "brightness": 0.3,
-                "shift": 0.2,
+                "shift": 0.15,
                 "zoom": 0.2,
                 "horizontal_flip": true,
                 "vertical_flip": false
             },
             "mixup": {
                 "use": true,
-                "alpha": 0.2
+                "alpha": 0.4
             },
             "cutmix": {
                 "use": true,
@@ -87,7 +87,7 @@
                 "confusion_matrix": true
             },
             "early_stopping": {
-                "patience": 15,
+                "patience": 25,
                 "min_delta": 0.001,
                 "monitor": "val_f1"
             },
@@ -133,10 +133,10 @@
             }
         }
     },
-    "training_time": 152.33,
-    "training_time_str": "0:02:32",
-    "train_accuracy": 0.7112010796221323,
-    "train_loss": 1.5183837734242922,
-    "validation_accuracy": 0.6578947368421053,
-    "validation_loss": 1.8365807003445096
+    "training_time": 170.61,
+    "training_time_str": "0:02:50",
+    "train_accuracy": 0.7118758434547908,
+    "train_loss": 1.5250438426130561,
+    "validation_accuracy": 0.6917293233082706,
+    "validation_loss": 1.6677704784605238
 }

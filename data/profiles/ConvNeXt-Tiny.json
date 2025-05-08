@@ -1,0 +1,138 @@
+{
+  "info": "Profil dla ConvNeXt-Tiny",
+  "description": "Profil zoptymalizowany do klasyfikacji 38 kategorii z małym zbiorem danych, wykorzystujący nowoczesną architekturę ConvNeXt",
+  "data_required": "38 klas, 95 obrazów treningowych i 5 walidacyjnych na klasę",
+  "hardware_required": "GPU RTX 4700, RYZEN 9 16-rdzeniowy, RAM 128GB",
+  "config": {
+    "model": {
+      "architecture": "ConvNeXt",
+      "variant": "ConvNeXt-Tiny",
+      "input_size": 224,
+      "num_classes": 38
+    },
+    "training": {
+      "epochs": 120,
+      "batch_size": 32,
+      "learning_rate": 0.0001,
+      "optimizer": "AdamW",
+      "scheduler": "OneCycleLR",
+      "num_workers": 14,
+      "warmup_epochs": 8,
+      "mixed_precision": true,
+      "freeze_base_model": true,
+      "unfreeze_layers": "all",
+      "unfreeze_strategy": "Po 15 epokach"
+    },
+    "regularization": {
+      "weight_decay": 0.01,
+      "gradient_clip": 1.0,
+      "label_smoothing": 0.1,
+      "dropout_rate": 0.3,
+      "momentum": 0.9,
+      "epsilon": 1e-8,
+      "swa": {
+        "use": true,
+        "start_epoch": 70
+      }
+    },
+    "augmentation": {
+      "basic": {
+        "use": true,
+        "rotation": 20,
+        "brightness": 0.3,
+        "contrast": 0.3,
+        "saturation": 0.2,
+        "hue": 0.1,
+        "shift": 0.15,
+        "zoom": 0.25,
+        "horizontal_flip": true,
+        "vertical_flip": false
+      },
+      "mixup": {
+        "use": true,
+        "alpha": 0.5
+      },
+      "cutmix": {
+        "use": true,
+        "alpha": 1.0
+      },
+      "autoaugment": {
+        "use": true
+      },
+      "randaugment": {
+        "use": true,
+        "n": 3,
+        "m": 12
+      },
+      "trivialaugment": {
+        "use": true
+      }
+    },
+    "preprocessing": {
+      "normalization": "ImageNet",
+      "scaling": {
+        "method": "Bicubic",
+        "maintain_aspect_ratio": true,
+        "pad_to_square": true,
+        "pad_mode": "reflection",
+        "pad_value": 0
+      }
+    },
+    "monitoring": {
+      "metrics": {
+        "accuracy": true,
+        "precision": true,
+        "recall": true,
+        "f1": true,
+        "topk": true,
+        "confusion_matrix": true
+      },
+      "early_stopping": {
+        "patience": 20,
+        "min_delta": 0.001,
+        "monitor": "val_f1"
+      },
+      "checkpointing": {
+        "best_only": true,
+        "save_frequency": 1,
+        "metric": "val_f1"
+      },
+      "tensorboard": {
+        "use": true,
+        "log_dir": "logs/convnext"
+      },
+      "save_dir": "checkpoints/convnext",
+      "save_logs": true
+    },
+    "advanced": {
+      "scheduler": {
+        "max_lr": 0.0001,
+        "pct_start": 0.1,
+        "div_factor": 25.0,
+        "final_div_factor": 10000.0
+      },
+      "weights": {
+        "init_method": "kaiming_normal",
+        "freeze_cnn": false,
+        "pretrained": true
+      },
+      "cross_validation": {
+        "use": true,
+        "folds": 5
+      },
+      "distributed": {
+        "use": false,
+        "backend": "nccl",
+        "strategy": "ddp"
+      },
+      "gradients": {
+        "clip": 1.0,
+        "accumulation": 1
+      },
+      "online_validation": {
+        "use": true,
+        "frequency": 2
+      }
+    }
+  }
+}

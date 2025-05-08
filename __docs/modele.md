@@ -1,70 +1,44 @@
-Dzień dobry! Chętnie pomogę Ci ocenić, który model do rozpoznawania obrazów byłby lepszy: ConvNeXt czy EfficientNet. Przeszukam najnowsze informacje, aby zapewnić Ci aktualne porównanie tych modeli.convnext efficientnet comparison image recognition10 resultsWhich Backbone to Use: A Resource-efficient Domain Specific Comparison for Computer Visionarxiv.orgPapers with Code - ImageNet Benchmark (Image Classification)paperswithcode.comArxivarxiv.orgEfficientNethuggingface.coWhat is the comparison of efficentnet to other CNN architecture models? - Quoraquora.comHow ConvNets found a way to survive the Transformers invasion in computer visionanalyticsindiamag.comGitHub - avocardio/resnet_vs_convnext: New is not always better: a comparison of two image classification networks (ResNet-50 vs ConvNeXt).github.comConvNeXt V2, the New Model Family That Boosts ConvNet Performancedeeplearning.aiConvNeXt V2huggingface.co[Notes] Understanding ConvNeXt · Veritable Tech Blogceshine.netNa podstawie wyników wyszukiwania, mogę przedstawić porównanie modeli ConvNeXt i EfficientNet do zadań rozpoznawania obrazów:
-ConvNeXt
-ConvNeXt konsekwentnie przewyższa inne modele w zadaniach rozpoznawania obrazów naturalnych. Osiąga wyjątkowe wyniki dzięki nowatorskiej architekturze, która łączy zalety tradycyjnych sieci konwolucyjnych z nowoczesnymi modelami transformerowymi. ArXiv
-ConvNeXt zachowuje dobre wyniki również w innych domenach, takich jak tekstury, rośliny i astronomia. ArXiv
-ConvNeXt może skutecznie konkurować z transformerami pod względem dokładności, odporności i skalowalności, zachowując jednocześnie efektywność typową dla sieci konwolucyjnych. AIM Media House
-Najnowsza wersja, ConvNeXt V2 (model z 659 milionami parametrów), osiągnęła 88,9% dokładności top-1 na zbiorze ImageNet, przewyższając poprzedni stan techniki. Deeplearning
-EfficientNet
-EfficientNet to rodzina modeli, które osiągają wysoką dokładność, będąc jednocześnie znacznie mniejszymi i szybszymi od wcześniejszych modeli. W szczególności EfficientNet-B7 osiągnął 84,3% dokładności top-1 na ImageNet, będąc 8,4x mniejszym i 6,1x szybszym w inferowaniu niż najlepsze istniejące ConvNety. Huggingface
-EfficientNetV2-S również radzi sobie dobrze na większości zbiorów danych z obrazami naturalnymi. ArXiv
-Porównanie
-W przypadku uczenia przy małych zbiorach danych, lepiej unikać architektury transformerowej jak Swin i używać czystych architektur CNN, takich jak ConvNeXt, EfficientNet lub RegNet. ArXiv
-Warto zauważyć, że nawet najmniejsza wersja ConvNeXt (ConvNeXt-T z 28M parametrów) wymaga znacznie więcej mocy obliczeniowej niż poprzednik, ResNet. W jednym z badań ConvNeXt zużył około 30KWh po 6 epokach i 3 godzinach treningu, podczas gdy ResNet-50 osiągnął 87% dokładności zużywając tylko 21KWh. GitHub
-ConvNeXt intensywnie wykorzystuje konwolucje depthwise, podobnie jak EfficientNet. W porównaniu z innymi popularnymi modelami, ConvNeXt wykazuje zarówno wysoką wydajność, jak i dokładność. Veritable Tech Blog
-Który wybrać?
-Wybór między ConvNeXt a EfficientNet zależy od Twoich priorytetów:
+Warianty ResNet
+ResNet (Residual Network) została wprowadzona w 2015 roku i ma kilka kluczowych wariantów:
 
-Jeśli priorytetem jest dokładność:
+ResNet-18: Najprostsza wersja z 18 warstwami
+ResNet-34: Średnia wersja z 34 warstwami
+ResNet-50: Najpopularniejsza wersja z 50 warstwami i około 23-25 milionami parametrów
+ResNet-101: Głębsza wersja ze 101 warstwami
+ResNet-152: Najgłębsza standardowa wersja ze 152 warstwami
 
-ConvNeXt oferuje najwyższą dokładność, zwłaszcza najnowsza wersja ConvNeXt V2
+ResNet-50-vd: Zmodyfikowana wersja z ulepszonym blokiem początkowym (Stem block)
+ResNetV2: Ulepszona wersja z modyfikacją kolejności warstw batch normalization, aktywacji i konwolucji
+ResNet-D: Wersja z ulepszonym downsamplingiem
+ResNeXt: Wersja ResNet używająca kardynalności (grupowanych konwolucji)
 
+Vision Transformer to stosunkowo nowa architektura wprowadzona w 2020 roku:
+ViT-Base (ViT-B): Standardowy model z 12 blokami transformerowymi, 768 wymiarami ukrytymi i 12 głowicami uwagi
+ViT-Large (ViT-L): Większy model z 24 blokami, 1024 wymiarami ukrytymi i 16 głowicami
+ViT-Huge (ViT-H): Największy model z 32 blokami, 1280 wymiarami ukrytymi i większą liczbą głowic
 
-Jeśli priorytetem jest efektywność i ograniczone zasoby:
+Swin Transformer: Hierarchiczna wersja ViT używająca przesuwanych okien uwagi
+SwinV2: Ulepszony model Swin z lepszą skalowalnością
+CrossViT: Model wykorzystujący uwagę krzyżową dla klasyfikacji obrazów
+DeiT: Wersja ViT trenowana efektywnie na mniejszych zbiorach danych
+DiT: Diffusion Transformer - wersja dla generatywnych modeli dyfuzyjnych
 
-EfficientNet będzie lepszym wyborem, ponieważ został zaprojektowany z myślą o efektywności
+Warianty MobileNet
+MobileNet został zaprojektowany dla urządzeń mobilnych i ma kilka generacji:
 
+MobileNetV1: Pierwsza wersja oparta na depthwise separable convolutions
+MobileNetV2: Druga generacja wprowadzająca inverted residual block i linear bottlenecks
+MobileNetV3: Trzecia generacja, dostępna w dwóch wariantach:
 
-Jeśli pracujesz z małym zbiorem danych:
+MobileNetV3-Small: Mniejszy i szybszy, ale mniej dokładny
+MobileNetV3-Large: Większy i dokładniejszy, ale wolniejszy
 
-Oba modele są rekomendowane w porównaniu z architekturami transformerowymi
+MobileNetV4: Najnowsza generacja z różnymi podwariantami:
 
+MobileNetV4-Conv-Small: Mniejsza wersja z naciskiem na efektywność
+MobileNetV4-Conv-Small-050: Wersja o zmniejszonych wymiarach (0.5x)
 
-Jeśli ważny jest czas treningu i zużycie energii:
+Każdy model MobileNet może być dodatkowo skalowany za pomocą parametru alfa (mnożnik szerokości), który kontroluje liczbę filtrów w każdej warstwie. Na przykład:
 
-EfficientNet może być bardziej ekonomiczny w treningu
-
-
-
-Czy potrzebujesz bardziej szczegółowych informacji na temat któregoś z tych modeli lub masz konkretny przypadek użycia, który chciałbyś omówić?
-
-
-
-
-Ustawienia dla interfejsu z obrazka:
-
-Architektura modelu: convnext
-Liczba epok: 50-300 (zależnie od rozmiaru modelu)
-Rozmiar wsadu: 128
-Współczynnik uczenia: 0.001 (1e-3) lub lepiej 6.25e-4 (dla modelu Base)
-Optymalizator: Adam
-Harmonogram uczenia: cosine (zamiast None)
-Liczba wątków do ładowania danych: 16 (bez zmian)
-Współczynnik regularyzacji L2: 0.05 (5e-2)
-Wartość przycinania gradientów: 0.10 (bez zmian)
-Liczba epok bez poprawy przed zatrzymaniem: 5 (bez zmian)
-Używaj mixed precision: włączone ✓
-Augmentacja danych:
-
-Podstawowa augmentacja: ✓
-Zaawansowana augmentacja: ✓
-
-
-
-Rekomendowane zmiany:
-
-Zmień harmonogram uczenia z None na cosine
-Dostosuj współczynnik regularyzacji L2 do 0.05
-Jeśli to możliwe, dodaj pozostałe brakujące parametry (drop path, reprob, mixup, cutmix)
-
-ConvNeXt to nowoczesna architektura znacznie poprawiająca wyniki konwolucyjnych sieci neuronowych, osiągając wyniki porównywalne lub lepsze od modeli Transformer, przy zachowaniu prostoty i efektywności standardowych CNN.
-
+MobileNetV3-Large-100: Standardowa wersja (α=1.0)
+MobileNetV3-Large-150d: Wersja o zwiększonej szerokości (α=1.5)

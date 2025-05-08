@@ -326,7 +326,29 @@ class SingleTrainingThread(QThread):
 
                 # Generuj nazwę pliku modelu
                 timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-                model_filename = f"{model_type}_{epochs}epok_{timestamp}.pt"
+                accuracy = result.get("val_acc", 0)
+                num_classes = len(model.class_names) if model.class_names else 0
+
+                # Normalizacja nazwy modelu
+                model_type = model_type.lower()
+                model_type = model_type.replace("efficientnet-", "").replace(
+                    "efficientnet_", ""
+                )
+                model_type = model_type.replace("resnet", "")
+                model_type = model_type.replace("mobilenet", "mobile")
+                model_type = model_type.replace("convnext", "")
+                model_type = model_type.replace("vit", "")
+                model_type = model_type.strip("-_")
+
+                model_version = (
+                    task_data.get("config", {}).get("model", {}).get("variant", "")
+                )
+                if model_version:
+                    model_version = model_version.replace(
+                        "efficientnet", "EfficientNet"
+                    )
+
+                model_filename = f"{model_type}_{model_version}_{num_classes}klas_{accuracy:.2f}acc_{epochs}epok_{timestamp}.pt"
                 model_path = os.path.join(output_dir, model_filename)
 
                 self.logger.info(f"Generowana nazwa modelu: {model_filename}")

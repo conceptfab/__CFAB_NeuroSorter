@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.swa_utils import SWALR, AveragedModel
 from torch.utils.data import DataLoader, Dataset
 from torchvision import datasets, models, transforms
 
@@ -231,6 +232,8 @@ def train_model(
     momentum: float = 0.9,
     epsilon: float = 0.001,
     warmup_epochs: int = 5,
+    swa_config: Optional[Dict] = None,
+    scheduler_params: Optional[Dict] = None,
 ) -> Tuple[str, Dict[str, float]]:
     """
     Trenuje model na podstawie podanych parametrów.
@@ -256,6 +259,8 @@ def train_model(
         momentum: Wartość momentum
         epsilon: Wartość epsilon
         warmup_epochs: Liczba epok warmup
+        swa_config: Konfiguracja SWA (opcjonalnie)
+        scheduler_params: Dodatkowe parametry schedulera (opcjonalnie)
 
     Returns:
         Tuple[str, Dict[str, float]]: Ścieżka do zapisanego modelu i metryki
@@ -279,6 +284,10 @@ def train_model(
         logger(f"- Early stopping: {early_stopping}")
         if augmentation:
             logger(f"- Augmentacja: {augmentation}")
+        if swa_config:
+            logger(f"- SWA: {swa_config}")
+        if scheduler_params:
+            logger(f"- Parametry schedulera: {scheduler_params}")
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -361,35 +370,60 @@ def train_model(
             eps=epsilon,
         )
 
-    # Wybierz scheduler learning rate
-    if scheduler == "plateau":
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.5, patience=2
-        )
-    elif scheduler == "cosine":
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=epochs, eta_min=1e-6
-        )
-    elif scheduler == "step":
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
-    else:
-        scheduler = None
+    # Inicjalizacja SWA jeśli skonfigurowane
+    swa_model = None
+    swa_start = None
+    swa_scheduler = None
+    if swa_config and swa_config.get("use", False):
+        swa_model = AveragedModel(model)
+        swa_start = swa_config.get("start_epoch", epochs // 2)
+        swa_scheduler = SWALR(optimizer, swa_lr=learning_rate * 0.1)
 
-    # Dodaj warmup scheduler jeśli warmup_epochs > 0
-    if warmup_epochs > 0:
-        warmup_scheduler = optim.lr_scheduler.LinearLR(
-            optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_epochs
-        )
-        scheduler = optim.lr_scheduler.SequentialLR(
-            optimizer,
-            schedulers=[warmup_scheduler, scheduler],
-            milestones=[warmup_epochs],
-        )
-
-    # Implementacja Early Stopping
-    patience = early_stopping if early_stopping != float("inf") else float("inf")
-    best_val_loss = float("inf")
-    counter = 0
+    # Konfiguracja schedulera
+    if scheduler:
+        if scheduler == "cosine":
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                optimizer,
+                T_max=epochs,
+                eta_min=scheduler_params.get("eta_min", 0) if scheduler_params else 0,
+            )
+        elif scheduler == "cosine_warm_restarts":
+            scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+                optimizer,
+                T_0=scheduler_params.get("T_0", 10) if scheduler_params else 10,
+                T_mult=scheduler_params.get("T_mult", 2) if scheduler_params else 2,
+                eta_min=scheduler_params.get("eta_min", 0) if scheduler_params else 0,
+            )
+        elif scheduler == "one_cycle":
+            scheduler = optim.lr_scheduler.OneCycleLR(
+                optimizer,
+                max_lr=learning_rate,
+                epochs=epochs,
+                steps_per_epoch=len(train_loader),
+                pct_start=(
+                    scheduler_params.get("pct_start", 0.3) if scheduler_params else 0.3
+                ),
+                div_factor=(
+                    scheduler_params.get("div_factor", 25.0)
+                    if scheduler_params
+                    else 25.0
+                ),
+                final_div_factor=(
+                    scheduler_params.get("final_div_factor", 10000.0)
+                    if scheduler_params
+                    else 10000.0
+                ),
+            )
+        elif scheduler == "plateau":
+            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer,
+                mode=scheduler_params.get("mode", "min") if scheduler_params else "min",
+                factor=scheduler_params.get("factor", 0.1) if scheduler_params else 0.1,
+                patience=(
+                    scheduler_params.get("patience", 10) if scheduler_params else 10
+                ),
+                min_lr=scheduler_params.get("min_lr", 0) if scheduler_params else 0,
+            )
 
     # Historia treningu
     history = {
@@ -424,8 +458,6 @@ def train_model(
                 "cuda", enabled=use_mixed_precision and torch.cuda.is_available()
             ):
                 outputs = model(inputs)
-
-                # Oblicz stratę
                 loss = criterion(outputs, labels)
 
             # Backward pass i optymalizacja z GradScaler
@@ -435,30 +467,34 @@ def train_model(
 
             # Aktualizuj statystyki
             train_loss += loss.item() * inputs.size(0)
-
             _, predicted = torch.max(outputs, 1)
             train_total += labels.size(0)
             train_correct += (predicted == labels).sum().item()
 
+        # Aktualizuj SWA jeśli włączone
+        if swa_model and epoch >= swa_start:
+            swa_model.update_parameters(model)
+            swa_scheduler.step()
+        elif scheduler and not isinstance(
+            scheduler, optim.lr_scheduler.ReduceLROnPlateau
+        ):
+            scheduler.step()
+
         # Średnia strata i dokładność treningu
         train_loss = train_loss / len(train_loader.dataset)
-
-        # Obliczenie dokładności
         train_acc = train_correct / train_total if train_total > 0 else 0
 
         # Walidacja
-        val_loss = 0.0
-        val_correct = 0
-        val_total = 0
-
         if val_dir:
             model.eval()
+            val_loss = 0.0
+            val_correct = 0
+            val_total = 0
+
             with torch.no_grad():
                 for inputs, labels in val_loader:
-                    # Upewnij się, że dane są na odpowiednim urządzeniu
                     inputs, labels = inputs.to(device), labels.to(device)
 
-                    # Wykonuj obliczenia na odpowiednim urządzeniu
                     with torch.amp.autocast(
                         "cuda",
                         enabled=use_mixed_precision and torch.cuda.is_available(),
@@ -471,16 +507,14 @@ def train_model(
                     val_total += labels.size(0)
                     val_correct += (predicted == labels).sum().item()
 
-            # Średnia strata i dokładność walidacji
             val_loss = val_loss / len(val_loader.dataset)
             val_acc = val_correct / val_total
 
-            # Aktualizuj scheduler jeśli istnieje
-            if scheduler is not None:
-                if scheduler == "plateau":
-                    scheduler.step(val_loss)
-                else:
-                    scheduler.step()
+            # Aktualizuj scheduler jeśli to ReduceLROnPlateau
+            if scheduler and isinstance(
+                scheduler, optim.lr_scheduler.ReduceLROnPlateau
+            ):
+                scheduler.step(val_loss)
 
             # Early stopping
             if early_stopping:
@@ -522,6 +556,11 @@ def train_model(
             logger(
                 f"Epoka {epoch+1}/{epochs} | Strata: {train_loss:.4f}, Dokładność: {train_acc:.2%}"
             )
+
+    # Zakończ SWA jeśli włączone
+    if swa_model:
+        torch.optim.swa_utils.update_bn(train_loader, swa_model)
+        model = swa_model
 
     # Zwróć historię treningu oraz mapowanie klas
     result = {

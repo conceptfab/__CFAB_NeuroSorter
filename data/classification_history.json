@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "date": "2025-05-08T16:09:22.320112",
+        "image_path": "F:/______training_database_V2/animal/Animated Flying Monarch Butterfly Rigged for Cinema 4D.jpg",
+        "class_name": "vehicle",
+        "confidence": 0.86962890625
+    },
+    {
+        "date": "2025-05-08T16:09:31.882487",
+        "image_path": "F:/______training_database_V2/animal/Bull ANIMATED.jpg",
+        "class_name": "animal",
+        "confidence": 0.82177734375
+    }
+]
