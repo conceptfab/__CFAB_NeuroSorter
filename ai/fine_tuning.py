@@ -186,59 +186,105 @@ def fine_tune_model(
                 print(f"  {i}: {type(layer)}")
 
             # Znajdź ostatnią warstwę Linear w modelu
+            last_linear_layer = None
             for i in range(len(model) - 1, -1, -1):
                 if isinstance(model[i], nn.Linear):
-                    in_features = model[i].in_features
+                    last_linear_layer = model[i]
+                    in_features = last_linear_layer.in_features
                     model[i] = nn.Linear(in_features, new_num_classes)
                     print(
-                        f"Zmodyfikowano warstwę Linear w Sequential: in_features={in_features}, out_features={new_num_classes}"
+                        f"Zmodyfikowano warstwę Linear w Sequential: "
+                        f"in_features={in_features}, "
+                        f"out_features={new_num_classes}"
                     )
                     break
-            else:
-                # Jeśli nie znaleziono warstwy Linear, spróbuj dodać nową
-                print("Nie znaleziono warstwy Linear, dodaję nową warstwę")
 
-                # Funkcja pomocnicza do znalezienia rozmiaru wyjścia
-                def find_output_size(module):
+            if last_linear_layer is None:
+                # Jeśli nie znaleziono warstwy Linear, spróbuj znaleźć w całym modelu
+                for name, module in model.named_modules():
                     if isinstance(module, nn.Linear):
-                        return module.out_features
-                    elif isinstance(module, nn.Sequential):
-                        for i in range(len(module) - 1, -1, -1):
-                            size = find_output_size(module[i])
-                            if size is not None:
-                                return size
-                    elif hasattr(module, "out_features"):
-                        return module.out_features
-                    elif hasattr(module, "out_channels"):
-                        return module.out_channels
-                    return None
-
-                # Znajdź rozmiar wyjścia z ostatniej warstwy
-                in_features = None
-                for i in range(len(model) - 1, -1, -1):
-                    in_features = find_output_size(model[i])
-                    if in_features is not None:
+                        in_features = module.out_features
+                        # Dodaj nową warstwę Linear na końcu Sequential
+                        model.add_module(
+                            "linear", nn.Linear(in_features, new_num_classes)
+                        )
+                        print(
+                            f"Dodano nową warstwę Linear: "
+                            f"in_features={in_features}, "
+                            f"out_features={new_num_classes}"
+                        )
                         break
-
-                if in_features is None:
-                    # Jeśli nadal nie znaleziono, spróbuj znaleźć w całym modelu
+                else:
+                    raise ValueError(
+                        "Nie znaleziono warstwy Linear w modelu Sequential"
+                    )
+        elif hasattr(model, "fc"):  # dla ResNet
+            try:
+                # Sprawdź wymiary wejściowe
+                if hasattr(model.fc, "in_features"):
+                    in_features = model.fc.in_features
+                else:
+                    # Spróbuj określić wymiary na podstawie ostatniej warstwy
                     for name, module in model.named_modules():
                         if isinstance(module, nn.Linear):
                             in_features = module.out_features
                             break
+                    else:
+                        # Jeśli nie znaleziono warstwy Linear, spróbuj określić wymiary z warstwy avgpool
+                        if hasattr(model, "avgpool"):
+                            # Dla ResNet, sprawdź wymiary po warstwie avgpool
+                            dummy_input = torch.randn(1, 3, 224, 224)
+                            with torch.no_grad():
+                                x = model.conv1(dummy_input)
+                                x = model.bn1(x)
+                                x = model.relu(x)
+                                x = model.maxpool(x)
+                                x = model.layer1(x)
+                                x = model.layer2(x)
+                                x = model.layer3(x)
+                                x = model.layer4(x)
+                                x = model.avgpool(x)
+                                x = torch.flatten(x, 1)
+                                in_features = x.shape[1]
+                                print(f"Określono wymiary wejściowe: {in_features}")
+                        else:
+                            raise ValueError(
+                                "Nie można określić wymiarów wejściowych dla warstwy fc"
+                            )
 
-                if in_features is None:
-                    raise ValueError(
-                        "Nie można określić rozmiaru wejścia dla nowej warstwy Linear"
+                print(f"Wymiary wejściowe warstwy fc: {in_features}")
+
+                # Sprawdź czy wymiary są poprawne
+                if in_features != 512 and in_features != 1024:
+                    print(
+                        f"Ostrzeżenie: Nieoczekiwane wymiary wejściowe: {in_features}"
                     )
+                    # Spróbuj określić wymiary na podstawie warstwy avgpool
+                    if hasattr(model, "avgpool"):
+                        dummy_input = torch.randn(1, 3, 224, 224)
+                        with torch.no_grad():
+                            x = model.conv1(dummy_input)
+                            x = model.bn1(x)
+                            x = model.relu(x)
+                            x = model.maxpool(x)
+                            x = model.layer1(x)
+                            x = model.layer2(x)
+                            x = model.layer3(x)
+                            x = model.layer4(x)
+                            x = model.avgpool(x)
+                            x = torch.flatten(x, 1)
+                            in_features = x.shape[1]
+                            print(f"Poprawione wymiary wejściowe: {in_features}")
 
-                model.add_module("linear", nn.Linear(in_features, new_num_classes))
-        elif hasattr(model, "fc"):  # dla ResNet
-            in_features = model.fc.in_features
-            model.fc = nn.Linear(in_features, new_num_classes)
-            print(
-                f"Zmodyfikowano warstwę fc: in_features={in_features}, out_features={new_num_classes}"
-            )
+                model.fc = nn.Linear(in_features, new_num_classes)
+                print(
+                    f"Zmodyfikowano warstwę fc: "
+                    f"in_features={in_features}, "
+                    f"out_features={new_num_classes}"
+                )
+            except Exception as e:
+                print(f"Błąd podczas modyfikacji warstwy fc: {e}")
+                raise
         elif hasattr(model, "classifier"):  # dla EfficientNet, MobileNet
             print(f"Typ modelu: {type(model)}")
             print(f"Typ classifier: {type(model.classifier)}")

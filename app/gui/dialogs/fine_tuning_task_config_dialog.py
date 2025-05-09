@@ -152,19 +152,31 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.cache_dataset_check = QtWidgets.QCheckBox()
         self.cache_dataset_check.setChecked(False)
 
-        # AutoAugment
-        self.autoaugment_check = QtWidgets.QCheckBox()
-        self.autoaugment_check.setChecked(False)
+        # Dodanie brakujących kontrolek
+        self.scaling_method = QtWidgets.QComboBox()
+        self.scaling_method.addItems(["resize", "crop", "pad"])
 
-        # RandAugment
-        self.randaugment_check = QtWidgets.QCheckBox()
-        self.randaugment_check.setChecked(False)
-        self.randaugment_n_spin = QtWidgets.QSpinBox()
-        self.randaugment_n_spin.setRange(1, 10)
-        self.randaugment_n_spin.setValue(2)  # Domyślna wartość N
-        self.randaugment_m_spin = QtWidgets.QSpinBox()
-        self.randaugment_m_spin.setRange(1, 15)  # Zakres dla M
-        self.randaugment_m_spin.setValue(9)  # Domyślna wartość M
+        self.maintain_aspect_ratio = QtWidgets.QCheckBox()
+        self.maintain_aspect_ratio.setChecked(True)
+
+        self.pad_to_square = QtWidgets.QCheckBox()
+        self.pad_to_square.setChecked(False)
+
+        self.pad_mode = QtWidgets.QComboBox()
+        self.pad_mode.addItems(["constant", "reflect", "replicate"])
+
+        self.pad_value = QtWidgets.QSpinBox()
+        self.pad_value.setRange(0, 255)
+        self.pad_value.setValue(0)
+
+        self.tensorboard_dir_edit = QtWidgets.QLineEdit()
+        self.tensorboard_dir_edit.setText("logs/tensorboard")
+
+        self.model_dir_edit = QtWidgets.QLineEdit()
+        self.model_dir_edit.setText("models")
+
+        self.save_logs_check = QtWidgets.QCheckBox()
+        self.save_logs_check.setChecked(True)
 
         # Normalization
         self.normalization_combo = QtWidgets.QComboBox()
@@ -2310,14 +2322,20 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                     },
                 },
                 "preprocessing": {
-                    "normalization": self.normalization_combo.currentText(),
-                    "scaling": {
-                        "method": self.scaling_method.currentText(),
-                        "maintain_aspect_ratio": self.maintain_aspect_ratio.isChecked(),
-                        "pad_to_square": self.pad_to_square.isChecked(),
-                        "pad_mode": self.pad_mode.currentText(),
-                        "pad_value": self.pad_value.value(),
+                    "normalization": {
+                        "mean": [
+                            self.norm_mean_r.value(),
+                            self.norm_mean_g.value(),
+                            self.norm_mean_b.value(),
+                        ],
+                        "std": [
+                            self.norm_std_r.value(),
+                            self.norm_std_g.value(),
+                            self.norm_std_b.value(),
+                        ],
                     },
+                    "resize_mode": self.resize_mode_combo.currentText(),
+                    "cache_dataset": self.cache_dataset_check.isChecked(),
                 },
                 "monitoring": {
                     "metrics": {
@@ -2327,6 +2345,19 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                         "f1": self.f1_check.isChecked(),
                         "topk": self.topk_check.isChecked(),
                         "confusion_matrix": self.confusion_matrix_check.isChecked(),
+                        "auc": self.auc_check.isChecked(),
+                    },
+                    "logging": {
+                        "use_tensorboard": self.use_tensorboard_check.isChecked(),
+                        "use_wandb": self.use_wandb_check.isChecked(),
+                        "save_to_csv": self.use_csv_check.isChecked(),
+                        "logging_freq": self.log_freq_combo.currentText(),
+                    },
+                    "visualization": {
+                        "use_gradcam": self.use_gradcam_check.isChecked(),
+                        "use_feature_maps": self.use_feature_maps_check.isChecked(),
+                        "use_pred_samples": self.use_pred_samples_check.isChecked(),
+                        "num_samples": self.num_samples_spin.value(),
                     },
                     "early_stopping": {
                         "patience": self.patience_spin.value(),
@@ -2338,12 +2369,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                         "save_frequency": self.save_freq_spin.value(),
                         "metric": self.checkpoint_metric_combo.currentText(),
                     },
-                    "tensorboard": {
-                        "use": self.use_tensorboard_check.isChecked(),
-                        "log_dir": self.tensorboard_dir_edit.text(),
-                    },
-                    "save_dir": self.model_dir_edit.text(),
-                    "save_logs": self.save_logs_check.isChecked(),
                 },
                 "advanced": {
                     "seed": self.seed_spin.value(),
