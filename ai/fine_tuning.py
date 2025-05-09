@@ -39,6 +39,35 @@ def handle_nan_data(data):
     return data
 
 
+def verify_directory_structure(directory):
+    """
+    Sprawdza czy struktura katalogów jest płaska (kategoria/obrazy).
+
+    Args:
+        directory: Ścieżka do katalogu z danymi
+
+    Returns:
+        bool: True jeśli struktura jest poprawna, False w przeciwnym razie
+    """
+    for root, dirs, files in os.walk(directory):
+        # Pomijamy główny katalog
+        if root == directory:
+            continue
+
+        # Sprawdzamy czy są podkatalogi
+        if dirs:
+            return False
+
+        # Sprawdzamy czy są pliki obrazów
+        has_images = any(
+            f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp")) for f in files
+        )
+        if not has_images:
+            return False
+
+    return True
+
+
 def fine_tune_model(
     base_model_path,
     train_dir,
@@ -96,6 +125,18 @@ def fine_tune_model(
     print(f"Learning rate: {learning_rate}")
     print(f"Zamrożenie warstw: {freeze_ratio*100:.0f}%")
 
+    # Sprawdź strukturę katalogów
+    if not verify_directory_structure(train_dir):
+        raise ValueError(
+            f"Nieprawidłowa struktura katalogów w {train_dir}. "
+            "Dozwolona jest tylko struktura płaska: kategoria/obrazy"
+        )
+    if val_dir and not verify_directory_structure(val_dir):
+        raise ValueError(
+            f"Nieprawidłowa struktura katalogów w {val_dir}. "
+            "Dozwolona jest tylko struktura płaska: kategoria/obrazy"
+        )
+
     # Sprawdź urządzenie
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -137,31 +178,150 @@ def fine_tune_model(
         print(f"Zmiana liczby klas: {original_num_classes} -> {new_num_classes}")
         print("Dostosowanie ostatniej warstwy modelu...")
 
-        if hasattr(model, "fc"):  # dla ResNet
+        if isinstance(model, nn.Sequential):
+            # Dla modeli typu Sequential
+            print("Model jest typu Sequential")
+            print("Warstwy w modelu:")
+            for i, layer in enumerate(model):
+                print(f"  {i}: {type(layer)}")
+
+            # Znajdź ostatnią warstwę Linear w modelu
+            for i in range(len(model) - 1, -1, -1):
+                if isinstance(model[i], nn.Linear):
+                    in_features = model[i].in_features
+                    model[i] = nn.Linear(in_features, new_num_classes)
+                    print(
+                        f"Zmodyfikowano warstwę Linear w Sequential: in_features={in_features}, out_features={new_num_classes}"
+                    )
+                    break
+            else:
+                # Jeśli nie znaleziono warstwy Linear, spróbuj dodać nową
+                print("Nie znaleziono warstwy Linear, dodaję nową warstwę")
+
+                # Funkcja pomocnicza do znalezienia rozmiaru wyjścia
+                def find_output_size(module):
+                    if isinstance(module, nn.Linear):
+                        return module.out_features
+                    elif isinstance(module, nn.Sequential):
+                        for i in range(len(module) - 1, -1, -1):
+                            size = find_output_size(module[i])
+                            if size is not None:
+                                return size
+                    elif hasattr(module, "out_features"):
+                        return module.out_features
+                    elif hasattr(module, "out_channels"):
+                        return module.out_channels
+                    return None
+
+                # Znajdź rozmiar wyjścia z ostatniej warstwy
+                in_features = None
+                for i in range(len(model) - 1, -1, -1):
+                    in_features = find_output_size(model[i])
+                    if in_features is not None:
+                        break
+
+                if in_features is None:
+                    # Jeśli nadal nie znaleziono, spróbuj znaleźć w całym modelu
+                    for name, module in model.named_modules():
+                        if isinstance(module, nn.Linear):
+                            in_features = module.out_features
+                            break
+
+                if in_features is None:
+                    raise ValueError(
+                        "Nie można określić rozmiaru wejścia dla nowej warstwy Linear"
+                    )
+
+                model.add_module("linear", nn.Linear(in_features, new_num_classes))
+        elif hasattr(model, "fc"):  # dla ResNet
             in_features = model.fc.in_features
             model.fc = nn.Linear(in_features, new_num_classes)
             print(
                 f"Zmodyfikowano warstwę fc: in_features={in_features}, out_features={new_num_classes}"
             )
         elif hasattr(model, "classifier"):  # dla EfficientNet, MobileNet
+            print(f"Typ modelu: {type(model)}")
+            print(f"Typ classifier: {type(model.classifier)}")
+
             if isinstance(model.classifier, nn.Sequential):
-                in_features = model.classifier[-1].in_features
-                model.classifier[-1] = nn.Linear(in_features, new_num_classes)
-                print(
-                    f"Zmodyfikowano ostatnią warstwę classifier: in_features={in_features}, out_features={new_num_classes}"
-                )
+                print("Classifier jest typu Sequential")
+                print("Warstwy w classifier:")
+                for i, layer in enumerate(model.classifier):
+                    print(f"  {i}: {type(layer)}")
+
+                # Znajdź ostatnią warstwę Linear w classifier
+                for i in range(len(model.classifier) - 1, -1, -1):
+                    if isinstance(model.classifier[i], nn.Linear):
+                        in_features = model.classifier[i].in_features
+                        model.classifier[i] = nn.Linear(in_features, new_num_classes)
+                        print(
+                            f"Zmodyfikowano warstwę Linear w classifier: in_features={in_features}, out_features={new_num_classes}"
+                        )
+                        break
+                else:
+                    # Jeśli nie znaleziono warstwy Linear, spróbuj dodać nową
+                    print("Nie znaleziono warstwy Linear, dodaję nową warstwę")
+
+                    # Funkcja pomocnicza do znalezienia rozmiaru wyjścia
+                    def find_output_size(module):
+                        if isinstance(module, nn.Linear):
+                            return module.out_features
+                        elif isinstance(module, nn.Sequential):
+                            for i in range(len(module) - 1, -1, -1):
+                                size = find_output_size(module[i])
+                                if size is not None:
+                                    return size
+                        elif hasattr(module, "out_features"):
+                            return module.out_features
+                        elif hasattr(module, "out_channels"):
+                            return module.out_channels
+                        return None
+
+                    # Znajdź rozmiar wyjścia z ostatniej warstwy
+                    in_features = None
+                    for i in range(len(model.classifier) - 1, -1, -1):
+                        in_features = find_output_size(model.classifier[i])
+                        if in_features is not None:
+                            break
+
+                    if in_features is None:
+                        # Jeśli nadal nie znaleziono, spróbuj znaleźć w całym modelu
+                        for name, module in model.named_modules():
+                            if isinstance(module, nn.Linear):
+                                in_features = module.out_features
+                                break
+
+                    if in_features is None:
+                        raise ValueError(
+                            "Nie można określić rozmiaru wejścia dla nowej warstwy Linear"
+                        )
+
+                    model.classifier.add_module(
+                        "linear", nn.Linear(in_features, new_num_classes)
+                    )
+                    print(
+                        f"Dodano nową warstwę Linear: in_features={in_features}, out_features={new_num_classes}"
+                    )
             else:
-                in_features = model.classifier.in_features
-                model.classifier = nn.Linear(in_features, new_num_classes)
-                print(
-                    f"Zmodyfikowano warstwę classifier: in_features={in_features}, out_features={new_num_classes}"
-                )
+                print("Classifier nie jest typu Sequential")
+                if isinstance(model.classifier, nn.Linear):
+                    in_features = model.classifier.in_features
+                    model.classifier = nn.Linear(in_features, new_num_classes)
+                    print(
+                        f"Zmodyfikowano warstwę classifier: in_features={in_features}, out_features={new_num_classes}"
+                    )
+                else:
+                    raise ValueError(
+                        f"Nieznany typ classifier: {type(model.classifier)}"
+                    )
         elif hasattr(model, "heads"):  # dla ViT
             in_features = model.heads.head.in_features
             model.heads.head = nn.Linear(in_features, new_num_classes)
             print(
                 f"Zmodyfikowano warstwę heads.head: in_features={in_features}, out_features={new_num_classes}"
             )
+        else:
+            raise ValueError(f"Nieznana architektura modelu: {type(model)}")
     else:
         print("Liczba klas nie uległa zmianie, zachowuję oryginalną warstwę wyjściową")
 

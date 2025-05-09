@@ -1,13 +1,9 @@
 usuwac plik extract_config
 
 automatyczne zapisywanie wizualizacji treningu
+progres bar przy fine_tuningu
 
-  "type": "fine_tuning",
-  "info": "Profil dla klasyfikacji jednoklasowej (binarnej)",
-  "description": "Profil dostosowany do wykrywania pojedynczej klasy (tak/nie)",
-  "data_required": "Zestaw danych zawierający przykłady pozytywne i negatywne",
-  "hardware_required": "Standardowy sprzęt",
-
+drag end drop IMAGE
 
 
 kolorowe przyciski

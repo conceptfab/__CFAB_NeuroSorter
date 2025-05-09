@@ -2109,42 +2109,53 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             raise
 
     def _on_accept(self):
-        """Obsługa dodawania zadania."""
+        """Obsługa zatwierdzenia konfiguracji."""
         try:
-            # Logowanie wartości przed zapisem
-            self.logger.info(
-                f"Zapisywanie konfiguracji - Nazwa zadania: {self.name_edit.text()}"
-            )
-            self.logger.info(
-                f"Zapisywanie konfiguracji - Liczba klas: {self.num_classes_spin.value()}"
-            )
-
-            # Sprawdzenie czy nazwa zadania jest ustawiona
-            if not self.name_edit.text().strip():
+            # Sprawdź czy nazwa zadania jest pusta
+            task_name = self.name_edit.text().strip()
+            if not task_name:
                 QtWidgets.QMessageBox.warning(
-                    self,
-                    "Błąd",
-                    "Nazwa zadania jest wymagana!",
+                    self, "Błąd", "Nazwa zadania nie może być pusta."
                 )
                 return
 
-            # Przygotuj konfigurację
+            # Sprawdź czy model bazowy jest wybrany
+            base_model_path = self.model_path_edit.text().strip()
+            if not base_model_path:
+                QtWidgets.QMessageBox.warning(
+                    self, "Błąd", "Musisz wybrać model bazowy."
+                )
+                return
+
+            # Sprawdź czy katalog treningowy jest ustawiony
+            training_dir = self.train_dir_edit.text().strip()
+            if not training_dir:
+                QtWidgets.QMessageBox.warning(
+                    self, "Błąd", "Katalog treningowy nie może być pusty."
+                )
+                return
+
+            # Sprawdź czy katalog walidacyjny jest ustawiony
+            validation_dir = self.val_dir_edit.text().strip()
+            if not validation_dir:
+                QtWidgets.QMessageBox.warning(
+                    self, "Błąd", "Katalog walidacyjny nie może być pusty."
+                )
+                return
+
+            # Dodaj logi
+            self.logger.info("=== TWORZENIE NOWEGO ZADANIA FINE-TUNINGU ===")
+            self.logger.info(f"Nazwa zadania: {task_name}")
+
             config = {
-                "train_dir": self.train_dir_edit.text(),
-                "val_dir": self.val_dir_edit.text(),
-                "model_path": self.model_path_edit.text(),
+                "base_model": base_model_path,
+                "train_dir": training_dir,
+                "val_dir": validation_dir,
                 "model": {
                     "architecture": self.arch_combo.currentText(),
                     "variant": self.variant_combo.currentText(),
                     "input_size": self.input_size_spin.value(),
                     "num_classes": self.num_classes_spin.value(),
-                    "pretrained": self.pretrained_check.isChecked(),
-                    "pretrained_weights": self.pretrained_weights_combo.currentText(),
-                    "feature_extraction_only": self.feature_extraction_check.isChecked(),
-                    "activation": self.activation_combo.currentText(),
-                    "dropout_at_inference": self.dropout_at_inference_check.isChecked(),
-                    "global_pool": self.global_pool_combo.currentText(),
-                    "last_layer_activation": self.last_layer_activation_combo.currentText(),
                 },
                 "training": {
                     "epochs": self.epochs_spin.value(),
@@ -2170,26 +2181,15 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 },
                 "regularization": {
                     "weight_decay": float(self.weight_decay_spin.value()),
-                    "label_smoothing": float(self.label_smoothing_spin.value()),
-                    "dropout_rate": float(self.dropout_spin.value()),
-                    "drop_connect_rate": float(self.drop_connect_spin.value()),
-                    "momentum": float(self.momentum_spin.value()),
-                    "epsilon": float(self.epsilon_spin.value()),
+                    "gradient_clip": self.gradient_clip_spin.value(),
+                    "label_smoothing": self.label_smoothing_spin.value(),
+                    "drop_connect_rate": self.drop_connect_spin.value(),
+                    "dropout_rate": self.dropout_spin.value(),
+                    "momentum": self.momentum_spin.value(),
+                    "epsilon": self.epsilon_spin.value(),
                     "swa": {
                         "use": self.use_swa_check.isChecked(),
-                        "start_epoch": int(self.swa_start_epoch_spin.value()),
-                    },
-                    "stochastic_depth": {
-                        "use": self.use_stoch_depth_check.isChecked(),
-                        "drop_rate": float(self.stoch_depth_drop_rate.value()),
-                        "survival_probability": float(
-                            self.stoch_depth_survival_prob.value()
-                        ),
-                    },
-                    "random_erase": {
-                        "use": self.use_random_erase_check.isChecked(),
-                        "probability": float(self.random_erase_prob.value()),
-                        "mode": self.random_erase_mode_combo.currentText(),
+                        "start_epoch": self.swa_start_epoch_spin.value(),
                     },
                 },
                 "augmentation": {
@@ -2210,22 +2210,24 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                         "use": self.cutmix_check.isChecked(),
                         "alpha": self.cutmix_alpha_spin.value(),
                     },
+                    "autoaugment": {
+                        "use": self.autoaugment_check.isChecked(),
+                    },
+                    "randaugment": {
+                        "use": self.randaugment_check.isChecked(),
+                        "n": self.randaugment_n_spin.value(),
+                        "m": self.randaugment_m_spin.value(),
+                    },
                 },
                 "preprocessing": {
-                    "normalization": {
-                        "mean": [
-                            self.norm_mean_r.value(),
-                            self.norm_mean_g.value(),
-                            self.norm_mean_b.value(),
-                        ],
-                        "std": [
-                            self.norm_std_r.value(),
-                            self.norm_std_g.value(),
-                            self.norm_std_b.value(),
-                        ],
+                    "normalization": self.normalization_combo.currentText(),
+                    "scaling": {
+                        "method": self.scaling_method.currentText(),
+                        "maintain_aspect_ratio": self.maintain_aspect_ratio.isChecked(),
+                        "pad_to_square": self.pad_to_square.isChecked(),
+                        "pad_mode": self.pad_mode.currentText(),
+                        "pad_value": self.pad_value.value(),
                     },
-                    "resize_mode": self.resize_mode_combo.currentText(),
-                    "cache_dataset": self.cache_dataset_check.isChecked(),
                 },
                 "monitoring": {
                     "metrics": {
@@ -2235,17 +2237,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                         "f1": self.f1_check.isChecked(),
                         "topk": self.topk_check.isChecked(),
                         "confusion_matrix": self.confusion_matrix_check.isChecked(),
-                        "auc": self.auc_check.isChecked(),
-                    },
-                    "logging": {
-                        "use_tensorboard": self.use_tensorboard_check.isChecked(),
-                        "use_wandb": self.use_wandb_check.isChecked(),
-                        "save_to_csv": self.use_csv_check.isChecked(),
-                        "logging_freq": self.log_freq_combo.currentText(),
-                    },
-                    "visualization": {
-                        "use_gradcam": self.use_gradcam_check.isChecked(),
-                        "use_feature_maps": self.use_feature_maps_check.isChecked(),
                     },
                     "early_stopping": {
                         "patience": self.patience_spin.value(),
@@ -2257,6 +2248,12 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                         "save_frequency": self.save_freq_spin.value(),
                         "metric": self.checkpoint_metric_combo.currentText(),
                     },
+                    "tensorboard": {
+                        "use": self.use_tensorboard_check.isChecked(),
+                        "log_dir": self.tensorboard_dir_edit.text(),
+                    },
+                    "save_dir": self.model_dir_edit.text(),
+                    "save_logs": self.save_logs_check.isChecked(),
                 },
                 "advanced": {
                     "seed": self.seed_spin.value(),
@@ -2278,7 +2275,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
             self.task_config = {
                 "name": self.name_edit.text().strip(),
-                "type": "fine_tuning",
+                "type": "fine_tuning",  # Upewniamy się, że typ jest ustawiony na "fine_tuning"
                 "config": config,
                 "training_time": 0,
                 "training_time_str": "0:00:00",
@@ -2291,6 +2288,14 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 "accuracy": 0.0,
                 "epochs_trained": 0,
             }
+
+            # Dodaj logi
+            self.logger.info(f"Utworzono konfigurację zadania: {task_name}")
+            self.logger.info(f"Typ zadania: {self.task_config['type']}")
+            self.logger.info(
+                f"Pełna konfiguracja: {json.dumps(self.task_config, indent=2, ensure_ascii=False)}"
+            )
+
             self.accept()
 
         except Exception as e:

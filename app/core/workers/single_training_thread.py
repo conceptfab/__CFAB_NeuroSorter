@@ -68,52 +68,38 @@ class SingleTrainingThread(QThread):
                 self.logger.info(f"Zapisano dane zadania do pliku: {task_path}")
 
             task_name = task_data.get("name", "Bez nazwy")
-            task_type = task_data.get("typ", "trening")
+            task_type = task_data.get("type", "training")
+
+            # Dodajemy szczegółowe logi
+            self.logger.info(f"=== INFORMACJE O ZADANIU ===")
+            self.logger.info(f"Nazwa zadania: {task_name}")
+            self.logger.info(f"Typ zadania: {task_type}")
+            self.logger.info(
+                f"Pełne dane zadania: {json.dumps(task_data, indent=2, ensure_ascii=False)}"
+            )
 
             # Ujednolicenie formatu typu zadania
-            if task_type.lower() in ["doszkalanie", "fine-tuning"]:
-                task_type = "doszkalanie"
-                self.logger.info("=== ROZPOZNANO ZADANIE DOSZKALANIA ===")
+            task_type = task_type.lower()
+            if task_type in ["doszkalanie", "fine-tuning", "fine_tuning"]:
+                task_type = "fine_tuning"
+                self.logger.info("=== ROZPOZNANO ZADANIE FINE-TUNINGU ===")
                 self.logger.info(
                     "Zadanie będzie wykonywane przez skrypt: fine_tuning.py"
                 )
-            elif task_type.lower() in ["trening", "training"]:
-                task_type = "trening"
+                result = self._run_finetuning_task(task_data, task_name, task_path)
+            elif task_type in ["trening", "training"]:
+                task_type = "training"
                 self.logger.info(
                     "============ ROZPOZNANO ZADANIE TRENINGU ============"
                 )
                 self.logger.info(
                     "Zadanie będzie wykonywane przez skrypt: optimized_training.py"
                 )
-            else:
-                self.logger.warning(f"Nieznany typ zadania: {task_type}")
-                return
-
-            self.logger.info(f"Szczegóły zadania:")
-            self.logger.info(f"  - Nazwa: {task_name}")
-            self.logger.info(f"  - Typ: {task_type}")
-            self.logger.info(f"  - Ścieżka: {task_path}")
-
-            # Powiadom o rozpoczęciu zadania
-            self.task_started.emit(task_name, task_type)
-            self.logger.info(
-                f"SingleTrainingThread.run: Rozpoczęto zadanie '{task_name}' typu '{task_type}'."
-            )
-
-            # Wykonaj zadanie w zależności od typu
-            result = None
-            if task_type == "trening":
-                self.logger.info(f"  - Wykonywanie zadania treningu: {task_name}")
                 result = self._run_training_task(task_data, task_name, task_path)
-            elif task_type == "doszkalanie":
-                self.logger.info(f"  - Wykonywanie zadania doszkalania: {task_name}")
-                result = self._run_finetuning_task(task_data, task_name, task_path)
             else:
-                self.logger.error(
-                    f"  - BŁĄD: Nieznany typ zadania: {task_type} dla zadania {task_name}"
-                )
-                self.error.emit(task_name, f"Nieznany typ zadania: {task_type}")
-                return
+                error_msg = f"Nieznany typ zadania: {task_type}. Oczekiwano 'training' lub 'fine_tuning'."
+                self.logger.error(error_msg)
+                raise ValueError(error_msg)
 
             # Sprawdź czy wątek został zatrzymany podczas wykonywania zadania
             if self._stopped:

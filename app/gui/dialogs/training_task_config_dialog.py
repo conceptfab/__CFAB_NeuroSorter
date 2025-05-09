@@ -1315,38 +1315,37 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
     def _on_accept(self):
         """Obsługa zatwierdzenia konfiguracji."""
         try:
-            self.logger.info("Rozpoczęcie walidacji i zapisu konfiguracji")
-
-            # Walidacja katalogu treningowego
-            train_dir = self.train_dir_edit.text()
-            if not train_dir.strip():
-                self.logger.warning("Nie wybrano katalogu treningowego")
-                QtWidgets.QMessageBox.critical(
-                    self, "Błąd", "Musisz wybrać katalog danych treningowych!"
+            # Sprawdź czy nazwa zadania jest pusta
+            task_name = self.name_edit.text().strip()
+            if not task_name:
+                QtWidgets.QMessageBox.warning(
+                    self, "Błąd", "Nazwa zadania nie może być pusta."
                 )
                 return
 
-            if not validate_training_directory(train_dir):
-                self.logger.error(f"Nieprawidłowy katalog treningowy: {train_dir}")
+            # Sprawdź czy katalog treningowy jest ustawiony
+            train_dir = self.train_dir_edit.text().strip()
+            if not train_dir:
+                QtWidgets.QMessageBox.warning(
+                    self, "Błąd", "Katalog treningowy nie może być pusty."
+                )
                 return
 
-            # Walidacja katalogu walidacyjnego
-            val_dir = self.val_dir_edit.text()
-            if val_dir and not validate_validation_directory(val_dir):
-                self.logger.error(f"Nieprawidłowy katalog walidacyjny: {val_dir}")
+            # Sprawdź czy katalog walidacyjny jest ustawiony
+            val_dir = self.val_dir_edit.text().strip()
+            if not val_dir:
+                QtWidgets.QMessageBox.warning(
+                    self, "Błąd", "Katalog walidacyjny nie może być pusty."
+                )
                 return
 
-            # Przygotowanie konfiguracji
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            model_name = (
-                f"{self.arch_combo.currentText()}_"
-                f"{self.variant_combo.currentText()}"
-            )
-            task_name = f"{model_name}_{timestamp}"
+            # Dodaj logi
+            self.logger.info("=== TWORZENIE NOWEGO ZADANIA TRENINGOWEGO ===")
+            self.logger.info(f"Nazwa zadania: {task_name}")
 
             self.task_config = {
                 "name": task_name,
-                "type": "trening",
+                "type": "training",
                 "status": "Nowy",
                 "priority": 0,
                 "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -1487,7 +1486,13 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 },
             }
 
+            # Dodaj logi
             self.logger.info(f"Utworzono konfigurację zadania: {task_name}")
+            self.logger.info(f"Typ zadania: {self.task_config['type']}")
+            self.logger.info(
+                f"Pełna konfiguracja: {json.dumps(self.task_config, indent=2, ensure_ascii=False)}"
+            )
+
             QtWidgets.QMessageBox.information(
                 self, "Sukces", "Zadanie zostało pomyślnie dodane."
             )
