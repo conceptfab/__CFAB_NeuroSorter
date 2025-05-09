@@ -313,17 +313,10 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
             # Model do doszkalania
             model_path_layout = QtWidgets.QHBoxLayout()
+            model_path_label = QtWidgets.QLabel("Wybór modelu:")
             self.model_path_edit = QtWidgets.QLineEdit()
             model_path_btn = QtWidgets.QPushButton("Przeglądaj...")
             model_path_btn.clicked.connect(self._select_model_file)
-            model_path_layout.addWidget(self.model_path_edit, 70)  # 70% szerokości
-            model_path_layout.addWidget(model_path_btn, 30)  # 30% szerokości
-
-            model_path_label = "Model do doszkalania:"
-            form.addRow(model_path_label, model_path_layout)
-
-            # Dodaj przycisk tworzenia profilu z konfiguracji modelu w tym samym wierszu
-            profile_config_layout = QtWidgets.QHBoxLayout()
             self.create_profile_from_config_btn = QtWidgets.QPushButton(
                 "Utwórz profil z konfiguracji modelu"
             )
@@ -333,9 +326,16 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             self.create_profile_from_config_btn.setEnabled(
                 False
             )  # Początkowo nieaktywny
-            profile_config_layout.addWidget(self.create_profile_from_config_btn)
+
+            model_path_layout.addWidget(model_path_label, 10)  # 10% szerokości
+            model_path_layout.addWidget(self.model_path_edit, 60)  # 60% szerokości
+            model_path_layout.addWidget(model_path_btn, 15)  # 15% szerokości
+            model_path_layout.addWidget(
+                self.create_profile_from_config_btn, 15
+            )  # 15% szerokości
+
             form.addRow(
-                "", profile_config_layout
+                "", model_path_layout
             )  # Pusty label, aby wyrównać z poprzednim wierszem
 
             # Architektura modelu
@@ -479,7 +479,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
             self.profile_hardware_required = QtWidgets.QTextEdit()
             self.profile_hardware_required.setReadOnly(True)
-            self.profile_hardware_required.setMaximumHeight(60)
+            self.profile_hardware_required.setMaximumHeight(20)
             info_layout.addRow("Wymagany sprzęt:", self.profile_hardware_required)
 
             info_group.setLayout(info_layout)

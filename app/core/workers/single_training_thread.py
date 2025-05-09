@@ -10,6 +10,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from torchvision import datasets
 
 from ai.classifier import ImageClassifier
+from ai.fine_tuning import fine_tune_model
 from ai.optimized_training import train_model_optimized
 from ai.preprocessing import get_default_transforms
 from app.core.logger import Logger
@@ -47,6 +48,7 @@ class SingleTrainingThread(QThread):
 
     def run(self):
         """Wykonuje pojedyncze zadanie treningowe."""
+        self.logger.info("=== ROZPOCZYNAM WYKONYWANIE ZADANIA ===")
         self.logger.info("SingleTrainingThread.run: Rozpoczęto działanie wątku.")
 
         try:
@@ -71,13 +73,26 @@ class SingleTrainingThread(QThread):
             # Ujednolicenie formatu typu zadania
             if task_type.lower() in ["doszkalanie", "fine-tuning"]:
                 task_type = "doszkalanie"
+                self.logger.info("=== ROZPOZNANO ZADANIE DOSZKALANIA ===")
+                self.logger.info(
+                    "Zadanie będzie wykonywane przez skrypt: fine_tuning.py"
+                )
             elif task_type.lower() in ["trening", "training"]:
                 task_type = "trening"
+                self.logger.info(
+                    "============ ROZPOZNANO ZADANIE TRENINGU ============"
+                )
+                self.logger.info(
+                    "Zadanie będzie wykonywane przez skrypt: optimized_training.py"
+                )
             else:
                 self.logger.warning(f"Nieznany typ zadania: {task_type}")
                 return
 
-            self.logger.info(f"Rozpoznany typ zadania: {task_type}")
+            self.logger.info(f"Szczegóły zadania:")
+            self.logger.info(f"  - Nazwa: {task_name}")
+            self.logger.info(f"  - Typ: {task_type}")
+            self.logger.info(f"  - Ścieżka: {task_path}")
 
             # Powiadom o rozpoczęciu zadania
             self.task_started.emit(task_name, task_type)
@@ -127,6 +142,12 @@ class SingleTrainingThread(QThread):
     def _run_training_task(self, task_data, task_name, task_path):
         """Wykonuje zadanie treningu modelu."""
         try:
+            self.logger.info(
+                "============ ROZPOCZYNAM TRENING NOWEGO MODELU ============"
+            )
+            self.logger.info("Używam skryptu: optimized_training.py")
+            self.logger.info(f"Zadanie: {task_name}")
+            self.logger.info(f"Ścieżka zadania: {task_path}")
             # Pobierz sekcję config z danych zadania
             config = task_data.get("config", {})
 
@@ -391,9 +412,10 @@ class SingleTrainingThread(QThread):
     def _run_finetuning_task(self, task_data, task_name, task_path):
         """Wykonuje zadanie doszkalania modelu."""
         try:
-            self.logger.info("[FINETUNE] ===== ROZPOCZYNAM DOSZKALANIE MODELU =====")
-            self.logger.info(f"[FINETUNE] Zadanie: {task_name}")
-            self.logger.info(f"[FINETUNE] Ścieżka zadania: {task_path}")
+            self.logger.info("=== ROZPOCZYNAM DOSZKALANIE MODELU ===")
+            self.logger.info("Używam skryptu: fine_tuning.py")
+            self.logger.info(f"Zadanie: {task_name}")
+            self.logger.info(f"Ścieżka zadania: {task_path}")
             self.logger.info(
                 f"[FINETUNE] Pełne dane zadania: {json.dumps(task_data, indent=2, ensure_ascii=False)}"
             )
@@ -413,8 +435,8 @@ class SingleTrainingThread(QThread):
             learning_rate = config.get(
                 "learning_rate", task_data.get("learning_rate", 0.0001)
             )
-            freeze_backbone = config.get(
-                "freeze_backbone", task_data.get("freeze_backbone", True)
+            freeze_ratio = config.get(
+                "freeze_ratio", task_data.get("freeze_ratio", 0.8)
             )
 
             self.logger.info("[FINETUNE] ===== PARAMETRY DOSZKALANIA =====")
@@ -423,178 +445,110 @@ class SingleTrainingThread(QThread):
             self.logger.info(f"[FINETUNE] Katalog walidacyjny: {validation_dir}")
             self.logger.info(f"[FINETUNE] Liczba epok: {epochs}")
             self.logger.info(f"[FINETUNE] Rozmiar batcha: {batch_size}")
-            self.logger.info(f"[FINETUNE] Współczynnik uczenia: {learning_rate}")
-            self.logger.info(f"[FINETUNE] Zamrożenie backbone: {freeze_backbone}")
+            self.logger.info(f"[FINETUNE] Learning rate: {learning_rate}")
+            self.logger.info(f"[FINETUNE] Współczynnik zamrożenia: {freeze_ratio}")
 
-            # Sprawdź poprawność rozszerzenia pliku modelu
-            self.logger.info("[FINETUNE] ===== WALIDACJA PLIKU MODELU =====")
-            if not base_model_path.endswith((".pt", ".pth")):
-                error_msg = f"Niewłaściwy format pliku modelu: {base_model_path}. Wymagane rozszerzenie .pt lub .pth"
-                self.logger.error(f"[FINETUNE] BŁĄD: {error_msg}")
-                raise ValueError(error_msg)
-            self.logger.info("[FINETUNE] ✓ Format pliku modelu poprawny")
-
-            # Sprawdź czy plik modelu istnieje
-            if not os.path.exists(base_model_path):
-                error_msg = f"Plik modelu nie istnieje: {base_model_path}"
-                self.logger.error(f"[FINETUNE] BŁĄD: {error_msg}")
-                raise ValueError(error_msg)
-            self.logger.info("[FINETUNE] ✓ Plik modelu istnieje")
-
-            # Sprawdź czy istnieje plik konfiguracyjny
-            config_path = os.path.splitext(base_model_path)[0] + "_config.json"
-            if not os.path.exists(config_path):
-                self.logger.warning(
-                    f"[FINETUNE] ⚠️ Nie znaleziono pliku konfiguracyjnego: {config_path}"
-                )
-            else:
+            # Sprawdź czy wątek został zatrzymany
+            if self._stopped:
                 self.logger.info(
-                    f"[FINETUNE] ✓ Znaleziono plik konfiguracyjny: {config_path}"
+                    "[FINETUNE] Wątek został zatrzymany przed rozpoczęciem treningu"
                 )
+                return
 
-            # Walidacja katalogu treningowego
-            self.logger.info("[FINETUNE] ===== WALIDACJA KATALOGÓW =====")
-            if not training_dir or training_dir.strip() == "":
-                error_msg = "Ścieżka do katalogu treningowego jest pusta"
-                self.logger.error(f"[FINETUNE] BŁĄD: {error_msg}")
-                raise ValueError(error_msg)
-            self.logger.info(
-                "[FINETUNE] ✓ Ścieżka katalogu treningowego nie jest pusta"
-            )
-
-            is_valid, error_msg = validate_training_directory(training_dir)
-            if not is_valid:
-                self.logger.error(
-                    f"[FINETUNE] BŁĄD walidacji katalogu treningowego: {error_msg}"
-                )
-                raise ValueError(error_msg)
-            self.logger.info("[FINETUNE] ✓ Katalog treningowy poprawny")
-
-            # Walidacja katalogu walidacyjnego (opcjonalny)
-            if validation_dir:
-                is_valid, error_msg = validate_validation_directory(validation_dir)
-                if not is_valid:
-                    self.logger.error(
-                        f"[FINETUNE] BŁĄD walidacji katalogu walidacyjnego: {error_msg}"
-                    )
-                    raise ValueError(error_msg)
-                self.logger.info("[FINETUNE] ✓ Katalog walidacyjny poprawny")
-            else:
-                self.logger.info(
-                    "[FINETUNE] ℹ️ Katalog walidacyjny nie został określony - pomijam walidację"
-                )
-
-            # Sprawdź czy katalog treningowy zawiera podkatalogi klas
-            has_subdirs = any(
-                os.path.isdir(os.path.join(training_dir, d))
-                for d in os.listdir(training_dir)
-            )
-            if not has_subdirs:
-                error_msg = (
-                    f"Katalog treningowy nie zawiera podkatalogów klas: {training_dir}"
-                )
-                self.logger.error(f"[FINETUNE] BŁĄD: {error_msg}")
-                raise ValueError(error_msg)
-            self.logger.info("[FINETUNE] ✓ Katalog treningowy zawiera podkatalogi klas")
-
-            # Załaduj model bazowy
-            self.logger.info("[FINETUNE] ===== ŁADOWANIE MODELU =====")
-            try:
-                model = ImageClassifier()
-                model.load(base_model_path)
-                self.logger.info("[FINETUNE] ✓ Model załadowany pomyślnie")
-            except Exception as e:
-                error_msg = f"Błąd podczas ładowania modelu: {str(e)}"
-                self.logger.error(f"[FINETUNE] BŁĄD: {error_msg}")
-                self.logger.error(f"[FINETUNE] TRACEBACK: {traceback.format_exc()}")
-                raise ValueError(error_msg)
-
-            # Ustal urządzenie
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            model.model = model.model.to(device)
-
-            # Wykonaj doszkalanie
-            self.logger.info("[FINETUNE] ===== ROZPOCZYNAM DOSZKALANIE =====")
-            start_time = time.time()
-
-            def log_progress(
-                epoch, num_epochs, train_loss, train_acc, val_loss, val_acc
+            # Definicja callbacka do śledzenia postępu
+            def progress_callback(
+                epoch,
+                num_epochs,
+                train_loss,
+                train_acc,
+                val_loss,
+                val_acc,
+                val_top3=None,
+                val_top5=None,
+                val_precision=None,
+                val_recall=None,
+                val_f1=None,
+                val_auc=None,
             ):
-                self.logger.info(f"[FINETUNE][EPOKA {epoch}/{num_epochs}]")
-                self.logger.info(f"[FINETUNE] - Strata treningowa: {train_loss:.4f}")
-                self.logger.info(f"[FINETUNE] - Dokładność treningowa: {train_acc:.4f}")
-                if val_loss is not None:
-                    self.logger.info(f"[FINETUNE] - Strata walidacyjna: {val_loss:.4f}")
-                if val_acc is not None:
-                    self.logger.info(
-                        f"[FINETUNE] - Dokładność walidacyjna: {val_acc:.4f}"
-                    )
-                self.logger.info(
-                    f"[FINETUNE] - Postęp: {int((epoch / num_epochs) * 100)}%"
-                )
+                """Callback do śledzenia postępu treningu."""
+                try:
+                    if self._stopped:
+                        return True  # Zwróć True aby zatrzymać trening
 
-            result = train_model_optimized(
-                model=model.model,
+                    # Oblicz postęp jako procent
+                    progress = int((epoch / num_epochs) * 100)
+
+                    # Przygotuj szczegóły postępu
+                    details = {
+                        "epoch": epoch,
+                        "train_loss": train_loss,
+                        "train_acc": train_acc,
+                        "val_loss": val_loss,
+                        "val_acc": val_acc,
+                        "val_top3": val_top3,
+                        "val_top5": val_top5,
+                        "val_precision": val_precision,
+                        "val_recall": val_recall,
+                        "val_f1": val_f1,
+                        "val_auc": val_auc,
+                    }
+
+                    # Wyślij sygnał postępu
+                    self.task_progress.emit(task_name, progress, details)
+
+                    # Aktualizuj status w pliku zadania
+                    if task_path and os.path.exists(task_path):
+                        try:
+                            with open(task_path, "r", encoding="utf-8") as f:
+                                task_data = json.load(f)
+                            task_data["status"] = "W trakcie"
+                            task_data["progress"] = progress
+                            task_data["current_epoch"] = epoch
+                            task_data["total_epochs"] = num_epochs
+                            task_data["train_loss"] = train_loss
+                            task_data["train_acc"] = train_acc
+                            task_data["val_loss"] = val_loss
+                            task_data["val_acc"] = val_acc
+                            with open(task_path, "w", encoding="utf-8") as f:
+                                json.dump(task_data, f, indent=4, ensure_ascii=False)
+                        except Exception as e:
+                            self.logger.error(
+                                f"Błąd aktualizacji statusu zadania: {str(e)}"
+                            )
+
+                    return False  # Kontynuuj trening
+
+                except Exception as e:
+                    self.logger.error(f"Błąd w callbacku postępu: {str(e)}")
+                    return True  # Zatrzymaj trening w przypadku błędu
+
+            # Uruchom fine-tuning
+            start_time = time.time()
+            result = fine_tune_model(
+                base_model_path=base_model_path,
                 train_dir=training_dir,
                 val_dir=validation_dir,
                 num_epochs=epochs,
                 batch_size=batch_size,
                 learning_rate=learning_rate,
-                freeze_backbone=freeze_backbone,
-                progress_callback=lambda epoch, num_epochs, train_loss, train_acc, val_loss, val_acc, val_top3, val_top5, val_precision, val_recall, val_f1, val_auc: (
-                    log_progress(
-                        epoch, num_epochs, train_loss, train_acc, val_loss, val_acc
-                    ),
-                    self.task_progress.emit(
-                        task_name,
-                        int((epoch / num_epochs) * 100) if num_epochs > 0 else 0,
-                        {
-                            "epoch": epoch,
-                            "total_epochs": num_epochs,
-                            "train_loss": train_loss if train_loss > 0 else 0.0001,
-                            "train_acc": train_acc if train_acc > 0 else 0.0001,
-                            "val_loss": val_loss,
-                            "val_acc": val_acc,
-                            "val_top3": val_top3,
-                            "val_top5": val_top5,
-                            "val_precision": val_precision,
-                            "val_recall": val_recall,
-                            "val_f1": val_f1,
-                            "val_auc": val_auc,
-                        },
-                    ),
-                ),
+                freeze_ratio=freeze_ratio,
+                progress_callback=progress_callback,
+                should_stop_callback=lambda: self._stopped,
             )
 
             training_time = time.time() - start_time
-            self.logger.info("[FINETUNE] ===== PODSUMOWANIE DOSZKALANIA =====")
-            self.logger.info(f"[FINETUNE] Czas wykonania: {training_time:.2f}s")
-            self.logger.info("[FINETUNE] Wyniki:")
+            self.logger.info(f"Czas treningu: {training_time:.2f}s")
             self.logger.info(
-                f"[FINETUNE] - Końcowa strata treningowa: {result.get('train_loss', 0):.4f}"
-            )
-            self.logger.info(
-                f"[FINETUNE] - Końcowa dokładność treningowa: {result.get('train_acc', 0):.4f}"
-            )
-            self.logger.info(
-                f"[FINETUNE] - Końcowa strata walidacyjna: {result.get('val_loss', 0):.4f}"
-            )
-            self.logger.info(
-                f"[FINETUNE] - Końcowa dokładność walidacyjna: {result.get('val_acc', 0):.4f}"
+                f"Parametry do zapisania: {json.dumps(result, indent=2, ensure_ascii=False)}"
             )
 
-            # Zapisz wyniki
+            # Zapisz czas treningu i wyniki
             self._save_training_time(task_path, training_time, result)
-            self.logger.info("[FINETUNE] ✓ Zapisano wyniki do pliku zadania")
 
-            self.logger.info("[FINETUNE] ===== ZAKOŃCZONO DOSZKALANIE =====")
             return result
 
         except Exception as e:
-            self.logger.error("[FINETUNE] ===== BŁĄD W DOSZKALANIU =====")
-            self.logger.error(f"[FINETUNE] Typ błędu: {type(e).__name__}")
-            self.logger.error(f"[FINETUNE] Treść błędu: {str(e)}")
-            self.logger.error("[FINETUNE] Stack trace:")
+            self.logger.error(f"Błąd podczas fine-tuningu: {str(e)}")
             self.logger.error(traceback.format_exc())
             raise
 

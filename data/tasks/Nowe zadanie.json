@@ -4,12 +4,12 @@
     "config": {
         "train_dir": "C:/_cloud/_____XXX/__dane_treningowe",
         "val_dir": "C:/_cloud/_____XXX/__dane_walidacyjne",
-        "model_path": "C:/_cloud/glob.pt",
+        "model_path": "",
         "model": {
             "architecture": "EfficientNet",
             "variant": "b0",
-            "input_size": 288,
-            "num_classes": 34,
+            "input_size": 224,
+            "num_classes": 2,
             "pretrained": true,
             "pretrained_weights": "imagenet",
             "feature_extraction_only": false,
@@ -20,12 +20,12 @@
         },
         "training": {
             "epochs": 100,
-            "batch_size": 48,
-            "learning_rate": 0.0002,
-            "optimizer": "AdamW",
+            "batch_size": 32,
+            "learning_rate": 1e-06,
+            "optimizer": "Adam",
             "scheduler": "None",
             "num_workers": 4,
-            "warmup_epochs": 10,
+            "warmup_epochs": 5,
             "warmup_lr_init": 1e-06,
             "mixed_precision": true,
             "gradient_accumulation_steps": 1,
@@ -36,20 +36,20 @@
             "ema_decay": 1.0,
             "unfreeze_strategy": "unfreeze_all",
             "unfreeze_after_epochs": 5,
-            "unfreeze_layers": 12,
+            "unfreeze_layers": 3,
             "frozen_lr": 0.0,
             "unfrozen_lr": 0.0
         },
         "regularization": {
             "weight_decay": 0.0001,
-            "label_smoothing": 0.15,
-            "dropout_rate": 0.4,
-            "drop_connect_rate": 0.3,
+            "label_smoothing": 0.1,
+            "dropout_rate": 0.2,
+            "drop_connect_rate": 0.2,
             "momentum": 0.9,
             "epsilon": 1e-06,
             "swa": {
-                "use": true,
-                "start_epoch": 80
+                "use": false,
+                "start_epoch": 10
             },
             "stochastic_depth": {
                 "use": false,
@@ -64,21 +64,21 @@
         },
         "augmentation": {
             "basic": {
-                "use": true,
+                "use": false,
                 "rotation": 30,
-                "brightness": 0.3,
-                "shift": 0.15,
-                "zoom": 0.2,
+                "brightness": 0.2,
+                "shift": 0.1,
+                "zoom": 0.1,
                 "horizontal_flip": true,
                 "vertical_flip": false
             },
             "mixup": {
-                "use": true,
-                "alpha": 0.4
+                "use": false,
+                "alpha": 0.2
             },
             "cutmix": {
-                "use": true,
-                "alpha": 1.0
+                "use": false,
+                "alpha": 0.2
             }
         },
         "preprocessing": {
@@ -118,8 +118,8 @@
                 "use_feature_maps": true
             },
             "early_stopping": {
-                "patience": 25,
-                "min_delta": 0.001,
+                "patience": 10,
+                "min_delta": 0.0,
                 "monitor": "val_loss"
             },
             "checkpointing": {
