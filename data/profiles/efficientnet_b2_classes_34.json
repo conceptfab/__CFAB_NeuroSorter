@@ -1,22 +1,22 @@
 {
   "type": "fine_tuning",
-  "info": "Profil domyślny",
-  "description": "Profil domyślny",
-  "data_required": "Profil domyślny",
+  "info": "Profil dla klasyfikacji jednoklasowej (binarnej)",
+  "description": "Profil dostosowany do wykrywania pojedynczej klasy (tak/nie)",
+  "data_required": "Zestaw danych zawierający przykłady pozytywne i negatywne",
   "hardware_required": "Standardowy sprzęt",
   "config": {
     "model": {
       "architecture": "EfficientNet",
       "variant": "EfficientNet-B2",
       "input_size": 288,
-      "num_classes": 34,
+      "num_classes": 2,
       "pretrained": true,
       "pretrained_weights": "imagenet",
       "feature_extraction_only": false,
       "activation": "relu",
       "dropout_at_inference": false,
       "global_pool": "avg",
-      "last_layer_activation": "softmax"
+      "last_layer_activation": "sigmoid"
     },
     "training": {
       "epochs": 100,
@@ -42,7 +42,7 @@
     },
     "regularization": {
       "weight_decay": 0.0001,
-      "label_smoothing": 0.15,
+      "label_smoothing": 0.05,
       "dropout_rate": 0.4,
       "drop_connect_rate": 0.3,
       "momentum": 0.9,
@@ -73,12 +73,12 @@
         "vertical_flip": false
       },
       "mixup": {
-        "use": true,
-        "alpha": 0.4
+        "use": false,
+        "alpha": 0.2
       },
       "cutmix": {
-        "use": true,
-        "alpha": 1.0
+        "use": false,
+        "alpha": 0.5
       }
     },
     "preprocessing": {
@@ -92,7 +92,7 @@
         "precision": true,
         "recall": true,
         "f1": true,
-        "topk": true,
+        "topk": false,
         "confusion_matrix": true,
         "auc": true
       },
@@ -106,32 +106,4 @@
         "use_gradcam": true,
         "use_feature_maps": true
       },
-      "early_stopping": {
-        "patience": 25,
-        "min_delta": 0.001,
-        "monitor": "val_f1"
-      },
-      "checkpointing": {
-        "best_only": true,
-        "save_frequency": 1,
-        "metric": "val_f1"
-      }
-    },
-    "advanced": {
-      "seed": 42,
-      "deterministic": true,
-      "class_weights": "balanced",
-      "sampler": "weighted_random",
-      "image_channels": 3,
-      "tta": {
-        "use": false,
-        "num_augmentations": 5
-      },
-      "export_onnx": false,
-      "quantization": {
-        "use": false,
-        "precision": "int8"
-      }
-    }
-  }
-}
+      "early_st

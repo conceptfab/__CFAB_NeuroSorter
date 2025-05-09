@@ -229,7 +229,8 @@ class BatchProcessor(QWidget, TabInterface):
             QMessageBox.warning(
                 self,
                 "Brak modelu",
-                "Nie załadowano modelu klasyfikacji. Proszę najpierw załadować model.",
+                "Nie załadowano modelu klasyfikacji. "
+                "Proszę najpierw załadować model.",
             )
             return
 
@@ -355,7 +356,8 @@ class BatchProcessor(QWidget, TabInterface):
             QMessageBox.warning(
                 self,
                 "Brak modelu",
-                "Nie załadowano modelu klasyfikacji. Proszę najpierw załadować model.",
+                "Nie załadowano modelu klasyfikacji. "
+                "Proszę najpierw załadować model.",
             )
             return
 

@@ -1,1 +1,8 @@
-[]
+[
+    {
+        "date": "2025-05-09T21:43:20.063449",
+        "image_path": "F:/______training_database_V2/animal/73204.5304fbb771471.jpg",
+        "class_name": "animal",
+        "confidence": 0.9921875
+    }
+]

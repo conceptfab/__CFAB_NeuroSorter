@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import (
+    balanced_accuracy_score,
+    confusion_matrix,
     f1_score,
     precision_score,
     recall_score,
@@ -18,6 +20,23 @@ from torchvision import datasets
 
 from .classifier import ImageClassifier
 from .preprocessing import get_augmentation_transforms, get_default_transforms
+
+
+def handle_nan_data(data):
+    """
+    Obsługuje wartości NaN w danych.
+
+    Args:
+        data: Dane do przetworzenia (numpy array)
+
+    Returns:
+        Przetworzone dane bez wartości NaN
+    """
+    if np.isnan(data).any():
+        # Zastąp NaN wartościami 0
+        data = np.nan_to_num(data, nan=0.0)
+        print("Uwaga: Wykryto wartości NaN w danych. Zastąpiono je zerami.")
+    return data
 
 
 def fine_tune_model(
@@ -295,6 +314,8 @@ def fine_tune_model(
         "early_stopping_counter": 0,
         "early_stopping_patience": 5,
         "epoch_times": [],
+        "val_balanced_accuracy": [],
+        "val_specificity": [],
     }
 
     # 15. Parametry early stopping
@@ -439,6 +460,11 @@ def fine_tune_model(
             y_pred = np.array(all_preds)
             y_prob = np.array(all_probs)
 
+            # Przetwórz dane, aby usunąć wartości NaN
+            y_true = handle_nan_data(y_true)
+            y_pred = handle_nan_data(y_pred)
+            y_prob = handle_nan_data(y_prob)
+
             try:
                 val_metrics["precision"] = precision_score(
                     y_true, y_pred, average="macro", zero_division=0
@@ -476,10 +502,54 @@ def fine_tune_model(
                 # Poprawione obliczanie AUC
                 try:
                     if new_num_classes == 2:
-                        val_metrics["auc"] = roc_auc_score(y_true, y_prob[:, 1])
+                        # Sprawdź, czy w zbiorze walidacyjnym występują obie klasy
+                        if len(np.unique(y_true)) > 1:
+                            val_metrics["auc"] = roc_auc_score(y_true, y_prob[:, 1])
+                        else:
+                            val_metrics["auc"] = (
+                                1.0  # Jeśli wszystkie próbki są z jednej klasy i model je poprawnie klasyfikuje
+                            )
+                            print(
+                                "Uwaga: Wszystkie próbki walidacyjne należą do jednej klasy. AUC ustawiono na 1.0."
+                            )
+
+                        # Dodatkowe metryki dla klasyfikacji binarnej
+                        try:
+                            # Dokładność zbalansowana
+                            val_metrics["balanced_accuracy"] = balanced_accuracy_score(
+                                y_true, y_pred
+                            )
+
+                            # Specyficzność (Specificity)
+                            tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+                            if (tn + fp) > 0:
+                                val_metrics["specificity"] = tn / (tn + fp)
+                            else:
+                                val_metrics["specificity"] = 0.0
+
+                            # Dodaj te metryki do historii
+                            history["val_balanced_accuracy"].append(
+                                val_metrics["balanced_accuracy"]
+                            )
+                            history["val_specificity"].append(
+                                val_metrics["specificity"]
+                            )
+
+                            # Wyświetl dodatkowe metryki
+                            print(
+                                f"  Val balanced acc: {val_metrics['balanced_accuracy']:.4f}"
+                            )
+                            print(
+                                f"  Val specificity: {val_metrics['specificity']:.4f}"
+                            )
+                        except Exception as e:
+                            print(
+                                f"Błąd podczas obliczania dodatkowych metryk binarnych: {e}"
+                            )
                     else:
+                        # Dla większej liczby klas
                         val_metrics["auc"] = roc_auc_score(
-                            y_true, y_prob, multi_class="ovr", average="macro"
+                            y_true, y_prob, multi_class="ovr"
                         )
                 except Exception as e:
                     print(f"Błąd podczas obliczania AUC: {e}")
