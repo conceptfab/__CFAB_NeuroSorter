@@ -87,7 +87,13 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.min_delta_spin.setDecimals(4)
         self.monitor_combo = QtWidgets.QComboBox()
         self.monitor_combo.addItems(
-            ["val_loss", "val_accuracy", "val_f1", "val_precision", "val_recall"]
+            [
+                "val_loss",
+                "val_accuracy",
+                "val_f1",
+                "val_precision",
+                "val_recall",
+            ]
         )
 
         # Checkpointing
@@ -98,7 +104,13 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.save_freq_spin.setValue(1)
         self.checkpoint_metric_combo = QtWidgets.QComboBox()
         self.checkpoint_metric_combo.addItems(
-            ["val_loss", "val_accuracy", "val_f1", "val_precision", "val_recall"]
+            [
+                "val_loss",
+                "val_accuracy",
+                "val_f1",
+                "val_precision",
+                "val_recall",
+            ]
         )
 
         # Normalization controls - używane w wielu miejscach
@@ -304,11 +316,27 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             self.model_path_edit = QtWidgets.QLineEdit()
             model_path_btn = QtWidgets.QPushButton("Przeglądaj...")
             model_path_btn.clicked.connect(self._select_model_file)
-            model_path_layout.addWidget(self.model_path_edit)
-            model_path_layout.addWidget(model_path_btn)
+            model_path_layout.addWidget(self.model_path_edit, 70)  # 70% szerokości
+            model_path_layout.addWidget(model_path_btn, 30)  # 30% szerokości
 
             model_path_label = "Model do doszkalania:"
             form.addRow(model_path_label, model_path_layout)
+
+            # Dodaj przycisk tworzenia profilu z konfiguracji modelu w tym samym wierszu
+            profile_config_layout = QtWidgets.QHBoxLayout()
+            self.create_profile_from_config_btn = QtWidgets.QPushButton(
+                "Utwórz profil z konfiguracji modelu"
+            )
+            self.create_profile_from_config_btn.clicked.connect(
+                self._create_profile_from_model_config
+            )
+            self.create_profile_from_config_btn.setEnabled(
+                False
+            )  # Początkowo nieaktywny
+            profile_config_layout.addWidget(self.create_profile_from_config_btn)
+            form.addRow(
+                "", profile_config_layout
+            )  # Pusty label, aby wyrównać z poprzednim wierszem
 
             # Architektura modelu
             self.arch_combo = QtWidgets.QComboBox()
@@ -502,17 +530,15 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                     profile_data = json.load(f)
                     if profile_data.get("type") == "fine_tuning":
                         self.profile_list.addItem(profile_file.stem)
-                        self.logger.debug(
-                            "Dodano profil %s do listy" % profile_file.stem
-                        )
+                        self.logger.debug(f"Dodano profil {profile_file.stem} do listy")
             except Exception as e:
                 self.logger.error(
-                    "Błąd podczas wczytywania profilu %s: %s" % (profile_file, str(e)),
+                    f"Błąd podczas wczytywania profilu {profile_file}: {str(e)}",
                     exc_info=True,
                 )
         self.logger.debug(
-            "Zakończono odświeżanie listy profili. Liczba profili: %s"
-            % (self.profile_list.count())
+            "Zakończono odświeżanie listy profili. Liczba profili: "
+            f"{self.profile_list.count()}"
         )
 
     def _on_profile_selected(self, current, previous):
@@ -567,158 +593,40 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             return
 
         try:
-            config = self.current_profile.get("config", {})
+            self.logger.info(
+                f"Zastosowywanie profilu: {self.profile_list.currentItem().text()}"
+            )
+            config_to_load = self.current_profile.get("config", {})
+            if not config_to_load:
+                self.logger.warning(
+                    "Wybrany profil nie zawiera sekcji 'config' " "lub jest ona pusta."
+                )
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Ostrzeżenie",
+                    "Profil nie zawiera danych konfiguracyjnych.",
+                )
+                return
 
-            # Model
-            if "model" in config:
-                model_config = config["model"]
-                self.pretrained_check.setChecked(model_config.get("pretrained", True))
-                self.pretrained_weights_combo.setCurrentText(
-                    model_config.get("pretrained_weights", "imagenet")
-                )
-                self.feature_extraction_check.setChecked(
-                    model_config.get("feature_extraction_only", False)
-                )
-                self.activation_combo.setCurrentText(
-                    model_config.get("activation", "swish")
-                )
-                self.dropout_at_inference_check.setChecked(
-                    model_config.get("dropout_at_inference", False)
-                )
-                self.global_pool_combo.setCurrentText(
-                    model_config.get("global_pool", "avg")
-                )
-                self.last_layer_activation_combo.setCurrentText(
-                    model_config.get("last_layer_activation", "softmax")
-                )
+            # Dodajemy nazwę zadania do config_to_load, jeśli _load_config
+            # tego oczekuje (Oryginalnie _load_config może próbować ustawić
+            # self.name_edit z config['name']) Tutaj zakładamy, że nazwa
+            # zadania jest zarządzana osobno lub nie jest częścią 'config'
+            # profilu. Jeśli nazwa zadania z profilu powinna być zastosowana,
+            # można ją dodać do config_to_load:
+            # if "info" in self.current_profile:
+            # # Lub inna odpowiednia nazwa z profilu
+            #    config_to_load["name"] = self.current_profile["info"]
+            # # Przykładowo
 
-            # Training
-            if "training" in config:
-                training_config = config["training"]
-                self.warmup_lr_init_spin.setValue(
-                    training_config.get("warmup_lr_init", 0.000001)
-                )
-                self.grad_accum_steps_spin.setValue(
-                    training_config.get("gradient_accumulation_steps", 1)
-                )
-                self.validation_split_spin.setValue(
-                    training_config.get("validation_split", 0.2)
-                )
-                self.eval_freq_spin.setValue(training_config.get("evaluation_freq", 1))
-                self.use_ema_check.setChecked(training_config.get("use_ema", False))
-                self.ema_decay_spin.setValue(training_config.get("ema_decay", 0.9999))
-
-                # Parametry treningu
-                self.epochs_spin.setValue(training_config.get("epochs", 100))
-                self.batch_size_spin.setValue(training_config.get("batch_size", 32))
-                self.lr_spin.setValue(training_config.get("learning_rate", 0.001))
-                self.optimizer_combo.setCurrentText(
-                    training_config.get("optimizer", "Adam")
-                )
-                self.scheduler_combo.setCurrentText(
-                    training_config.get("scheduler", "None")
-                )
-                self.num_workers_spin.setValue(training_config.get("num_workers", 4))
-                self.warmup_epochs_spin.setValue(
-                    training_config.get("warmup_epochs", 5)
-                )
-
-            # Regularization
-            if "regularization" in config:
-                reg_config = config["regularization"]
-                self.weight_decay_spin.setValue(reg_config.get("weight_decay", 0.0001))
-                self.gradient_clip_spin.setValue(reg_config.get("gradient_clip", 1.0))
-                self.label_smoothing_spin.setValue(
-                    reg_config.get("label_smoothing", 0.1)
-                )
-                self.drop_connect_spin.setValue(
-                    reg_config.get("drop_connect_rate", 0.2)
-                )
-                self.dropout_spin.setValue(reg_config.get("dropout_rate", 0.2))
-                self.momentum_spin.setValue(reg_config.get("momentum", 0.9))
-                self.epsilon_spin.setValue(reg_config.get("epsilon", 1e-6))
-
-                # SWA
-                swa_config = reg_config.get("swa", {})
-                self.use_swa_check.setChecked(swa_config.get("use", False))
-                self.swa_start_epoch_spin.setValue(swa_config.get("start_epoch", 10))
-
-                # Stochastic Depth
-                stoch_depth_config = reg_config.get("stochastic_depth", {})
-                self.use_stoch_depth_check.setChecked(
-                    stoch_depth_config.get("use_stochastic_depth", False)
-                )
-                self.stoch_depth_drop_rate.setValue(
-                    stoch_depth_config.get("drop_rate", 0.2)
-                )
-                self.stoch_depth_survival_prob.setValue(
-                    stoch_depth_config.get("survival_probability", 0.8)
-                )
-
-                # Random Erase
-                random_erase_config = reg_config.get("random_erase", {})
-                self.use_random_erase_check.setChecked(
-                    random_erase_config.get("use_random_erase", False)
-                )
-                self.random_erase_prob.setValue(
-                    random_erase_config.get("probability", 0.25)
-                )
-                self.random_erase_mode_combo.setCurrentText(
-                    random_erase_config.get("mode", "pixel")
-                )
-
-            # Augmentation
-            if "augmentation" in config:
-                aug_config = config["augmentation"]
-                self.contrast_spin.setValue(aug_config.get("contrast", 0.2))
-                self.saturation_spin.setValue(aug_config.get("saturation", 0.2))
-                self.hue_spin.setValue(aug_config.get("hue", 0.1))
-                self.shear_spin.setValue(aug_config.get("shear", 0.1))
-                self.channel_shift_spin.setValue(
-                    aug_config.get("channel_shift_range", 0.0)
-                )
-                self.resize_mode_combo.setCurrentText(
-                    aug_config.get("resize_mode", "bilinear")
-                )
-
-                # Normalization
-                norm_config = aug_config.get("normalization", {})
-                mean = norm_config.get("mean", [0.485, 0.456, 0.406])
-                std = norm_config.get("std", [0.229, 0.224, 0.225])
-                self.norm_mean_r.setValue(mean[0])
-                self.norm_mean_g.setValue(mean[1])
-                self.norm_mean_b.setValue(mean[2])
-                self.norm_std_r.setValue(std[0])
-                self.norm_std_g.setValue(std[1])
-                self.norm_std_b.setValue(std[2])
-
-            # Monitoring
-            if "monitoring" in config:
-                monitor_config = config["monitoring"]
-                metrics_config = monitor_config.get("metrics", {})
-                self.accuracy_check.setChecked(metrics_config.get("accuracy", True))
-                self.precision_check.setChecked(metrics_config.get("precision", True))
-                self.recall_check.setChecked(metrics_config.get("recall", True))
-                self.f1_check.setChecked(metrics_config.get("f1", True))
-                self.topk_check.setChecked(metrics_config.get("top_k_accuracy", True))
-                self.confusion_matrix_check.setChecked(
-                    metrics_config.get("confusion_matrix", True)
-                )
-                self.auc_check.setChecked(metrics_config.get("auc", True))
-
-                # Logging
-                logging_config = monitor_config.get("logging", {})
-                self.use_tensorboard_check.setChecked(
-                    logging_config.get("use_tensorboard", True)
-                )
-                self.use_wandb_check.setChecked(logging_config.get("use_wandb", False))
-                self.use_csv_check.setChecked(logging_config.get("save_to_csv", True))
-                self.log_freq_combo.setCurrentText(
-                    logging_config.get("logging_freq", "epoch")
-                )
+            self._load_config(config_to_load)  # Wywołanie _load_config
 
             QtWidgets.QMessageBox.information(
                 self, "Sukces", "Profil został pomyślnie zastosowany."
+            )
+            self.logger.info(
+                f"Profil {self.profile_list.currentItem().text()} "
+                "został pomyślnie zastosowany."
             )
 
         except Exception as e:
@@ -1368,6 +1276,10 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 self.model_path_edit.setText(file_path)
                 self.logger.info(f"Wybrano plik modelu: {file_path}")
 
+                # Domyślnie deaktywuj przycisk tworzenia profilu
+                self.create_profile_from_config_btn.setEnabled(False)
+                self.config = None  # Wyczyść poprzednią konfigurację
+
                 # Wczytaj plik konfiguracyjny
                 config_path = os.path.splitext(file_path)[0] + "_config.json"
                 self.logger.info(
@@ -1376,37 +1288,27 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
                 if os.path.exists(config_path):
                     try:
-                        with open(config_path, "r") as f:
-                            config = json.load(f)
+                        # Użyj funkcji read_config do odczytu konfiguracji
+                        from app.gui.dialogs.read_config import read_config_file
+
+                        temp_config_path = (
+                            os.path.splitext(file_path)[0] + "_temp_config.json"
+                        )
+                        read_config_file(config_path, temp_config_path)
+
+                        # Wczytaj wyodrębnioną konfigurację
+                        with open(temp_config_path, "r") as f:
+                            self.config = json.load(f)
                             self.logger.info(
-                                f"Wczytana konfiguracja: {json.dumps(config, indent=2)}"
+                                f"Wczytana konfiguracja: {json.dumps(self.config, indent=2)}"
                             )
+                            # Aktywuj przycisk tworzenia profilu
+                            self.create_profile_from_config_btn.setEnabled(True)
 
-                            # Ustaw nazwę zadania na podstawie klucza "name" z konfiguracji
-                            if "name" in config:
-                                task_name = f"{config['name']}_FT"
-                                self.name_edit.setText(task_name)
-                                self.logger.info(
-                                    f"Ustawiono nazwę zadania: {task_name}"
-                                )
-
-                            # Najpierw dodaj blokowanie sygnałów na całym oknie
-                            self.blockSignals(True)
-
-                            # Użyj metody _load_config do załadowania całej konfiguracji
-                            # Ta metoda już ma blockSignals wewnątrz
-                            self._load_config(config)
-
-                            # Ręcznie zaktualizuj kontrolki zależne
-                            self.blockSignals(False)
-                            self._update_dependent_controls()
-                            self._update_ui_state()
-
-                            self.logger.info("Zastosowano konfigurację modelu")
+                        # Usuń tymczasowy plik
+                        os.remove(temp_config_path)
 
                     except Exception as e:
-                        # Upewnij się, że sygnały zostaną odblokowane w przypadku błędu
-                        self.blockSignals(False)
                         self.logger.error(
                             f"Błąd podczas wczytywania konfiguracji: {str(e)}"
                         )
@@ -1415,6 +1317,9 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                             "Błąd",
                             f"Nie udało się wczytać konfiguracji modelu: {str(e)}",
                         )
+                        # Upewnij się, że przycisk jest nieaktywny w razie błędu
+                        self.create_profile_from_config_btn.setEnabled(False)
+                        self.config = None
                 else:
                     self.logger.warning(
                         f"Nie znaleziono pliku konfiguracyjnego: {config_path}"
@@ -1424,15 +1329,14 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                         "Ostrzeżenie",
                         "Nie znaleziono pliku konfiguracyjnego dla wybranego modelu.",
                     )
+                    # Upewnij się, że przycisk jest nieaktywny
+                    self.create_profile_from_config_btn.setEnabled(False)
+                    self.config = None
 
         except Exception as e:
-            # Upewnij się, że sygnały zostaną odblokowane w przypadku błędu
-            self.blockSignals(False)
             self.logger.error(f"Błąd podczas wyboru pliku modelu: {str(e)}")
             QtWidgets.QMessageBox.critical(
-                self,
-                "Błąd",
-                f"Wystąpił błąd podczas wyboru pliku modelu: {str(e)}",
+                self, "Błąd", f"Nie można wybrać pliku modelu: {str(e)}"
             )
 
     def _update_variant_combo(self, architecture: str) -> None:
@@ -2576,3 +2480,71 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             self.save_freq_spin.setEnabled(False)
         else:
             self.save_freq_spin.setEnabled(True)
+
+    def _create_profile_from_model_config(self):
+        """Tworzy nowy plik profilu na podstawie wczytanej konfiguracji modelu."""
+        if not hasattr(self, "config") or not self.config:
+            QtWidgets.QMessageBox.warning(
+                self, "Ostrzeżenie", "Najpierw wczytaj model z prawidłową konfiguracją."
+            )
+            self.logger.warning(
+                "_create_profile_from_model_config: Brak self.config lub jest pusty."
+            )
+            return
+
+        try:
+            # Zaproponuj nazwę na podstawie architektury i wariantu z self.config
+            model_cfg = self.config.get("model", {})
+            arch = model_cfg.get("architecture", "unknown_arch")
+            variant = model_cfg.get("variant", "unknown_variant")
+            default_profile_name = f"{arch}_{variant}_from_config"
+
+            name, ok = QtWidgets.QInputDialog.getText(
+                self,
+                "Utwórz profil z konfiguracji",
+                "Podaj nazwę dla nowego profilu:",
+                QtWidgets.QLineEdit.EchoMode.Normal,
+                default_profile_name,
+            )
+
+            if ok and name:
+                if not name.strip():
+                    QtWidgets.QMessageBox.warning(
+                        self, "Błąd", "Nazwa profilu nie może być pusta."
+                    )
+                    return
+
+                # Ścieżki do plików
+                default_profile_path = "data/profiles/default_profile.json"
+                extracted_config_path = "data/profiles/extracted_config.json"
+                output_path = f"data/profiles/{name.strip()}.json"
+
+                # Zapisz wczytaną konfigurację do pliku tymczasowego
+                with open(extracted_config_path, "w", encoding="utf-8") as f:
+                    json.dump(self.config, f, indent=4, ensure_ascii=False)
+
+                # Użyj funkcji merge_configs do połączenia konfiguracji
+                from app.gui.dialogs.config_merger import merge_configs
+
+                merge_configs(default_profile_path, extracted_config_path, output_path)
+
+                # Odśwież listę profili
+                self._refresh_profile_list()
+
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "Sukces",
+                    f"Profil '{name.strip()}' został pomyślnie utworzony i zapisany.",
+                )
+                self.logger.info(
+                    f"Utworzono nowy profil '{name.strip()}' z konfiguracji modelu."
+                )
+
+        except Exception as e:
+            self.logger.error(
+                f"Błąd podczas tworzenia profilu z konfiguracji modelu: {str(e)}",
+                exc_info=True,
+            )
+            QtWidgets.QMessageBox.critical(
+                self, "Błąd", f"Nie można utworzyć profilu z konfiguracji: {str(e)}"
+            )

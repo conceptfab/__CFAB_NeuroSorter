@@ -1,8 +1,8 @@
 {
   "type": "fine_tuning",
-  "info": "Profil dla EfficientNet b0",
-  "description": "Profil utworzony przez użytkownika",
-  "data_required": "Standardowe dane do doszkalania",
+  "info": "Profil domyślny",
+  "description": "Profil domyślny",
+  "data_required": "Profil domyślny",
   "hardware_required": "Standardowy sprzęt",
   "config": {
     "model": {
