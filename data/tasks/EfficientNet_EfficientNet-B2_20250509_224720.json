@@ -5,9 +5,9 @@
   "priority": 0,
   "created_at": "2025-05-09 22:47:20",
   "config": {
-    "train_dir": "F:/_set_A",
-    "data_dir": "F:/_set_A",
-    "val_dir": "F:/_set_B",
+    "train_dir": "F:/_set_A/__dane_treningowe",
+    "data_dir": "F:/_set_A/__dane_treningowe",
+    "val_dir": "F:/_set_A/__dane_walidacyjne",
     "model": {
       "architecture": "EfficientNet",
       "variant": "EfficientNet-B2",
