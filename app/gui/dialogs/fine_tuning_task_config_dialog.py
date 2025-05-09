@@ -132,33 +132,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             layout = QtWidgets.QVBoxLayout(tab)
             form = QtWidgets.QFormLayout()
 
-            # Nazwa zadania (obowiązkowe pole)
-            self.name_edit = QtWidgets.QLineEdit()
-            self.name_edit.setPlaceholderText("Nazwa zadania (wymagana)")
-            form.addRow("Nazwa zadania:", self.name_edit)
-
-            # Katalog danych treningowych
-            train_dir_layout = QtWidgets.QHBoxLayout()
-            self.train_dir_edit = QtWidgets.QLineEdit()
-            train_dir_btn = QtWidgets.QPushButton("Przeglądaj...")
-            train_dir_btn.clicked.connect(self._select_train_dir)
-            train_dir_layout.addWidget(self.train_dir_edit)
-            train_dir_layout.addWidget(train_dir_btn)
-
-            train_label = "Katalog treningowy:"
-            form.addRow(train_label, train_dir_layout)
-
-            # Katalog danych walidacyjnych
-            val_dir_layout = QtWidgets.QHBoxLayout()
-            self.val_dir_edit = QtWidgets.QLineEdit()
-            val_dir_btn = QtWidgets.QPushButton("Przeglądaj...")
-            val_dir_btn.clicked.connect(self._select_val_dir)
-            val_dir_layout.addWidget(self.val_dir_edit)
-            val_dir_layout.addWidget(val_dir_btn)
-
-            val_label = "Katalog walidacyjny:"
-            form.addRow(val_label, val_dir_layout)
-
             # Model do doszkalania
             model_path_layout = QtWidgets.QHBoxLayout()
             self.model_path_edit = QtWidgets.QLineEdit()
@@ -193,6 +166,34 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             form.addRow("Wariant:", self.variant_combo)
             self.arch_combo.currentTextChanged.connect(self._on_architecture_changed)
 
+            # Nazwa zadania (obowiązkowe pole)
+            self.name_edit = QtWidgets.QLineEdit()
+            self.name_edit.setPlaceholderText("Nazwa zadania (wymagana)")
+            self.name_edit.setText("Nowe zadanie")  # Domyślna nazwa
+            form.addRow("Nazwa zadania:", self.name_edit)
+
+            # Katalog danych treningowych
+            train_dir_layout = QtWidgets.QHBoxLayout()
+            self.train_dir_edit = QtWidgets.QLineEdit()
+            train_dir_btn = QtWidgets.QPushButton("Przeglądaj...")
+            train_dir_btn.clicked.connect(self._select_train_dir)
+            train_dir_layout.addWidget(self.train_dir_edit)
+            train_dir_layout.addWidget(train_dir_btn)
+
+            train_label = "Katalog treningowy:"
+            form.addRow(train_label, train_dir_layout)
+
+            # Katalog danych walidacyjnych
+            val_dir_layout = QtWidgets.QHBoxLayout()
+            self.val_dir_edit = QtWidgets.QLineEdit()
+            val_dir_btn = QtWidgets.QPushButton("Przeglądaj...")
+            val_dir_btn.clicked.connect(self._select_val_dir)
+            val_dir_layout.addWidget(self.val_dir_edit)
+            val_dir_layout.addWidget(val_dir_btn)
+
+            val_label = "Katalog walidacyjny:"
+            form.addRow(val_label, val_dir_layout)
+
             # Rozmiar obrazu wejściowego
             self.input_size_spin = QtWidgets.QSpinBox()
             self.input_size_spin.setRange(32, 1024)
@@ -204,8 +205,16 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # Liczba klas
             self.num_classes_spin = QtWidgets.QSpinBox()
             self.num_classes_spin.setRange(2, 1000)
-            self.num_classes_spin.setValue(2)
+            self.num_classes_spin.setValue(2)  # Domyślna wartość
             form.addRow("Liczba klas:", self.num_classes_spin)
+
+            # Logowanie wartości po inicjalizacji
+            self.logger.info(
+                f"Zainicjalizowano UI - Nazwa zadania: {self.name_edit.text()}"
+            )
+            self.logger.info(
+                f"Zainicjalizowano UI - Liczba klas: {self.num_classes_spin.value()}"
+            )
 
             # Pretrained
             self.pretrained_check = QtWidgets.QCheckBox()
@@ -487,7 +496,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 self.random_erase_prob.setValue(
                     random_erase_config.get("probability", 0.25)
                 )
-                self.random_erase_mode.setCurrentText(
+                self.random_erase_mode_combo.setCurrentText(
                     random_erase_config.get("mode", "pixel")
                 )
 
@@ -791,6 +800,29 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         try:
             # Model
             model_config = config.get("model", {})
+
+            # Logowanie wartości przed ustawieniem
+            self.logger.info(
+                f"Ładowanie konfiguracji - Nazwa zadania: {self.name_edit.text()}"
+            )
+            self.logger.info(
+                f"Ładowanie konfiguracji - Liczba klas: {self.num_classes_spin.value()}"
+            )
+
+            # Ustawienie wartości z konfiguracji
+            if "name" in config:
+                self.name_edit.setText(config["name"])
+            if "num_classes" in model_config:
+                self.num_classes_spin.setValue(model_config["num_classes"])
+
+            # Logowanie wartości po ustawieniu
+            self.logger.info(
+                f"Zaktualizowano wartości - Nazwa zadania: {self.name_edit.text()}"
+            )
+            self.logger.info(
+                f"Zaktualizowano wartości - Liczba klas: {self.num_classes_spin.value()}"
+            )
+
             self.pretrained_check.setChecked(model_config.get("pretrained", True))
             self.pretrained_weights_combo.setCurrentText(
                 model_config.get("pretrained_weights", "imagenet")
@@ -836,13 +868,13 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
             # Stochastic Depth
             stoch_depth_config = regularization_config.get("stochastic_depth", {})
-            self.use_stochastic_depth_check.setChecked(
+            self.use_stoch_depth_check.setChecked(
                 stoch_depth_config.get("use_stochastic_depth", False)
             )
-            self.stochastic_depth_drop_rate.setValue(
+            self.stoch_depth_drop_rate.setValue(
                 stoch_depth_config.get("drop_rate", 0.2)
             )
-            self.stochastic_depth_survival_prob.setValue(
+            self.stoch_depth_survival_prob.setValue(
                 stoch_depth_config.get("survival_probability", 0.8)
             )
 
@@ -854,7 +886,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             self.random_erase_prob.setValue(
                 random_erase_config.get("probability", 0.25)
             )
-            self.random_erase_mode.setCurrentText(
+            self.random_erase_mode_combo.setCurrentText(
                 random_erase_config.get("mode", "pixel")
             )
 
@@ -916,9 +948,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             self.precision_check.setChecked(metrics_config.get("precision", True))
             self.recall_check.setChecked(metrics_config.get("recall", True))
             self.f1_check.setChecked(metrics_config.get("f1", True))
-            self.top_k_accuracy_check.setChecked(
-                metrics_config.get("top_k_accuracy", True)
-            )
+            self.topk_check.setChecked(metrics_config.get("top_k_accuracy", True))
             self.confusion_matrix_check.setChecked(
                 metrics_config.get("confusion_matrix", True)
             )
@@ -985,25 +1015,35 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             self.seed_spin.setValue(config.get("seed", 42))
             self.deterministic_check.setChecked(config.get("deterministic", True))
 
-            self.logger.info("=== REKOMENDACJE SPRZĘTOWE ===")
-            self.logger.info(
-                f"Zalecany rozmiar batcha: {self.hardware_profile.get('recommended_batch_size', 'N/A')}"
-            )
-            self.logger.info(
-                f"Zalecana liczba workerów: {self.hardware_profile.get('recommended_workers', 'N/A')}"
-            )
-            self.logger.info(
-                f"Zalecane użycie mixed precision: {self.hardware_profile.get('use_mixed_precision', 'N/A')}"
-            )
-            self.logger.info(
-                f"Zalecana architektura: {self.hardware_profile.get('additional_recommendations', {}).get('recommended_model', 'N/A')}"
-            )
-            self.logger.info(
-                f"Zalecana precyzja: {self.hardware_profile.get('additional_recommendations', {}).get('recommended_precision', 'N/A')}"
-            )
-            self.logger.info(
-                f"Zalecany poziom augmentacji: {self.hardware_profile.get('additional_recommendations', {}).get('recommended_augmentation', 'N/A')}"
-            )
+            # Sprawdź czy hardware_profile jest słownikiem
+            if isinstance(self.hardware_profile, dict):
+                self.logger.info("=== REKOMENDACJE SPRZĘTOWE ===")
+                self.logger.info(
+                    f"Zalecany rozmiar batcha: {self.hardware_profile.get('recommended_batch_size', 'N/A')}"
+                )
+                self.logger.info(
+                    f"Zalecana liczba workerów: {self.hardware_profile.get('recommended_workers', 'N/A')}"
+                )
+                self.logger.info(
+                    f"Zalecane użycie mixed precision: {self.hardware_profile.get('use_mixed_precision', 'N/A')}"
+                )
+
+                additional_recommendations = self.hardware_profile.get(
+                    "additional_recommendations", {}
+                )
+                if isinstance(additional_recommendations, dict):
+                    self.logger.info(
+                        f"Zalecana architektura: {additional_recommendations.get('recommended_model', 'N/A')}"
+                    )
+                    self.logger.info(
+                        f"Zalecana precyzja: {additional_recommendations.get('recommended_precision', 'N/A')}"
+                    )
+                    self.logger.info(
+                        f"Zalecany poziom augmentacji: {additional_recommendations.get('recommended_augmentation', 'N/A')}"
+                    )
+            else:
+                self.logger.warning("Brak dostępnych rekomendacji sprzętowych")
+
             self.logger.info("=============================")
 
         except Exception as e:
@@ -1071,38 +1111,98 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self,
                 "Wybierz plik modelu do doszkalania",
-                str(Path.home()),
+                str(Path("data/models")),
                 "Pliki modeli (*.pth *.pt *.ckpt);;Wszystkie pliki (*.*)",
             )
             if file_path:
                 self.model_path_edit.setText(file_path)
                 self.logger.info(f"Wybrano plik modelu: {file_path}")
+
+                # Wczytaj plik konfiguracyjny
+                config_path = os.path.splitext(file_path)[0] + "_config.json"
+                self.logger.info(
+                    f"Próba wczytania pliku konfiguracyjnego: {config_path}"
+                )
+
+                if os.path.exists(config_path):
+                    try:
+                        with open(config_path, "r") as f:
+                            config = json.load(f)
+                            self.logger.info(
+                                f"Wczytana konfiguracja: {json.dumps(config, indent=2)}"
+                            )
+
+                            # Ustaw nazwę zadania na podstawie klucza "name" z konfiguracji
+                            if "name" in config:
+                                task_name = f"{config['name']}_FT"
+                                self.name_edit.setText(task_name)
+                                self.logger.info(
+                                    f"Ustawiono nazwę zadania: {task_name}"
+                                )
+
+                            # Użyj metody _load_config do załadowania całej konfiguracji
+                            self._load_config(config)
+                            self.logger.info("Zastosowano konfigurację modelu")
+
+                    except Exception as e:
+                        self.logger.error(
+                            f"Błąd podczas wczytywania konfiguracji: {str(e)}"
+                        )
+                        QtWidgets.QMessageBox.warning(
+                            self,
+                            "Błąd",
+                            f"Nie udało się wczytać konfiguracji modelu: {str(e)}",
+                        )
+                else:
+                    self.logger.warning(
+                        f"Nie znaleziono pliku konfiguracyjnego: {config_path}"
+                    )
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Ostrzeżenie",
+                        "Nie znaleziono pliku konfiguracyjnego dla wybranego modelu.",
+                    )
+
         except Exception as e:
             self.logger.error(f"Błąd podczas wyboru pliku modelu: {str(e)}")
             QtWidgets.QMessageBox.critical(
                 self,
                 "Błąd",
-                f"Nie można wybrać pliku modelu: {str(e)}",
+                f"Wystąpił błąd podczas wyboru pliku modelu: {str(e)}",
             )
 
-    def _update_variant_combo(self, architecture: str):
-        """Aktualizuje listę dostępnych wariantów modelu."""
+    def _update_variant_combo(self, architecture: str) -> None:
+        """Aktualizuje listę wariantów dla wybranej architektury."""
+        self.logger.info(f"Aktualizacja wariantów dla architektury: {architecture}")
+
+        # Zapisz aktualnie wybrany wariant
+        current_variant = self.variant_combo.currentText()
+        self.logger.info(f"Aktualnie wybrany wariant: {current_variant}")
+
+        # Wyczyść i dodaj nowe warianty
         self.variant_combo.clear()
-        variants = {
-            "EfficientNet": ["b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7"],
-            "ResNet": ["18", "34", "50", "101", "152"],
-            "DenseNet": ["121", "169", "201"],
-            "MobileNet": ["v2", "v3_small", "v3_large"],
-            "VGG": ["11", "13", "16", "19"],
-            "ConvNeXt": ["tiny", "small", "base", "large", "xlarge"],
-            "ConvNeXtV2": ["tiny", "small", "base", "large", "huge"],
-            "InceptionV3": ["default"],
-            "Xception": ["default"],
-        }
-        if architecture in variants:
-            self.variant_combo.addItems(variants[architecture])
-            self.logger.debug(
-                f"Zaktualizowano warianty dla architektury: {architecture}"
+
+        if architecture == "EfficientNet":
+            variants = ["b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"]
+        elif architecture == "ResNet":
+            variants = ["18", "34", "50", "101", "152"]
+        elif architecture == "MobileNet":
+            variants = ["v2", "v3_small", "v3_large"]
+        else:
+            variants = ["default"]
+
+        self.logger.info(f"Dostępne warianty: {variants}")
+        self.variant_combo.addItems(variants)
+
+        # Próbuj przywrócić poprzednio wybrany wariant
+        if current_variant in variants:
+            self.variant_combo.setCurrentText(current_variant)
+            self.logger.info(
+                f"Przywracam poprzednio wybrany wariant: {current_variant}"
+            )
+        else:
+            self.logger.info(
+                "Nie można przywrócić poprzedniego wariantu, ustawiam domyślny"
             )
 
     def _on_architecture_changed(self, architecture: str):
@@ -1451,6 +1551,17 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.use_feature_maps_check = QtWidgets.QCheckBox()
         self.use_feature_maps_check.setChecked(True)
         visualization_layout.addRow("Use Feature Maps:", self.use_feature_maps_check)
+
+        self.use_pred_samples_check = QtWidgets.QCheckBox()
+        self.use_pred_samples_check.setChecked(True)
+        visualization_layout.addRow(
+            "Use Prediction Samples:", self.use_pred_samples_check
+        )
+
+        self.num_samples_spin = QtWidgets.QSpinBox()
+        self.num_samples_spin.setRange(1, 100)
+        self.num_samples_spin.setValue(10)
+        visualization_layout.addRow("Number of samples:", self.num_samples_spin)
 
         visualization_group.setLayout(visualization_layout)
         form.addRow(visualization_group)
@@ -1863,25 +1974,20 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
     def _on_accept(self):
         """Obsługa dodawania zadania."""
         try:
-            # Sprawdź wymagane pola
+            # Logowanie wartości przed zapisem
+            self.logger.info(
+                f"Zapisywanie konfiguracji - Nazwa zadania: {self.name_edit.text()}"
+            )
+            self.logger.info(
+                f"Zapisywanie konfiguracji - Liczba klas: {self.num_classes_spin.value()}"
+            )
+
+            # Sprawdzenie czy nazwa zadania jest ustawiona
             if not self.name_edit.text().strip():
                 QtWidgets.QMessageBox.warning(
-                    self, "Błąd", "Wpisz nazwę zadania (pole wymagane)."
-                )
-                return
-            if not self.train_dir_edit.text():
-                QtWidgets.QMessageBox.warning(
-                    self, "Błąd", "Wybierz katalog z danymi treningowymi."
-                )
-                return
-            if not self.val_dir_edit.text():
-                QtWidgets.QMessageBox.warning(
-                    self, "Błąd", "Wybierz katalog z danymi walidacyjnymi."
-                )
-                return
-            if not self.model_path_edit.text():
-                QtWidgets.QMessageBox.warning(
-                    self, "Błąd", "Wybierz plik modelu do doszkalania."
+                    self,
+                    "Błąd",
+                    "Nazwa zadania jest wymagana!",
                 )
                 return
 
@@ -2094,7 +2200,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
     def _get_model_config(self) -> Dict[str, Any]:
         """Zwraca konfigurację modelu."""
-        return {
+        config = {
             "architecture": self.arch_combo.currentText(),
             "variant": self.variant_combo.currentText(),
             "input_size": self.input_size_spin.value(),
@@ -2107,3 +2213,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             "global_pool": self.global_pool_combo.currentText(),
             "last_layer_activation": self.last_layer_activation_combo.currentText(),
         }
+        self.logger.info(
+            f"Zapisuję konfigurację modelu: {json.dumps(config, indent=2)}"
+        )
+        return config
