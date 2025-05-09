@@ -114,7 +114,7 @@ class ImageClassifierTab(QWidget, TabInterface):
         main_layout.setContentsMargins(8, 8, 8, 8)
         main_layout.setSpacing(8)
 
-        # Lewa kolumna - Klasyfikacja obrazu
+        # Lewa kolumna - Obraz i Historia klasyfikacji
         left_column = QWidget()
         left_layout = QVBoxLayout(left_column)
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -134,7 +134,7 @@ class ImageClassifierTab(QWidget, TabInterface):
         self.image_preview.setStyleSheet(
             "background-color: #1C1C1C; " "border: 1px solid #3F3F46; color: #AAA;"
         )
-        left_layout.addWidget(self.image_preview, 1)  # Dodaj współczynnik rozciągania
+        left_layout.addWidget(self.image_preview, 1)
 
         # Przyciski operacji
         buttons_layout = QHBoxLayout()
@@ -152,37 +152,13 @@ class ImageClassifierTab(QWidget, TabInterface):
         buttons_layout.addStretch()
         left_layout.addLayout(buttons_layout)
 
-        # Wyniki klasyfikacji (dla pojedynczego obrazu)
-        self.results_table = QTableWidget()
-        self.results_table.setColumnCount(2)
-        self.results_table.setHorizontalHeaderLabels(["Kategoria", "Pewność"])
-        self.results_table.horizontalHeader().setStretchLastSection(True)
-        self.results_table.verticalHeader().setVisible(False)
-        self.results_table.setAlternatingRowColors(True)
-        self.results_table.setFixedHeight(
-            200
-        )  # Zwiększona wysokość dla większej liczby wyników
-        left_layout.addWidget(self.results_table)
-
-        # Pasek postępu dla klasyfikacji wsadowej
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setValue(0)
-        self.progress_bar.setVisible(False)
-        left_layout.addWidget(self.progress_bar)
-
-        # Prawa kolumna - Historia klasyfikacji
-        right_column = QWidget()
-        right_layout = QVBoxLayout(right_column)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
         # Nagłówek sekcji historii
         history_header = QLabel("HISTORIA KLASYFIKACJI")
         history_header.setStyleSheet(
             "font-weight: bold; color: #CCCCCC; "
             "font-size: 11px; padding-bottom: 4px;"
         )
-        right_layout.addWidget(history_header)
+        left_layout.addWidget(history_header)
 
         # Tabela historii
         self.history_table = QTableWidget()
@@ -209,7 +185,7 @@ class ImageClassifierTab(QWidget, TabInterface):
         )
         self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.history_table.itemDoubleClicked.connect(self._show_history_item)
-        right_layout.addWidget(self.history_table)
+        left_layout.addWidget(self.history_table)
 
         # Przyciski historii
         history_buttons = QHBoxLayout()
@@ -225,11 +201,40 @@ class ImageClassifierTab(QWidget, TabInterface):
         history_buttons.addWidget(export_history_btn)
 
         history_buttons.addStretch()
-        right_layout.addLayout(history_buttons)
+        left_layout.addLayout(history_buttons)
+
+        # Prawa kolumna - Klasyfikacja kategorii
+        right_column = QWidget()
+        right_layout = QVBoxLayout(right_column)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Nagłówek sekcji kategorii
+        categories_header = QLabel("KLASYFIKACJA KATEGORII")
+        categories_header.setStyleSheet(
+            "font-weight: bold; color: #CCCCCC; "
+            "font-size: 11px; padding-bottom: 4px;"
+        )
+        right_layout.addWidget(categories_header)
+
+        # Wyniki klasyfikacji (dla pojedynczego obrazu)
+        self.results_table = QTableWidget()
+        self.results_table.setColumnCount(2)
+        self.results_table.setHorizontalHeaderLabels(["Kategoria", "Pewność"])
+        self.results_table.horizontalHeader().setStretchLastSection(True)
+        self.results_table.verticalHeader().setVisible(False)
+        self.results_table.setAlternatingRowColors(True)
+        right_layout.addWidget(self.results_table, 1)
+
+        # Pasek postępu dla klasyfikacji wsadowej
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setVisible(False)
+        right_layout.addWidget(self.progress_bar)
 
         # Dodaj kolumny do głównego układu
-        main_layout.addWidget(left_column, 1)  # Współczynnik 1 dla lewej kolumny
-        main_layout.addWidget(right_column, 1)  # Współczynnik 1 dla prawej kolumny
+        main_layout.addWidget(left_column, 1)
+        main_layout.addWidget(right_column, 1)
 
     def connect_signals(self):
         """Podłącza sygnały do slotów."""

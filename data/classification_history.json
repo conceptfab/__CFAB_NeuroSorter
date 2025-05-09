@@ -1,8 +1,26 @@
 [
     {
-        "date": "2025-05-09T21:43:20.063449",
-        "image_path": "F:/______training_database_V2/animal/73204.5304fbb771471.jpg",
         "class_name": "animal",
-        "confidence": 0.9921875
+        "confidence": 0.9921875,
+        "date": "2025-05-09T21:43:20.063449",
+        "image_path": "F:/______training_database_V2/animal/73204.5304fbb771471.jpg"
+    },
+    {
+        "class_name": "arm_chair",
+        "confidence": 0.423583984375,
+        "date": "2025-05-09T22:17:51.358767",
+        "image_path": "F:/______training_database_V2/animal/Animated Flying Monarch Butterfly Rigged for Cinema 4D.jpg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.98828125,
+        "date": "2025-05-09T22:18:32.711330",
+        "image_path": "F:/______training_database_V2/animal/blackhead-ball-python.jpeg"
+    },
+    {
+        "date": "2025-05-09T22:19:09.479831",
+        "image_path": "F:/______training_database_V2/animal/American Bald Eagle Animated.jpg",
+        "class_name": "animal",
+        "confidence": 0.9990234375
     }
 ]
