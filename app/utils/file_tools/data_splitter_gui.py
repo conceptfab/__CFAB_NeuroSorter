@@ -471,7 +471,23 @@ class DataSplitterApp(QWidget):
             ["Struktura folderów (zaznacz kategorie do przetworzenia)"]
         )
         self.folder_tree.setColumnCount(1)
-        self.tabs.addTab(self.folder_tree, "Wybór kategorii")
+
+        # Dodaję przyciski do zaznaczania/odznaczania
+        folder_buttons_layout = QHBoxLayout()
+        self.select_all_button = QPushButton("Zaznacz wszystkie")
+        self.deselect_all_button = QPushButton("Odznacz wszystkie")
+        self.select_all_button.clicked.connect(self.select_all_folders)
+        self.deselect_all_button.clicked.connect(self.deselect_all_folders)
+        folder_buttons_layout.addWidget(self.select_all_button)
+        folder_buttons_layout.addWidget(self.deselect_all_button)
+
+        folder_layout = QVBoxLayout()
+        folder_layout.addLayout(folder_buttons_layout)
+        folder_layout.addWidget(self.folder_tree)
+
+        folder_widget = QWidget()
+        folder_widget.setLayout(folder_layout)
+        self.tabs.addTab(folder_widget, "Wybór kategorii")
         self.files_list_widget = QListWidget()
         self.tabs.addTab(self.files_list_widget, "Lista wszystkich plików")
         layout.addWidget(self.tabs)
@@ -907,6 +923,26 @@ class DataSplitterApp(QWidget):
                 event.ignore()
         else:
             event.accept()
+
+    def select_all_folders(self):
+        """Zaznacza wszystkie foldery w drzewie."""
+        if not self.folder_tree.topLevelItem(0):
+            return
+        root_item = self.folder_tree.topLevelItem(0)
+        for i in range(root_item.childCount()):
+            child_item = root_item.child(i)
+            child_item.setCheckState(0, Qt.CheckState.Checked)
+        self.update_files_limit_and_validation_based_on_selection()
+
+    def deselect_all_folders(self):
+        """Odznacza wszystkie foldery w drzewie."""
+        if not self.folder_tree.topLevelItem(0):
+            return
+        root_item = self.folder_tree.topLevelItem(0)
+        for i in range(root_item.childCount()):
+            child_item = root_item.child(i)
+            child_item.setCheckState(0, Qt.CheckState.Unchecked)
+        self.update_files_limit_and_validation_based_on_selection()
 
 
 # --- Dialog Raportu (bez zmian, ale dodaję dla kompletności) ---

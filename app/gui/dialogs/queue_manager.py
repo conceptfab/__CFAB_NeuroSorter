@@ -175,6 +175,7 @@ class QueueManager(QtWidgets.QDialog):
         print(f"Zakończono zadanie: {task_name}")
 
         # Aktualizuj status zadania w pliku
+        task_name = task_name.replace(".json", "")  # Usuń rozszerzenie jeśli istnieje
         task_file = os.path.join("data", "tasks", f"{task_name}.json")
         if os.path.exists(task_file):
             try:
@@ -225,6 +226,9 @@ class QueueManager(QtWidgets.QDialog):
             # Aktualizuj status przerwanego zadania
             if self.current_task_index < len(self.new_tasks):
                 task_name = self.new_tasks[self.current_task_index].get("name")
+                task_name = task_name.replace(
+                    ".json", ""
+                )  # Usuń rozszerzenie jeśli istnieje
                 task_file = os.path.join("data", "tasks", f"{task_name}.json")
                 if os.path.exists(task_file):
                     try:

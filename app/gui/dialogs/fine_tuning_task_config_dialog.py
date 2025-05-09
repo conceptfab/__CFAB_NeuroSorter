@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
@@ -235,7 +235,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.model_path_edit = QtWidgets.QLineEdit()
         self.model_path_edit.setReadOnly(True)
         model_path_button = QtWidgets.QPushButton("Wybierz")
-        model_path_button.clicked.connect(self._select_model_path)
+        model_path_button.clicked.connect(self._select_model_file)
         model_path_layout.addWidget(self.model_path_edit)
         model_path_layout.addWidget(model_path_button)
         data_layout.addRow("Model do doszkalania:", model_path_layout)
@@ -871,16 +871,23 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             )
 
             if file_path:
-                if file_path.lower().endswith((".pt", ".pth")):
-                    self.model_path_edit.setText(file_path)
-                else:
-                    title = "Błąd"
-                    msg = "Wybrany plik nie jest plikiem modelu PyTorch (*.pt, *.pth)"
-                    QtWidgets.QMessageBox.warning(self, title, msg)
+                # Sprawdź rozszerzenie pliku
+                if not file_path.lower().endswith((".pt", ".pth")):
+                    error_msg = (
+                        f"Niewłaściwy format pliku modelu: {file_path}. "
+                        "Wymagane rozszerzenie .pt lub .pth"
+                    )
+                    self.logger.error(error_msg)
+                    QtWidgets.QMessageBox.warning(self, "Błąd", error_msg)
+                    return
+
+                self.model_path_edit.setText(file_path)
+                self.logger.info(f"Wybrano plik modelu: {file_path}")
 
         except Exception as e:
             msg = "Błąd wyboru pliku modelu"
             self.logger.error(f"{msg}: {str(e)}", exc_info=True)
+            QtWidgets.QMessageBox.critical(self, "Błąd", f"{msg}: {str(e)}")
 
     def _create_fine_tuning_params_tab(self) -> QtWidgets.QWidget:
         """Tworzy zakładkę z parametrami fine-tuningu."""
@@ -1557,6 +1564,37 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             return "CosineAnnealingLR"
         return "None"  # domyślna wartość
 
+    def _validate_config(self, config: Dict[str, Any]) -> Tuple[bool, str]:
+        """Waliduje konfigurację przed zapisem."""
+        try:
+            # Sprawdź wymagane pola
+            required_fields = ["name", "type", "status", "created_at", "config"]
+            for field in required_fields:
+                if field not in config:
+                    return False, f"Brak wymaganego pola: {field}"
+
+            # Sprawdź pola w config
+            config_fields = config["config"]
+            required_config_fields = ["train_dir", "data_dir", "model"]
+            for field in required_config_fields:
+                if field not in config_fields:
+                    return False, f"Brak wymaganego pola w config: {field}"
+
+            # Sprawdź model_path dla doszkalania
+            if config["type"] == "doszkalanie":
+                if "model_path" not in config_fields["model"]:
+                    return False, "Brak ścieżki do modelu w konfiguracji doszkalania"
+
+            return True, ""
+
+        except Exception as e:
+            return False, f"Błąd walidacji: {str(e)}"
+
+    def _check_task_exists(self, task_name: str) -> bool:
+        """Sprawdza czy zadanie o danej nazwie już istnieje."""
+        task_file = os.path.join("data", "tasks", f"{task_name}.json")
+        return os.path.exists(task_file)
+
     def _on_accept(self):
         """Obsługa akceptacji konfiguracji."""
         try:
@@ -1580,24 +1618,33 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 return
 
             # Przygotowanie konfiguracji
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             model_name = (
-                f"{self.arch_combo.currentText()}_"
-                f"{self.variant_combo.currentText()}"
+                f"{self.arch_combo.currentText()}_{self.variant_combo.currentText()}"
             )
-            task_name = f"{model_name}_{timestamp}.json"
+            task_name = f"{model_name}_{timestamp}"
+
+            # Sprawdź czy zadanie już istnieje
+            if self._check_task_exists(task_name):
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Ostrzeżenie",
+                    f"Zadanie o nazwie {task_name} już istnieje. Wybierz inną nazwę.",
+                )
+                return
 
             config = {
                 "name": task_name,
-                "typ": "doszkalanie",
+                "type": "doszkalanie",
                 "status": "Nowy",
                 "priority": 0,
-                "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "config": {
                     "train_dir": train_dir,
                     "data_dir": train_dir,
                     "val_dir": val_dir,
                     "model": {
+                        "model_path": self.model_path_edit.text(),
                         "pretrained": self.pretrained_check.isChecked(),
                         "pretrained_weights": self.pretrained_weights_combo.currentText(),
                         "feature_extraction_only": self.feature_extraction_check.isChecked(),
@@ -1695,10 +1742,16 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 },
             }
 
+            # Walidacja konfiguracji
+            is_valid, error_msg = self._validate_config(config)
+            if not is_valid:
+                QtWidgets.QMessageBox.critical(self, "Błąd walidacji", error_msg)
+                return
+
             self.task_config = config
 
             # Zapisz konfigurację do pliku
-            task_file = os.path.join("data", "tasks", task_name)
+            task_file = os.path.join("data", "tasks", f"{task_name}.json")
             os.makedirs(os.path.dirname(task_file), exist_ok=True)
             with open(task_file, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=4)
@@ -1921,3 +1974,30 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             msg = "Błąd podczas ładowania konfiguracji"
             self.logger.error(f"{msg}: {str(e)}", exc_info=True)
             QtWidgets.QMessageBox.critical(self, "Błąd", f"{msg}: {str(e)}")
+
+    def _select_train_dir(self):
+        """Wybiera katalog z danymi treningowymi."""
+        try:
+            dir_path = QtWidgets.QFileDialog.getExistingDirectory(
+                self,
+                "Wybierz katalog z danymi treningowymi",
+                str(Path.home()),
+                QtWidgets.QFileDialog.Option.ShowDirsOnly,
+            )
+            if dir_path:
+                if validate_training_directory(dir_path):
+                    self.train_dir_edit.setText(dir_path)
+                    self.logger.info(f"Wybrano katalog treningowy: {dir_path}")
+                else:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Błąd walidacji",
+                        "Wybrany katalog nie spełnia wymagań dla danych treningowych.",
+                    )
+        except Exception as e:
+            self.logger.error(f"Błąd podczas wyboru katalogu treningowego: {str(e)}")
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Błąd",
+                f"Nie można wybrać katalogu treningowego: {str(e)}",
+            )

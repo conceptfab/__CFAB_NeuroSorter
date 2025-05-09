@@ -19,6 +19,7 @@ except ImportError as e:
 # Importuj główne okno aplikacji i loggera
 from app.core.logger import Logger
 from app.gui.main_window import MainWindow
+from app.utils.file_utils import fix_task_file_extensions
 
 # Dodaj katalog główny projektu do PYTHONPATH
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +28,9 @@ if project_root not in sys.path:
 
 
 def main():
+    # Napraw rozszerzenia plików zadań
+    fix_task_file_extensions()
+
     # Inicjalizacja loggera (przeniesiona po inicjalizacji app)
     logger = None  # Zainicjuj logger jako None na początku
 

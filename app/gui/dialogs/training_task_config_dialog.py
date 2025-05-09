@@ -1342,7 +1342,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 f"{self.arch_combo.currentText()}_"
                 f"{self.variant_combo.currentText()}"
             )
-            task_name = f"{model_name}_{timestamp}.json"
+            task_name = f"{model_name}_{timestamp}"
 
             self.task_config = {
                 "name": task_name,

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Optional, Tuple
 
 # Konfiguracja loggera
@@ -163,6 +164,26 @@ def validate_task_file(task_file: str) -> Tuple[bool, Optional[str]]:
             return False, f"Brak wymaganego pola '{field}' w sekcji config"
     logger.info("Wszystkie wymagane pola w konfiguracji obecne")
 
+    # Sprawdź wymagane pola w sekcji model
+    logger.info("Sprawdzanie wymaganych pól w sekcji model...")
+    model_config = config.get("model", {})
+    if task_data.get("type") == "doszkalanie":
+        if "model_path" not in model_config:
+            logger.error("Brak ścieżki do modelu w konfiguracji doszkalania")
+            return (
+                False,
+                "Brak wymaganego pola 'model_path' w sekcji model dla zadania doszkalania",
+            )
+        if not os.path.exists(model_config["model_path"]):
+            logger.error(
+                f"Model do doszkalania nie istnieje: {model_config['model_path']}"
+            )
+            return (
+                False,
+                f"Model do doszkalania nie istnieje: {model_config['model_path']}",
+            )
+    logger.info("Wszystkie wymagane pola w sekcji model obecne")
+
     # Sprawdź typy wartości w konfiguracji
     logger.info("Sprawdzanie typów wartości w konfiguracji...")
     if not isinstance(config["epochs"], (int, float)) or config["epochs"] <= 0:
@@ -259,3 +280,26 @@ def validate_task_config(config: dict) -> tuple[bool, str]:
 
     except Exception as e:
         return False, f"Błąd podczas walidacji konfiguracji: {str(e)}"
+
+
+def fix_task_file_extensions():
+    """Naprawia rozszerzenia plików zadań w katalogu data/tasks."""
+    tasks_dir = Path("data/tasks")
+    if not tasks_dir.exists():
+        return
+
+    for file_path in tasks_dir.iterdir():
+        if not file_path.is_file():
+            continue
+
+        # Usuń podwójne rozszerzenia .json
+        if file_path.name.endswith(".json.json"):
+            new_name = file_path.name[:-5]  # usuń ostatnie .json
+            new_path = file_path.parent / new_name
+            file_path.rename(new_path)
+            file_path = new_path
+
+        # Dodaj rozszerzenie .json jeśli go brakuje
+        if not file_path.name.endswith(".json"):
+            new_path = file_path.with_suffix(".json")
+            file_path.rename(new_path)
