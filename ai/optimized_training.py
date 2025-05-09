@@ -521,19 +521,18 @@ def train_model_optimized(
 
 def configure_optimizer(model, optimizer_type, learning_rate, weight_decay):
     """Konfiguruje optymalizator z parametrami dostosowanymi do modelu."""
-    # Policz liczbę parametrów modelu
     param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     # Dopasuj learning rate do wielkości modelu
     adjusted_lr = learning_rate
-    if param_count > 50_000_000:  # Bardzo duży model (>50M parametrów)
+    if param_count > 50_000_000:  # Bardzo duży model
         adjusted_lr = learning_rate * 0.5
-    elif param_count < 5_000_000:  # Mały model (<5M parametrów)
+    elif param_count < 5_000_000:  # Mały model
         adjusted_lr = learning_rate * 2.0
 
     # Dopasuj weight_decay
     adjusted_wd = weight_decay
-    if param_count > 20_000_000:  # Większy model potrzebuje silniejszej regularyzacji
+    if param_count > 20_000_000:  # Większy model
         adjusted_wd = max(weight_decay, 0.03)
 
     # Wybierz i skonfiguruj optymalizator
@@ -558,7 +557,10 @@ def configure_optimizer(model, optimizer_type, learning_rate, weight_decay):
 def configure_scheduler(
     optimizer, scheduler_type, epochs, patience=3, steps_per_epoch=100
 ):
-    """Konfiguruje scheduler learning rate odpowiedni do typu optymalizatora i długości treningu."""
+    """
+    Konfiguruje scheduler learning rate odpowiedni do typu
+    optymalizatora i długości treningu.
+    """
     if scheduler_type == "plateau":
         return optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode="min", factor=0.1, patience=patience
@@ -587,37 +589,23 @@ def mixup_data(x, y, alpha=0.2, device=None):
     Wykonuje mixup na danych wejściowych i etykietach.
     Bezpieczna implementacja unikająca problemów z urządzeniami.
     """
-    # Jeśli nie podano urządzenia, użyj urządzenia x
     if device is None:
         device = x.device
 
-    # Bezpieczne sprawdzenie CUDA
     if device.type == "cuda" and not torch.cuda.is_available():
         device = torch.device("cpu")
 
-    # Parametr mixup
-    if alpha > 0:
-        lam = float(np.random.beta(alpha, alpha))
-    else:
-        lam = 1.0
-
+    lam = float(np.random.beta(alpha, alpha)) if alpha > 0 else 1.0
     batch_size = x.size()[0]
 
-    # Bezpieczne tworzenie permutacji (zawsze na CPU)
     try:
         index = torch.randperm(batch_size, device="cpu")
-        # Przenieś indeksy na odpowiednie urządzenie
         index = index.to(device)
-
-        # Wykonaj mixup
         mixed_x = lam * x + (1 - lam) * x[index]
         y_a, y_b = y, y[index]
-
         return mixed_x, y_a, y_b, lam
-
     except Exception as e:
         print(f"Błąd podczas mixup: {str(e)}")
-        # Zwróć oryginalne dane w przypadku błędu
         return x, y, y, 1.0
 
 
@@ -651,3 +639,78 @@ def progress_callback(
     # są już drukowane w głównej funkcji train_model_optimized.
     # To pozwoli uniknąć duplikowania komunikatów.
     pass
+
+
+def track_forgetting(original_model, fine_tuned_model, original_testloader):
+    """Mierzy utratę wydajności na oryginalnym zbiorze danych."""
+    original_metrics = evaluate_model(original_model, original_testloader)
+    finetuned_metrics = evaluate_model(fine_tuned_model, original_testloader)
+    forgetting = {
+        k: original_metrics[k] - finetuned_metrics[k] for k in original_metrics
+    }
+    return forgetting
+
+
+def adaptive_layer_freezing(model, gradient_threshold=0.001):
+    """Zamraża warstwy z małymi gradientami, odmraża te z dużymi."""
+    for name, param in model.named_parameters():
+        if param.requires_grad and param.grad is not None:
+            grad_norm = param.grad.norm().item()
+            param.requires_grad = grad_norm > gradient_threshold
+    return model
+
+
+def compare_activations(original_model, fine_tuned_model, sample_batch):
+    """Porównuje aktywacje warstw modeli dla tych samych danych wejściowych."""
+    original_activations = {}
+    finetuned_activations = {}
+
+    def hook_fn(name, activations_dict):
+        def hook(module, input, output):
+            activations_dict[name] = output.detach()
+
+        return hook
+
+    # Rejestracja hooków dla obu modeli
+    hooks = []
+    for name, module in original_model.named_modules():
+        if isinstance(module, (nn.Conv2d, nn.Linear)):
+            hooks.append(
+                module.register_forward_hook(hook_fn(name, original_activations))
+            )
+
+    for name, module in fine_tuned_model.named_modules():
+        if isinstance(module, (nn.Conv2d, nn.Linear)):
+            hooks.append(
+                module.register_forward_hook(hook_fn(name, finetuned_activations))
+            )
+
+    # Forward pass
+    with torch.no_grad():
+        original_model(sample_batch)
+        fine_tuned_model(sample_batch)
+
+    # Usunięcie hooków
+    for hook in hooks:
+        hook.remove()
+
+    # Porównanie aktywacji
+    activation_diffs = {}
+    for name in original_activations:
+        if name in finetuned_activations:
+            diff = torch.norm(
+                original_activations[name] - finetuned_activations[name]
+            ).item()
+            activation_diffs[name] = diff
+
+    return activation_diffs
+
+
+def ewc_loss(model, old_model, fisher_diag, importance=1000.0):
+    """Oblicza składnik straty EWC do ochrony istotnych wag."""
+    loss = 0
+    for (name, param), (_, param_old), (_, fisher) in zip(
+        model.named_parameters(), old_model.named_parameters(), fisher_diag.items()
+    ):
+        loss += (fisher * (param - param_old).pow(2)).sum() * importance
+    return loss

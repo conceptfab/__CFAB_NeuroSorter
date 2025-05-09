@@ -10,3 +10,6 @@ F:/_set_B/__dane_treningowe
 F:/_set_B/__dane_walidacyjne
 
 F:/__CFAB_NeuroSorter/data/models/gardener.pt
+
+
+Po zaznaczeniu wybranych klas z danego modelu i wciśnięciu przycisku Ok ma się uruchomić proces sortowania który przeanalizuje wybrany folder i przekopiuje TYLKO TE PLIKI które spełniają klasyfikację dla wybranej klasy lub klas. Tworzone mają być w docelowym folderze tylko pliki z wybranej klasy/klas!!!

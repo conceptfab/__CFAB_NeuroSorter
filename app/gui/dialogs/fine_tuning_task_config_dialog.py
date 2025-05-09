@@ -36,6 +36,60 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.auc_check = QtWidgets.QCheckBox()
         self.auc_check.setChecked(True)
 
+        # Inicjalizacja kontrolek monitorowania
+        self.accuracy_check = QtWidgets.QCheckBox()
+        self.accuracy_check.setChecked(True)
+        self.precision_check = QtWidgets.QCheckBox()
+        self.precision_check.setChecked(True)
+        self.recall_check = QtWidgets.QCheckBox()
+        self.recall_check.setChecked(True)
+        self.f1_check = QtWidgets.QCheckBox()
+        self.f1_check.setChecked(True)
+        self.topk_check = QtWidgets.QCheckBox()
+        self.topk_check.setChecked(True)
+        self.confusion_matrix_check = QtWidgets.QCheckBox()
+        self.confusion_matrix_check.setChecked(True)
+
+        # Logging
+        self.use_tensorboard_check = QtWidgets.QCheckBox()
+        self.use_tensorboard_check.setChecked(True)
+        self.use_wandb_check = QtWidgets.QCheckBox()
+        self.use_wandb_check.setChecked(False)
+        self.use_csv_check = QtWidgets.QCheckBox()
+        self.use_csv_check.setChecked(True)
+        self.log_freq_combo = QtWidgets.QComboBox()
+        self.log_freq_combo.addItems(["epoch", "batch"])
+
+        # Visualization
+        self.use_gradcam_check = QtWidgets.QCheckBox()
+        self.use_gradcam_check.setChecked(True)
+        self.use_feature_maps_check = QtWidgets.QCheckBox()
+        self.use_feature_maps_check.setChecked(True)
+
+        # Early stopping
+        self.patience_spin = QtWidgets.QSpinBox()
+        self.patience_spin.setRange(1, 100)
+        self.patience_spin.setValue(10)
+        self.min_delta_spin = QtWidgets.QDoubleSpinBox()
+        self.min_delta_spin.setRange(0.0, 1.0)
+        self.min_delta_spin.setValue(0.001)
+        self.min_delta_spin.setDecimals(4)
+        self.monitor_combo = QtWidgets.QComboBox()
+        self.monitor_combo.addItems(
+            ["val_loss", "val_accuracy", "val_f1", "val_precision", "val_recall"]
+        )
+
+        # Checkpointing
+        self.best_only_check = QtWidgets.QCheckBox()
+        self.best_only_check.setChecked(True)
+        self.save_freq_spin = QtWidgets.QSpinBox()
+        self.save_freq_spin.setRange(1, 50)
+        self.save_freq_spin.setValue(1)
+        self.checkpoint_metric_combo = QtWidgets.QComboBox()
+        self.checkpoint_metric_combo.addItems(
+            ["val_loss", "val_accuracy", "val_f1", "val_precision", "val_recall"]
+        )
+
         self._init_ui()
 
     def _setup_logging(self):
@@ -63,7 +117,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.logger.info("Inicjalizacja okna")
 
     def _init_ui(self):
-        """Inicjalizacja interfejsu użytkownika z zakładkami."""
+        """Inicjalizuje interfejs użytkownika."""
         try:
             self.logger.debug("Rozpoczęcie inicjalizacji UI")
             layout = QtWidgets.QVBoxLayout(self)
@@ -123,6 +177,71 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             msg = "Błąd podczas inicjalizacji UI"
             self.logger.error(f"{msg}: {str(e)}", exc_info=True)
             raise
+
+        # Połączenia sygnałów dla aktualizacji UI
+        self.arch_combo.currentTextChanged.connect(
+            self._update_architecture_dependent_controls
+        )
+        self.optimizer_combo.currentTextChanged.connect(
+            self._update_optimizer_dependent_controls
+        )
+        self.scheduler_combo.currentTextChanged.connect(
+            self._update_scheduler_dependent_controls
+        )
+        self.unfreeze_strategy_combo.currentTextChanged.connect(
+            self._update_training_dependent_controls
+        )
+
+        # Sygnały dla augmentacji
+        self.basic_aug_check.stateChanged.connect(
+            self._update_augmentation_dependent_controls
+        )
+        self.mixup_check.stateChanged.connect(
+            self._update_augmentation_dependent_controls
+        )
+        self.cutmix_check.stateChanged.connect(
+            self._update_augmentation_dependent_controls
+        )
+
+        # Sygnały dla preprocessingu
+        self.norm_mean_r.valueChanged.connect(
+            self._update_preprocessing_dependent_controls
+        )
+        self.norm_mean_g.valueChanged.connect(
+            self._update_preprocessing_dependent_controls
+        )
+        self.norm_mean_b.valueChanged.connect(
+            self._update_preprocessing_dependent_controls
+        )
+        self.norm_std_r.valueChanged.connect(
+            self._update_preprocessing_dependent_controls
+        )
+        self.norm_std_g.valueChanged.connect(
+            self._update_preprocessing_dependent_controls
+        )
+        self.norm_std_b.valueChanged.connect(
+            self._update_preprocessing_dependent_controls
+        )
+
+        # Sygnały dla monitorowania
+        self.patience_spin.valueChanged.connect(
+            self._update_monitoring_dependent_controls
+        )
+        self.monitor_combo.currentTextChanged.connect(
+            self._update_monitoring_dependent_controls
+        )
+        self.checkpoint_metric_combo.currentTextChanged.connect(
+            self._update_monitoring_dependent_controls
+        )
+        self.use_tensorboard_check.stateChanged.connect(
+            self._update_monitoring_dependent_controls
+        )
+        self.use_pred_samples_check.stateChanged.connect(
+            self._update_monitoring_dependent_controls
+        )
+        self.best_only_check.stateChanged.connect(
+            self._update_monitoring_dependent_controls
+        )
 
     def _create_data_model_tab(self) -> QtWidgets.QWidget:
         """Tworzenie zakładki Dane i Model."""
@@ -812,8 +931,51 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # Ustawienie wartości z konfiguracji
             if "name" in config:
                 self.name_edit.setText(config["name"])
+
+            # 1. Aktualizacja parametrów modelu
+            if "architecture" in model_config:
+                self.arch_combo.setCurrentText(model_config["architecture"])
+                # Po zmianie architektury aktualizujemy dostępne warianty
+                self._update_variant_combo(model_config["architecture"])
+                self._on_architecture_changed(model_config["architecture"])
+
+            if "variant" in model_config:
+                self.variant_combo.setCurrentText(model_config["variant"])
+
+            if "input_size" in model_config:
+                self.input_size_spin.setValue(model_config["input_size"])
+
             if "num_classes" in model_config:
                 self.num_classes_spin.setValue(model_config["num_classes"])
+
+            if "pretrained" in model_config:
+                self.pretrained_check.setChecked(model_config["pretrained"])
+
+            if "pretrained_weights" in model_config:
+                self.pretrained_weights_combo.setCurrentText(
+                    model_config["pretrained_weights"]
+                )
+
+            if "feature_extraction_only" in model_config:
+                self.feature_extraction_check.setChecked(
+                    model_config["feature_extraction_only"]
+                )
+
+            if "activation" in model_config:
+                self.activation_combo.setCurrentText(model_config["activation"])
+
+            if "dropout_at_inference" in model_config:
+                self.dropout_at_inference_check.setChecked(
+                    model_config["dropout_at_inference"]
+                )
+
+            if "global_pool" in model_config:
+                self.global_pool_combo.setCurrentText(model_config["global_pool"])
+
+            if "last_layer_activation" in model_config:
+                self.last_layer_activation_combo.setCurrentText(
+                    model_config["last_layer_activation"]
+                )
 
             # Logowanie wartości po ustawieniu
             self.logger.info(
@@ -823,233 +985,242 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 f"Zaktualizowano wartości - Liczba klas: {self.num_classes_spin.value()}"
             )
 
-            self.pretrained_check.setChecked(model_config.get("pretrained", True))
-            self.pretrained_weights_combo.setCurrentText(
-                model_config.get("pretrained_weights", "imagenet")
-            )
-            self.feature_extraction_check.setChecked(
-                model_config.get("feature_extraction_only", False)
-            )
-            self.activation_combo.setCurrentText(
-                model_config.get("activation", "swish")
-            )
-            self.dropout_at_inference_check.setChecked(
-                model_config.get("dropout_at_inference", False)
-            )
-            self.global_pool_combo.setCurrentText(
-                model_config.get("global_pool", "avg")
-            )
-            self.last_layer_activation_combo.setCurrentText(
-                model_config.get("last_layer_activation", "softmax")
-            )
-
-            # Training
+            # 2. Aktualizacja parametrów treningu
             training_config = config.get("training", {})
-            self.warmup_lr_init_spin.setValue(
-                training_config.get("warmup_lr_init", 0.000001)
-            )
-            self.grad_accum_steps_spin.setValue(
-                training_config.get("gradient_accumulation_steps", 1)
-            )
-            self.validation_split_spin.setValue(
-                training_config.get("validation_split", 0.2)
-            )
-            self.eval_freq_spin.setValue(training_config.get("evaluation_freq", 1))
-            self.use_ema_check.setChecked(training_config.get("use_ema", False))
-            self.ema_decay_spin.setValue(training_config.get("ema_decay", 0.9999))
 
-            # Regularization
+            if "batch_size" in training_config:
+                self.batch_size_spin.setValue(training_config["batch_size"])
+
+            if "learning_rate" in training_config:
+                self.lr_spin.setValue(training_config["learning_rate"])
+
+            if "optimizer" in training_config:
+                self.optimizer_combo.setCurrentText(training_config["optimizer"])
+
+            if "scheduler" in training_config:
+                self.scheduler_combo.setCurrentText(training_config["scheduler"])
+
+            if "warmup_epochs" in training_config:
+                self.warmup_epochs_spin.setValue(training_config["warmup_epochs"])
+
+            if "mixed_precision" in training_config:
+                self.mixed_precision_check.setChecked(
+                    training_config["mixed_precision"]
+                )
+
+            if "unfreeze_strategy" in training_config:
+                self.unfreeze_strategy_combo.setCurrentText(
+                    training_config["unfreeze_strategy"]
+                )
+
+            if "unfreeze_layers" in training_config:
+                self.unfreeze_layers_spin.setValue(training_config["unfreeze_layers"])
+
+            if "warmup_lr_init" in training_config:
+                self.warmup_lr_init_spin.setValue(training_config["warmup_lr_init"])
+
+            if "gradient_accumulation_steps" in training_config:
+                self.grad_accum_steps_spin.setValue(
+                    training_config["gradient_accumulation_steps"]
+                )
+
+            if "validation_split" in training_config:
+                self.validation_split_spin.setValue(training_config["validation_split"])
+
+            if "evaluation_freq" in training_config:
+                self.eval_freq_spin.setValue(training_config["evaluation_freq"])
+
+            if "use_ema" in training_config:
+                self.use_ema_check.setChecked(training_config["use_ema"])
+
+            if "ema_decay" in training_config:
+                self.ema_decay_spin.setValue(training_config["ema_decay"])
+
+            # 3. Aktualizacja parametrów regularyzacji
             regularization_config = config.get("regularization", {})
+
+            if "weight_decay" in regularization_config:
+                self.weight_decay_spin.setValue(regularization_config["weight_decay"])
+
+            if "drop_connect_rate" in regularization_config:
+                self.drop_connect_spin.setValue(
+                    regularization_config["drop_connect_rate"]
+                )
+
+            if "dropout_rate" in regularization_config:
+                self.dropout_spin.setValue(regularization_config["dropout_rate"])
+
+            if "label_smoothing" in regularization_config:
+                self.label_smoothing_spin.setValue(
+                    regularization_config["label_smoothing"]
+                )
 
             # SWA
             swa_config = regularization_config.get("swa", {})
-            self.use_swa_check.setChecked(swa_config.get("use_swa", False))
-            self.swa_start_epoch_spin.setValue(swa_config.get("start_epoch", 10))
+            if "use" in swa_config:
+                self.use_swa_check.setChecked(swa_config["use"])
 
-            # Stochastic Depth
-            stoch_depth_config = regularization_config.get("stochastic_depth", {})
-            self.use_stoch_depth_check.setChecked(
-                stoch_depth_config.get("use_stochastic_depth", False)
-            )
-            self.stoch_depth_drop_rate.setValue(
-                stoch_depth_config.get("drop_rate", 0.2)
-            )
-            self.stoch_depth_survival_prob.setValue(
-                stoch_depth_config.get("survival_probability", 0.8)
-            )
+            if "start_epoch" in swa_config:
+                self.swa_start_epoch_spin.setValue(swa_config["start_epoch"])
 
-            # Random Erase
-            random_erase_config = regularization_config.get("random_erase", {})
-            self.use_random_erase_check.setChecked(
-                random_erase_config.get("use_random_erase", False)
-            )
-            self.random_erase_prob.setValue(
-                random_erase_config.get("probability", 0.25)
-            )
-            self.random_erase_mode_combo.setCurrentText(
-                random_erase_config.get("mode", "pixel")
-            )
-
-            # Augmentation
+            # 4. Aktualizacja parametrów augmentacji
             augmentation_config = config.get("augmentation", {})
 
             # Basic augmentation
             basic_config = augmentation_config.get("basic", {})
-            self.basic_aug_check.setChecked(basic_config.get("use", False))
-            self.rotation_spin.setValue(basic_config.get("rotation", 30))
-            self.brightness_spin.setValue(basic_config.get("brightness", 0.2))
-            self.shift_spin.setValue(basic_config.get("shift", 0.1))
-            self.zoom_spin.setValue(basic_config.get("zoom", 0.1))
-            self.horizontal_flip_check.setChecked(
-                basic_config.get("horizontal_flip", True)
-            )
-            self.vertical_flip_check.setChecked(
-                basic_config.get("vertical_flip", False)
-            )
+            if "use" in basic_config:
+                self.basic_aug_check.setChecked(basic_config["use"])
+
+            if "rotation" in basic_config:
+                self.rotation_spin.setValue(basic_config["rotation"])
+
+            if "brightness" in basic_config:
+                self.brightness_spin.setValue(basic_config["brightness"])
+
+            if "shift" in basic_config:
+                self.shift_spin.setValue(basic_config["shift"])
+
+            if "zoom" in basic_config:
+                self.zoom_spin.setValue(basic_config["zoom"])
+
+            if "horizontal_flip" in basic_config:
+                self.horizontal_flip_check.setChecked(basic_config["horizontal_flip"])
+
+            if "vertical_flip" in basic_config:
+                self.vertical_flip_check.setChecked(basic_config["vertical_flip"])
 
             # Mixup
             mixup_config = augmentation_config.get("mixup", {})
-            self.mixup_check.setChecked(mixup_config.get("use", False))
-            self.mixup_alpha_spin.setValue(mixup_config.get("alpha", 0.2))
+            if "use" in mixup_config:
+                self.mixup_check.setChecked(mixup_config["use"])
+
+            if "alpha" in mixup_config:
+                self.mixup_alpha_spin.setValue(mixup_config["alpha"])
 
             # CutMix
             cutmix_config = augmentation_config.get("cutmix", {})
-            self.cutmix_check.setChecked(cutmix_config.get("use", False))
-            self.cutmix_alpha_spin.setValue(cutmix_config.get("alpha", 0.2))
+            if "use" in cutmix_config:
+                self.cutmix_check.setChecked(cutmix_config["use"])
 
-            # Advanced augmentation
-            advanced_config = augmentation_config.get("advanced", {})
-            self.contrast_spin.setValue(advanced_config.get("contrast", 0.2))
-            self.saturation_spin.setValue(advanced_config.get("saturation", 0.2))
-            self.hue_spin.setValue(advanced_config.get("hue", 0.1))
-            self.shear_spin.setValue(advanced_config.get("shear", 0.1))
-            self.channel_shift_spin.setValue(advanced_config.get("channel_shift", 0.0))
-            self.resize_mode_combo.setCurrentText(
-                advanced_config.get("resize_mode", "bilinear")
-            )
+            if "alpha" in cutmix_config:
+                self.cutmix_alpha_spin.setValue(cutmix_config["alpha"])
+
+            # 5. Aktualizacja parametrów preprocessingu
+            preprocessing_config = config.get("preprocessing", {})
 
             # Normalization
-            normalization_config = augmentation_config.get("normalization", {})
-            mean = normalization_config.get("mean", [0.485, 0.456, 0.406])
-            std = normalization_config.get("std", [0.229, 0.224, 0.225])
-            self.norm_mean_r.setValue(mean[0])
-            self.norm_mean_g.setValue(mean[1])
-            self.norm_mean_b.setValue(mean[2])
-            self.norm_std_r.setValue(std[0])
-            self.norm_std_g.setValue(std[1])
-            self.norm_std_b.setValue(std[2])
+            normalization_config = preprocessing_config.get("normalization", {})
+            if (
+                "mean" in normalization_config
+                and len(normalization_config["mean"]) == 3
+            ):
+                self.norm_mean_r.setValue(normalization_config["mean"][0])
+                self.norm_mean_g.setValue(normalization_config["mean"][1])
+                self.norm_mean_b.setValue(normalization_config["mean"][2])
 
-            # Monitoring
+            if "std" in normalization_config and len(normalization_config["std"]) == 3:
+                self.norm_std_r.setValue(normalization_config["std"][0])
+                self.norm_std_g.setValue(normalization_config["std"][1])
+                self.norm_std_b.setValue(normalization_config["std"][2])
+
+            # 6. Aktualizacja parametrów monitorowania
             monitoring_config = config.get("monitoring", {})
 
             # Metrics
             metrics_config = monitoring_config.get("metrics", {})
-            self.accuracy_check.setChecked(metrics_config.get("accuracy", True))
-            self.precision_check.setChecked(metrics_config.get("precision", True))
-            self.recall_check.setChecked(metrics_config.get("recall", True))
-            self.f1_check.setChecked(metrics_config.get("f1", True))
-            self.topk_check.setChecked(metrics_config.get("top_k_accuracy", True))
-            self.confusion_matrix_check.setChecked(
-                metrics_config.get("confusion_matrix", True)
-            )
-            self.auc_check.setChecked(metrics_config.get("auc", True))
+            if "accuracy" in metrics_config:
+                self.accuracy_check.setChecked(metrics_config["accuracy"])
+            if "precision" in metrics_config:
+                self.precision_check.setChecked(metrics_config["precision"])
+            if "recall" in metrics_config:
+                self.recall_check.setChecked(metrics_config["recall"])
+            if "f1" in metrics_config:
+                self.f1_check.setChecked(metrics_config["f1"])
+            if "top_k_accuracy" in metrics_config:
+                self.topk_check.setChecked(metrics_config["top_k_accuracy"])
+            if "confusion_matrix" in metrics_config:
+                self.confusion_matrix_check.setChecked(
+                    metrics_config["confusion_matrix"]
+                )
+            if "auc" in metrics_config:
+                self.auc_check.setChecked(metrics_config["auc"])
 
             # Logging
             logging_config = monitoring_config.get("logging", {})
-            self.use_tensorboard_check.setChecked(
-                logging_config.get("use_tensorboard", True)
-            )
-            self.use_wandb_check.setChecked(logging_config.get("use_wandb", False))
-            self.use_csv_check.setChecked(logging_config.get("save_to_csv", True))
-            self.log_freq_combo.setCurrentText(
-                logging_config.get("logging_freq", "epoch")
-            )
+            if "use_tensorboard" in logging_config:
+                self.use_tensorboard_check.setChecked(logging_config["use_tensorboard"])
+            if "use_wandb" in logging_config:
+                self.use_wandb_check.setChecked(logging_config["use_wandb"])
+            if "save_to_csv" in logging_config:
+                self.use_csv_check.setChecked(logging_config["save_to_csv"])
+            if "logging_freq" in logging_config:
+                self.log_freq_combo.setCurrentText(logging_config["logging_freq"])
 
             # Visualization
             visualization_config = monitoring_config.get("visualization", {})
-            self.use_gradcam_check.setChecked(
-                visualization_config.get("use_gradcam", True)
-            )
-            self.use_feature_maps_check.setChecked(
-                visualization_config.get("use_feature_maps", True)
-            )
-            self.use_pred_samples_check.setChecked(
-                visualization_config.get("use_prediction_samples", True)
-            )
-            self.num_samples_spin.setValue(visualization_config.get("num_samples", 10))
-
-            # Data
-            data_config = config.get("data", {})
-            self.class_weights_combo.setCurrentText(
-                data_config.get("class_weights", "balanced")
-            )
-            self.sampler_combo.setCurrentText(
-                data_config.get("sampler", "weighted_random")
-            )
-            self.image_channels_spin.setValue(data_config.get("image_channels", 3))
-            self.cache_dataset_check.setChecked(data_config.get("cache_dataset", False))
-
-            # Inference
-            inference_config = config.get("inference", {})
-
-            # TTA
-            tta_config = inference_config.get("tta", {})
-            self.use_tta_check.setChecked(tta_config.get("use_tta", False))
-            self.tta_num_samples_spin.setValue(tta_config.get("num_augmentations", 5))
-
-            # ONNX Export
-            self.export_onnx_check.setChecked(
-                inference_config.get("export_onnx", False)
-            )
-
-            # Quantization
-            quantization_config = inference_config.get("quantization", {})
-            self.quantization_check.setChecked(
-                quantization_config.get("use_quantization", False)
-            )
-            self.quantization_precision_combo.setCurrentText(
-                quantization_config.get("precision", "int8")
-            )
-
-            # Seed i determinizm
-            self.seed_spin.setValue(config.get("seed", 42))
-            self.deterministic_check.setChecked(config.get("deterministic", True))
-
-            # Sprawdź czy hardware_profile jest słownikiem
-            if isinstance(self.hardware_profile, dict):
-                self.logger.info("=== REKOMENDACJE SPRZĘTOWE ===")
-                self.logger.info(
-                    f"Zalecany rozmiar batcha: {self.hardware_profile.get('recommended_batch_size', 'N/A')}"
-                )
-                self.logger.info(
-                    f"Zalecana liczba workerów: {self.hardware_profile.get('recommended_workers', 'N/A')}"
-                )
-                self.logger.info(
-                    f"Zalecane użycie mixed precision: {self.hardware_profile.get('use_mixed_precision', 'N/A')}"
+            if "use_gradcam" in visualization_config:
+                self.use_gradcam_check.setChecked(visualization_config["use_gradcam"])
+            if "use_feature_maps" in visualization_config:
+                self.use_feature_maps_check.setChecked(
+                    visualization_config["use_feature_maps"]
                 )
 
-                additional_recommendations = self.hardware_profile.get(
-                    "additional_recommendations", {}
-                )
-                if isinstance(additional_recommendations, dict):
-                    self.logger.info(
-                        f"Zalecana architektura: {additional_recommendations.get('recommended_model', 'N/A')}"
-                    )
-                    self.logger.info(
-                        f"Zalecana precyzja: {additional_recommendations.get('recommended_precision', 'N/A')}"
-                    )
-                    self.logger.info(
-                        f"Zalecany poziom augmentacji: {additional_recommendations.get('recommended_augmentation', 'N/A')}"
-                    )
-            else:
-                self.logger.warning("Brak dostępnych rekomendacji sprzętowych")
+            # Early stopping
+            early_stopping_config = monitoring_config.get("early_stopping", {})
+            if "patience" in early_stopping_config:
+                self.patience_spin.setValue(early_stopping_config["patience"])
+            if "min_delta" in early_stopping_config:
+                self.min_delta_spin.setValue(early_stopping_config["min_delta"])
+            if "monitor" in early_stopping_config:
+                self.monitor_combo.setCurrentText(early_stopping_config["monitor"])
 
-            self.logger.info("=============================")
+            # Checkpointing
+            checkpointing_config = monitoring_config.get("checkpointing", {})
+            if "best_only" in checkpointing_config:
+                self.best_only_check.setChecked(checkpointing_config["best_only"])
+            if "save_frequency" in checkpointing_config:
+                self.save_freq_spin.setValue(checkpointing_config["save_frequency"])
+            if "metric" in checkpointing_config:
+                self.checkpoint_metric_combo.setCurrentText(
+                    checkpointing_config["metric"]
+                )
+
+            # Aktualizacja zależnych kontrolek
+            self._update_dependent_controls()
+
+            self.logger.info("Konfiguracja modelu została pomyślnie załadowana")
 
         except Exception as e:
             msg = "Błąd podczas ładowania konfiguracji"
             self.logger.error(f"{msg}: {str(e)}", exc_info=True)
             QtWidgets.QMessageBox.critical(self, "Błąd", f"{msg}: {str(e)}")
+
+    def _update_ui_state(self):
+        """Aktualizuje stan UI po zmianie konfiguracji."""
+        # Aktualizacja stanu kontrolek w zależności od wybranych opcji
+        self._update_architecture_dependent_controls()
+        self._update_training_dependent_controls()
+        self._update_augmentation_dependent_controls()
+        self._update_preprocessing_dependent_controls()
+        self._update_monitoring_dependent_controls()
+
+    def _update_dependent_controls(self):
+        """Aktualizuje zależne kontrolki po zmianie konfiguracji."""
+        # Aktualizacja kontrolek zależnych od architektury
+        self._update_variant_combo(self.arch_combo.currentText())
+
+        # Aktualizacja kontrolek zależnych od treningu
+        self._update_optimizer_dependent_controls()
+        self._update_scheduler_dependent_controls()
+
+        # Aktualizacja kontrolek zależnych od augmentacji
+        self._update_augmentation_dependent_controls()
+
+        # Aktualizacja kontrolek zależnych od preprocessingu
+        self._update_preprocessing_dependent_controls()
+
+        # Aktualizacja kontrolek zależnych od monitorowania
+        self._update_monitoring_dependent_controls()
 
     def _select_train_dir(self):
         """Wybiera katalog z danymi treningowymi."""
@@ -1486,32 +1657,12 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         metrics_group = QtWidgets.QGroupBox("Metrics")
         metrics_layout = QtWidgets.QFormLayout()
 
-        self.accuracy_check = QtWidgets.QCheckBox()
-        self.accuracy_check.setChecked(True)
         metrics_layout.addRow("Accuracy:", self.accuracy_check)
-
-        self.precision_check = QtWidgets.QCheckBox()
-        self.precision_check.setChecked(True)
         metrics_layout.addRow("Precision:", self.precision_check)
-
-        self.recall_check = QtWidgets.QCheckBox()
-        self.recall_check.setChecked(True)
         metrics_layout.addRow("Recall:", self.recall_check)
-
-        self.f1_check = QtWidgets.QCheckBox()
-        self.f1_check.setChecked(True)
         metrics_layout.addRow("F1:", self.f1_check)
-
-        self.topk_check = QtWidgets.QCheckBox()
-        self.topk_check.setChecked(True)
         metrics_layout.addRow("Top-K accuracy:", self.topk_check)
-
-        self.confusion_matrix_check = QtWidgets.QCheckBox()
-        self.confusion_matrix_check.setChecked(True)
         metrics_layout.addRow("Confusion matrix:", self.confusion_matrix_check)
-
-        self.auc_check = QtWidgets.QCheckBox()
-        self.auc_check.setChecked(True)
         metrics_layout.addRow("AUC:", self.auc_check)
 
         metrics_group.setLayout(metrics_layout)
@@ -1521,20 +1672,9 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         logging_group = QtWidgets.QGroupBox("Logging")
         logging_layout = QtWidgets.QFormLayout()
 
-        self.use_tensorboard_check = QtWidgets.QCheckBox()
-        self.use_tensorboard_check.setChecked(True)
         logging_layout.addRow("Use TensorBoard:", self.use_tensorboard_check)
-
-        self.use_wandb_check = QtWidgets.QCheckBox()
-        self.use_wandb_check.setChecked(False)
         logging_layout.addRow("Use Weights & Biases:", self.use_wandb_check)
-
-        self.use_csv_check = QtWidgets.QCheckBox()
-        self.use_csv_check.setChecked(True)
         logging_layout.addRow("Save to CSV:", self.use_csv_check)
-
-        self.log_freq_combo = QtWidgets.QComboBox()
-        self.log_freq_combo.addItems(["epoch", "batch"])
         logging_layout.addRow("Logging frequency:", self.log_freq_combo)
 
         logging_group.setLayout(logging_layout)
@@ -2217,3 +2357,129 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             f"Zapisuję konfigurację modelu: {json.dumps(config, indent=2)}"
         )
         return config
+
+    def _update_architecture_dependent_controls(self):
+        """Aktualizuje kontrolki zależne od architektury."""
+        architecture = self.arch_combo.currentText()
+        self._update_variant_combo(architecture)
+        self._on_architecture_changed(architecture)
+
+    def _update_training_dependent_controls(self):
+        """Aktualizuje kontrolki zależne od parametrów treningu."""
+        # Aktualizacja kontrolek zależnych od optymalizatora
+        self._update_optimizer_dependent_controls()
+
+        # Aktualizacja kontrolek zależnych od schedulera
+        self._update_scheduler_dependent_controls()
+
+        # Aktualizacja kontrolek zależnych od mixed precision
+        self.mixed_precision_check.setEnabled(True)
+
+        # Aktualizacja kontrolek zależnych od unfreeze strategy
+        self.unfreeze_strategy_combo.setEnabled(True)
+        self.unfreeze_layers_spin.setEnabled(
+            self.unfreeze_strategy_combo.currentText() != self.UNFREEZE_ALL
+        )
+
+    def _update_optimizer_dependent_controls(self):
+        """Aktualizuje kontrolki zależne od optymalizatora."""
+        optimizer = self.optimizer_combo.currentText()
+
+        # Włącz/wyłącz kontrolki w zależności od wybranego optymalizatora
+        self.weight_decay_spin.setEnabled(
+            True
+        )  # Dostępne dla wszystkich optymalizatorów
+
+        # Specyficzne ustawienia dla różnych optymalizatorów
+        if optimizer == "AdamW":
+            self.weight_decay_spin.setEnabled(True)
+        elif optimizer == "SGD":
+            self.weight_decay_spin.setEnabled(True)
+        elif optimizer == "Adam":
+            self.weight_decay_spin.setEnabled(False)
+
+    def _update_scheduler_dependent_controls(self):
+        """Aktualizuje kontrolki zależne od schedulera."""
+        scheduler = self.scheduler_combo.currentText()
+
+        # Włącz/wyłącz kontrolki w zależności od wybranego schedulera
+        self.warmup_epochs_spin.setEnabled(True)
+        self.warmup_lr_init_spin.setEnabled(True)
+
+    def _update_augmentation_dependent_controls(self):
+        """Aktualizuje kontrolki zależne od augmentacji."""
+        # Basic augmentation
+        basic_enabled = self.basic_aug_check.isChecked()
+        self.rotation_spin.setEnabled(basic_enabled)
+        self.brightness_spin.setEnabled(basic_enabled)
+        self.shift_spin.setEnabled(basic_enabled)
+        self.zoom_spin.setEnabled(basic_enabled)
+        self.horizontal_flip_check.setEnabled(basic_enabled)
+        self.vertical_flip_check.setEnabled(basic_enabled)
+
+        # Mixup
+        mixup_enabled = self.mixup_check.isChecked()
+        self.mixup_alpha_spin.setEnabled(mixup_enabled)
+
+        # CutMix
+        cutmix_enabled = self.cutmix_check.isChecked()
+        self.cutmix_alpha_spin.setEnabled(cutmix_enabled)
+
+    def _update_preprocessing_dependent_controls(self):
+        """Aktualizuje kontrolki zależne od preprocessingu."""
+        # Normalizacja
+        self.norm_mean_r.setEnabled(True)
+        self.norm_mean_g.setEnabled(True)
+        self.norm_mean_b.setEnabled(True)
+        self.norm_std_r.setEnabled(True)
+        self.norm_std_g.setEnabled(True)
+        self.norm_std_b.setEnabled(True)
+
+    def _update_monitoring_dependent_controls(self):
+        """Aktualizuje kontrolki zależne od monitorowania."""
+        # Metrics
+        self.accuracy_check.setEnabled(True)
+        self.precision_check.setEnabled(True)
+        self.recall_check.setEnabled(True)
+        self.f1_check.setEnabled(True)
+        self.topk_check.setEnabled(True)
+        self.confusion_matrix_check.setEnabled(True)
+        self.auc_check.setEnabled(True)
+
+        # Logging
+        self.use_tensorboard_check.setEnabled(True)
+        self.use_wandb_check.setEnabled(True)
+        self.use_csv_check.setEnabled(True)
+        self.log_freq_combo.setEnabled(True)
+
+        # Visualization
+        self.use_gradcam_check.setEnabled(True)
+        self.use_feature_maps_check.setEnabled(True)
+        self.use_pred_samples_check.setEnabled(True)
+        self.num_samples_spin.setEnabled(True)
+
+        # Early stopping
+        self.patience_spin.setEnabled(True)
+        self.min_delta_spin.setEnabled(True)
+        self.monitor_combo.setEnabled(True)
+
+        # Checkpointing
+        self.best_only_check.setEnabled(True)
+        self.save_freq_spin.setEnabled(True)
+        self.checkpoint_metric_combo.setEnabled(True)
+
+        # Aktualizacja zależności między kontrolkami
+        if self.use_tensorboard_check.isChecked():
+            self.log_freq_combo.setEnabled(True)
+        else:
+            self.log_freq_combo.setEnabled(False)
+
+        if self.use_pred_samples_check.isChecked():
+            self.num_samples_spin.setEnabled(True)
+        else:
+            self.num_samples_spin.setEnabled(False)
+
+        if self.best_only_check.isChecked():
+            self.save_freq_spin.setEnabled(False)
+        else:
+            self.save_freq_spin.setEnabled(True)

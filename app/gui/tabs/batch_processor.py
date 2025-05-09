@@ -7,6 +7,7 @@ from PyQt6.QtCore import QCoreApplication
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
+    QDialog,
     QFileDialog,
     QGroupBox,
     QHBoxLayout,
@@ -23,6 +24,7 @@ from PyQt6.QtWidgets import (
 )
 
 from app.gui.tab_interface import TabInterface
+from app.gui.widgets.class_list import ClassList
 from app.metadata.metadata_manager import MetadataManager
 from app.sorter.image_sorter import ImageSorter
 
@@ -85,6 +87,8 @@ class BatchProcessor(QWidget, TabInterface):
         self.control_layout = QHBoxLayout()
         start_btn = QPushButton("Rozpocznij sortowanie")
         start_btn.clicked.connect(self._start_processing)
+        self.sort_selected_btn = QPushButton("Sortuj wybrane kategorie")
+        self.sort_selected_btn.clicked.connect(self._show_class_list)
         self.stop_btn = QPushButton("Przerwij sortowanie")
         self.stop_btn.clicked.connect(self._stop_processing)
         self.stop_btn.setEnabled(False)  # Domyślnie wyłączony
@@ -92,6 +96,7 @@ class BatchProcessor(QWidget, TabInterface):
         self.clear_history_btn.clicked.connect(self._clear_history)
         self.status_label = QLabel("Gotowy")
         self.control_layout.addWidget(start_btn)
+        self.control_layout.addWidget(self.sort_selected_btn)
         self.control_layout.addWidget(self.stop_btn)
         self.control_layout.addWidget(self.clear_history_btn)
         self.control_layout.addStretch()
@@ -265,19 +270,6 @@ class BatchProcessor(QWidget, TabInterface):
                 self.results_table.setItem(row, 2, QTableWidgetItem(str(count)))
                 self.results_table.setItem(row, 3, QTableWidgetItem("Zakończono"))
 
-            # Dodaj informację o plikach bez kategorii
-            if stats["uncategorized"] > 0:
-                row = self.results_table.rowCount()
-                self.results_table.insertRow(row)
-                self.results_table.setItem(row, 0, QTableWidgetItem("Bez kategorii"))
-                self.results_table.setItem(
-                    row, 1, QTableWidgetItem(self.image_sorter.uncategorized_dir)
-                )
-                self.results_table.setItem(
-                    row, 2, QTableWidgetItem(str(stats["uncategorized"]))
-                )
-                self.results_table.setItem(row, 3, QTableWidgetItem("Zakończono"))
-
             self.status_label.setText("Sortowanie zakończone")
             QMessageBox.information(
                 self,
@@ -285,7 +277,6 @@ class BatchProcessor(QWidget, TabInterface):
                 f"Sortowanie plików zostało zakończone pomyślnie.\n\n"
                 f"Przetworzono: {stats['processed']}\n"
                 f"Przeniesiono/skopiowano: {stats['moved']}\n"
-                f"Pliki bez kategorii: {stats['uncategorized']}\n"
                 f"Pominięto: {stats['skipped']}",
             )
         except ValueError as ve:
@@ -357,3 +348,100 @@ class BatchProcessor(QWidget, TabInterface):
             self._clear_results()
             self.status_label.setText("Historia wyczyszczona")
             self.logger.info("Historia wyników sortowania została wyczyszczona")
+
+    def _show_class_list(self):
+        """Pokazuje okno z listą klas do wyboru."""
+        if not hasattr(self.parent, "classifier") or not self.parent.classifier:
+            QMessageBox.warning(
+                self,
+                "Brak modelu",
+                "Nie załadowano modelu klasyfikacji. Proszę najpierw załadować model.",
+            )
+            return
+
+        # Pobierz mapowanie klas z klasyfikatora
+        class_mapping = self.parent.classifier.get_class_mapping()
+
+        # Utwórz i pokaż okno z listą klas
+        dialog = ClassList(self)
+        dialog.set_items(class_mapping)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            selected_classes = dialog.get_selected_items()
+            if not selected_classes:
+                QMessageBox.warning(
+                    self,
+                    "Brak wybranych klas",
+                    "Proszę wybrać przynajmniej jedną klasę do sortowania.",
+                )
+                return
+
+            # Sprawdź czy wybrano katalogi
+            if not hasattr(self, "input_dir") or not self.input_dir:
+                QMessageBox.warning(
+                    self,
+                    "Brak katalogu",
+                    "Wybierz katalog źródłowy przed rozpoczęciem sortowania.",
+                )
+                return
+            if not hasattr(self, "output_dir") or not self.output_dir:
+                QMessageBox.warning(
+                    self,
+                    "Brak katalogu",
+                    "Wybierz katalog docelowy przed rozpoczęciem sortowania.",
+                )
+                return
+
+            # Inicjalizacja sortera
+            self.image_sorter = ImageSorter(
+                classifier=self.parent.classifier,
+                copy_files=self.copy_files_checkbox.isChecked(),
+            )
+
+            # Rozpocznij sortowanie
+            try:
+                self.is_processing = True
+                self.stop_btn.setEnabled(True)
+                self.status_label.setText("Sortowanie w toku...")
+                self._clear_results()
+                self._setup_progress_bar()
+                QApplication.processEvents()
+
+                # Sortuj tylko wybrane klasy
+                stats = self.image_sorter.sort_directory(
+                    input_dir=self.input_dir,
+                    output_dir=self.output_dir,
+                    confidence_threshold=0.5,
+                    callback=self._update_progress,
+                    selected_classes=selected_classes,  # Przekaż wybrane klasy
+                )
+
+                if not self.is_processing:
+                    return
+
+                # Aktualizuj tabelę wyników
+                self.results_table.setRowCount(0)
+                for category, count in stats["categories"].items():
+                    if category in selected_classes:  # Pokaż tylko wybrane klasy
+                        row = self.results_table.rowCount()
+                        self.results_table.insertRow(row)
+                        self.results_table.setItem(
+                            row, 0, QTableWidgetItem("Kategoria")
+                        )
+                        self.results_table.setItem(row, 1, QTableWidgetItem(category))
+                        self.results_table.setItem(row, 2, QTableWidgetItem(str(count)))
+                        self.results_table.setItem(
+                            row, 3, QTableWidgetItem("Zakończono")
+                        )
+
+                self.status_label.setText("Sortowanie zakończone")
+                self.stop_btn.setEnabled(False)
+                self.is_processing = False
+
+            except Exception as e:
+                self.status_label.setText("Błąd podczas sortowania")
+                self.stop_btn.setEnabled(False)
+                self.is_processing = False
+                QMessageBox.critical(
+                    self, "Błąd", f"Wystąpił błąd podczas sortowania: {str(e)}"
+                )
