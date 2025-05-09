@@ -277,18 +277,24 @@ def fine_tune_model(
     # 14. Inicjalizacja historii treningu
     history = {
         "train_loss": [],
-        "train_acc": [],
         "val_loss": [],
+        "loss_diff": [],  # Różnica między stratą treningową a walidacyjną
+        "train_acc": [],
         "val_acc": [],
         "val_precision": [],
         "val_recall": [],
         "val_f1": [],
+        "val_auc": [],  # Poprawione obliczanie AUC
         "val_top3": [],
         "val_top5": [],
         "learning_rates": [],
-        "epoch_times": [],
+        "initial_lr": learning_rate,  # Początkowy learning rate
+        "current_lr": learning_rate,  # Aktualny learning rate
         "best_val_loss": float("inf"),
         "best_epoch": 0,
+        "early_stopping_counter": 0,
+        "early_stopping_patience": 5,
+        "epoch_times": [],
     }
 
     # 15. Parametry early stopping
@@ -446,28 +452,38 @@ def fine_tune_model(
 
                 # Top-k accuracy (jeśli więcej niż 2 klasy)
                 if new_num_classes > 2:
-                    k_values = min(5, new_num_classes)  # Nie więcej niż liczba klas
-                    val_metrics["top3"] = (
-                        top_k_accuracy_score(y_true, y_prob, k=min(3, k_values))
-                        if k_values >= 3
-                        else None
-                    )
-                    val_metrics["top5"] = (
-                        top_k_accuracy_score(y_true, y_prob, k=min(5, k_values))
-                        if k_values >= 5
-                        else None
-                    )
+                    k_values = min(5, new_num_classes)
+                    try:
+                        val_metrics["top3"] = (
+                            top_k_accuracy_score(
+                                y_true, y_prob, k=min(3, k_values), normalize=True
+                            )
+                            if k_values >= 3
+                            else 0.0
+                        )
+                        val_metrics["top5"] = (
+                            top_k_accuracy_score(
+                                y_true, y_prob, k=min(5, k_values), normalize=True
+                            )
+                            if k_values >= 5
+                            else 0.0
+                        )
+                    except Exception as e:
+                        print(f"Błąd podczas obliczania Top-k accuracy: {e}")
+                        val_metrics["top3"] = 0.0
+                        val_metrics["top5"] = 0.0
 
-                # AUC dla wieloklasowości
+                # Poprawione obliczanie AUC
                 try:
                     if new_num_classes == 2:
                         val_metrics["auc"] = roc_auc_score(y_true, y_prob[:, 1])
                     else:
                         val_metrics["auc"] = roc_auc_score(
-                            y_true, y_prob, multi_class="ovr"
+                            y_true, y_prob, multi_class="ovr", average="macro"
                         )
-                except Exception:
-                    val_metrics["auc"] = None
+                except Exception as e:
+                    print(f"Błąd podczas obliczania AUC: {e}")
+                    val_metrics["auc"] = 0.0
 
             except Exception as e:
                 print(f"Błąd podczas obliczania metryk: {e}")
@@ -475,10 +491,19 @@ def fine_tune_model(
                     "precision": 0.0,
                     "recall": 0.0,
                     "f1": 0.0,
-                    "top3": None,
-                    "top5": None,
-                    "auc": None,
+                    "top3": 0.0,
+                    "top5": 0.0,
+                    "auc": 0.0,
                 }
+
+            # Oblicz różnicę między stratą treningową a walidacyjną
+            loss_diff = abs(epoch_loss - val_loss)
+            history["loss_diff"].append(loss_diff)
+
+            # Aktualizuj learning rate w historii
+            current_lr = optimizer.param_groups[0]["lr"]
+            history["current_lr"] = current_lr
+            history["learning_rates"].append(current_lr)
 
             # Zapisz metryki do historii
             history["val_loss"].append(val_loss)
@@ -486,10 +511,9 @@ def fine_tune_model(
             history["val_precision"].append(val_metrics["precision"])
             history["val_recall"].append(val_metrics["recall"])
             history["val_f1"].append(val_metrics["f1"])
-            if val_metrics["top3"] is not None:
-                history["val_top3"].append(val_metrics["top3"])
-            if val_metrics["top5"] is not None:
-                history["val_top5"].append(val_metrics["top5"])
+            history["val_auc"].append(val_metrics["auc"])
+            history["val_top3"].append(val_metrics["top3"])
+            history["val_top5"].append(val_metrics["top5"])
 
             # Early stopping
             if val_loss < best_val_loss:
@@ -528,11 +552,6 @@ def fine_tune_model(
                     scheduler.step(val_loss)
                 else:
                     scheduler.step()
-
-                # Zapisz aktualny learning rate
-                current_lr = optimizer.param_groups[0]["lr"]
-                history["learning_rates"].append(current_lr)
-                print(f"Aktualny learning rate: {current_lr:.6f}")
 
         # Zapisz czas trwania epoki
         epoch_time = time.time() - epoch_start_time

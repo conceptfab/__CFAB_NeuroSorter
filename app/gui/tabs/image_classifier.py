@@ -155,11 +155,13 @@ class ImageClassifierTab(QWidget, TabInterface):
         # Wyniki klasyfikacji (dla pojedynczego obrazu)
         self.results_table = QTableWidget()
         self.results_table.setColumnCount(2)
-        self.results_table.setHorizontalHeaderLabels(["Kategoria główna", "Pewność"])
+        self.results_table.setHorizontalHeaderLabels(["Kategoria", "Pewność"])
         self.results_table.horizontalHeader().setStretchLastSection(True)
         self.results_table.verticalHeader().setVisible(False)
         self.results_table.setAlternatingRowColors(True)
-        self.results_table.setFixedHeight(84)  # Sztywna wysokość 44 piksele
+        self.results_table.setFixedHeight(
+            200
+        )  # Zwiększona wysokość dla większej liczby wyników
         left_layout.addWidget(self.results_table)
 
         # Pasek postępu dla klasyfikacji wsadowej
@@ -326,7 +328,7 @@ class ImageClassifierTab(QWidget, TabInterface):
             self.results_table.setRowCount(0)
 
             # Klasyfikuj obraz (używamy metody predict, zakładając że zwraca odpowiedni słownik)
-            results = self.parent.classifier.predict(image_path)
+            results = self.parent.classifier.predict(image_path, return_ranking=True)
             self._display_classification_results(results)
             self._add_to_history(image_path, results)
 
@@ -344,13 +346,23 @@ class ImageClassifierTab(QWidget, TabInterface):
             return
 
         # Aktualizacja tabeli wyników
-        self.results_table.setRowCount(1)
+        if "class_ranking" in results:
+            # Wyświetl pełny ranking klas
+            ranking = results["class_ranking"]
+            self.results_table.setRowCount(len(ranking))
 
-        class_name = results["class_name"]
-        confidence = results["confidence"]
-
-        self.results_table.setItem(0, 0, QTableWidgetItem(class_name))
-        self.results_table.setItem(0, 1, QTableWidgetItem(f"{confidence:.2%}"))
+            for i, cls in enumerate(ranking):
+                self.results_table.setItem(i, 0, QTableWidgetItem(cls["class_name"]))
+                self.results_table.setItem(
+                    i, 1, QTableWidgetItem(f"{cls['confidence']:.2%}")
+                )
+        else:
+            # Tryb kompatybilności wstecznej - tylko najlepsza klasa
+            self.results_table.setRowCount(1)
+            self.results_table.setItem(0, 0, QTableWidgetItem(results["class_name"]))
+            self.results_table.setItem(
+                0, 1, QTableWidgetItem(f"{results['confidence']:.2%}")
+            )
 
         self.parent.logger.info("Klasyfikacja zakończona.")
 
@@ -412,14 +424,25 @@ class ImageClassifierTab(QWidget, TabInterface):
         """Obsługuje wynik klasyfikacji wsadowej."""
         # Dodaj wynik do tabeli
         row = self.results_table.rowCount()
-        self.results_table.insertRow(row)
 
-        self.results_table.setItem(row, 0, QTableWidgetItem(result["class_name"]))
-        self.results_table.setItem(
-            row, 1, QTableWidgetItem(f"{result['confidence']:.2%}")
-        )
+        if "class_ranking" in result:
+            # Dodaj wszystkie klasy z rankingu
+            for cls in result["class_ranking"]:
+                self.results_table.insertRow(row)
+                self.results_table.setItem(row, 0, QTableWidgetItem(cls["class_name"]))
+                self.results_table.setItem(
+                    row, 1, QTableWidgetItem(f"{cls['confidence']:.2%}")
+                )
+                row += 1
+        else:
+            # Tryb kompatybilności wstecznej - tylko najlepsza klasa
+            self.results_table.insertRow(row)
+            self.results_table.setItem(row, 0, QTableWidgetItem(result["class_name"]))
+            self.results_table.setItem(
+                row, 1, QTableWidgetItem(f"{result['confidence']:.2%}")
+            )
 
-        # Dodaj do historii
+        # Dodaj do historii (tylko najlepsza klasa)
         self._add_to_history(result["file_path"], result)
 
     def _handle_batch_error(self, error_message):

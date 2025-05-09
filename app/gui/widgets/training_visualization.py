@@ -25,6 +25,8 @@ class TrainingVisualization(QWidget):
         self.val_recall_data = []
         self.val_f1_data = []
         self.val_auc_data = []
+        self.loss_diff_data = []  # Nowa metryka
+        self.learning_rates_data = []  # Nowa metryka
         self.epochs = []
 
         # Flaga wskazująca czy dane zostały zaktualizowane
@@ -95,7 +97,7 @@ class TrainingVisualization(QWidget):
             # Metryki kluczowe - najgrubsze linie, mocne kolory, linia ciągła
             {
                 "data": self.val_loss_data,
-                "color": (255, 50, 50),  # Jaśniejszy czerwony
+                "color": (255, 50, 50),
                 "width": 4,
                 "style": Qt.PenStyle.SolidLine,
                 "name": "Strata walidacyjna",
@@ -104,17 +106,16 @@ class TrainingVisualization(QWidget):
             },
             {
                 "data": self.val_acc_data,
-                "color": (50, 220, 50),  # Jaśniejszy zielony
+                "color": (50, 220, 50),
                 "width": 4,
                 "style": Qt.PenStyle.SolidLine,
                 "name": "Dokładność walidacyjna",
                 "symbol": "o",
                 "symbol_size": 6,
             },
-            # Metryki drugorzędne - średnia grubość, mocne kolory, linia ciągła
             {
                 "data": self.train_loss_data,
-                "color": (0, 150, 255),  # Jaśniejszy niebieski
+                "color": (0, 150, 255),
                 "width": 3,
                 "style": Qt.PenStyle.SolidLine,
                 "name": "Strata treningowa",
@@ -123,98 +124,95 @@ class TrainingVisualization(QWidget):
             },
             {
                 "data": self.train_acc_data,
-                "color": (220, 50, 220),  # Jaśniejszy fioletowy
+                "color": (220, 50, 220),
                 "width": 3,
                 "style": Qt.PenStyle.SolidLine,
                 "name": "Dokładność treningowa",
                 "symbol": "o",
                 "symbol_size": 4,
             },
-            # Metryki dodatkowe - cienkie linie, różne style
+            # Nowa metryka - różnica między stratami
+            {
+                "data": self.loss_diff_data,
+                "color": (255, 255, 50),
+                "width": 2,
+                "style": Qt.PenStyle.DashLine,
+                "name": "Różnica strat",
+                "symbol": "d",
+                "symbol_size": 3,
+                "dash": [5, 5],
+            },
+            # Nowa metryka - learning rate
+            {
+                "data": self.learning_rates_data,
+                "color": (50, 255, 50),
+                "width": 2,
+                "style": Qt.PenStyle.DotLine,
+                "name": "Learning rate",
+                "symbol": "x",
+                "symbol_size": 3,
+                "dash": [2, 2],
+            },
+            # Pozostałe metryki
             {
                 "data": self.val_f1_data,
-                "color": (255, 180, 50),  # Jaśniejszy pomarańczowy
+                "color": (255, 180, 50),
                 "width": 2,
                 "style": Qt.PenStyle.DashLine,
                 "name": "F1-score",
                 "symbol": "t",
                 "symbol_size": 3,
-                "dash": [10, 5],  # Długie kreski, średnie odstępy
+                "dash": [10, 5],
             },
             {
                 "data": self.val_auc_data,
-                "color": (180, 50, 180),  # Jaśniejszy purpurowy
+                "color": (180, 50, 180),
                 "width": 2,
                 "style": Qt.PenStyle.DotLine,
                 "name": "AUC",
                 "symbol": "t",
                 "symbol_size": 3,
-                "dash": [2, 4],  # Krótkie kropki, większe odstępy
+                "dash": [2, 4],
             },
-            # Metryki specjalistyczne - najcieńsze linie, różne style
             {
                 "data": self.val_precision_data,
-                "color": (50, 255, 255),  # Jaśniejszy cyjan
+                "color": (50, 255, 255),
                 "width": 1,
                 "style": Qt.PenStyle.DashDotLine,
                 "name": "Precyzja",
                 "symbol": "s",
                 "symbol_size": 2,
-                "dash": [
-                    8,
-                    4,
-                    2,
-                    4,
-                ],  # Długa kreska, średni odstęp, krótka kreska, średni odstęp
+                "dash": [8, 4, 2, 4],
             },
             {
                 "data": self.val_recall_data,
-                "color": (255, 50, 255),  # Jaśniejszy magenta
+                "color": (255, 50, 255),
                 "width": 1,
                 "style": Qt.PenStyle.DashDotDotLine,
                 "name": "Recall",
                 "symbol": "s",
                 "symbol_size": 2,
-                "dash": [
-                    8,
-                    4,
-                    2,
-                    4,
-                    2,
-                    4,
-                ],  # Długa kreska, średni odstęp, dwie krótkie kreski, średni odstęp
+                "dash": [8, 4, 2, 4, 2, 4],
             },
             {
                 "data": self.val_top3_data,
-                "color": (255, 160, 50),  # Jaśniejszy ciemny pomarańczowy
+                "color": (255, 160, 50),
                 "width": 1,
                 "style": Qt.PenStyle.DashDotLine,
                 "name": "Top-3 dokładność",
                 "symbol": "t",
                 "symbol_size": 2,
-                "dash": [
-                    6,
-                    3,
-                    2,
-                    3,
-                ],  # Średnia kreska, krótki odstęp, krótka kreska, krótki odstęp
+                "dash": [6, 3, 2, 3],
             },
             {
                 "data": self.val_top5_data,
-                "color": (255, 100, 50),  # Jaśniejszy czerwono-pomarańczowy
+                "color": (255, 100, 50),
                 "width": 1,
                 "style": Qt.PenStyle.DashDotDotLine,
                 "name": "Top-5 dokładność",
                 "symbol": "t",
                 "symbol_size": 2,
-                "dash": [
-                    6,
-                    3,
-                    2,
-                    3,
-                    2,
-                    3,
-                ],  # Średnia kreska, krótki odstęp, dwie krótkie kreski, krótki odstęp
+                "dash": [6, 3, 2, 3, 2, 3],
             },
         ]
 
@@ -275,6 +273,7 @@ class TrainingVisualization(QWidget):
         val_recall=None,
         val_f1=None,
         val_auc=None,
+        learning_rate=None,  # Nowy parametr
     ):
         """Aktualizuje dane wykresu."""
         try:
@@ -293,6 +292,9 @@ class TrainingVisualization(QWidget):
                 val_recall = float(val_recall) if val_recall is not None else None
                 val_f1 = float(val_f1) if val_f1 is not None else None
                 val_auc = float(val_auc) if val_auc is not None else None
+                learning_rate = (
+                    float(learning_rate) if learning_rate is not None else None
+                )
             except (ValueError, TypeError) as e:
                 print(f"BŁĄD konwersji danych: {e}")
                 return
@@ -320,6 +322,11 @@ class TrainingVisualization(QWidget):
                         self.val_f1_data[idx] = val_f1
                     if val_auc is not None:
                         self.val_auc_data[idx] = val_auc
+                    if learning_rate is not None:
+                        self.learning_rates_data[idx] = learning_rate
+                    # Oblicz różnicę między stratami
+                    if train_loss is not None and val_loss is not None:
+                        self.loss_diff_data[idx] = abs(train_loss - val_loss)
                 else:
                     self.epochs.append(epoch)
                     self.train_loss_data.append(train_loss)
@@ -332,6 +339,12 @@ class TrainingVisualization(QWidget):
                     self.val_recall_data.append(val_recall)
                     self.val_f1_data.append(val_f1)
                     self.val_auc_data.append(val_auc)
+                    self.learning_rates_data.append(learning_rate)
+                    # Oblicz różnicę między stratami
+                    if train_loss is not None and val_loss is not None:
+                        self.loss_diff_data.append(abs(train_loss - val_loss))
+                    else:
+                        self.loss_diff_data.append(None)
 
             self.data_updated = True
             self.update_plot()
@@ -355,6 +368,8 @@ class TrainingVisualization(QWidget):
         self.val_recall_data = []
         self.val_f1_data = []
         self.val_auc_data = []
+        self.loss_diff_data = []  # Nowa metryka
+        self.learning_rates_data = []  # Nowa metryka
         self.data_updated = False
         self.update_plot()
 

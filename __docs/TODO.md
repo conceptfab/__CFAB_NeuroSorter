@@ -1,6 +1,9 @@
+usuwac plik extract_config
+
 automatyczne zapisywanie wizualizacji treningu
 
-fine_tuning_task_config_dialog
+
+
 
 kolorowe przyciski
 poprawi dodawanie zadan

@@ -167,8 +167,16 @@ class ImageClassifier:
                 "pliku .pt, ani z _config.json."
             )
 
-    def predict(self, image_path):
-        """Przewidywanie kategorii dla jednego obrazu"""
+    def predict(self, image_path, return_ranking=False):
+        """Przewidywanie kategorii dla jednego obrazu
+
+        Args:
+            image_path: Ścieżka do obrazu
+            return_ranking: Czy zwrócić pełny ranking wszystkich klas (domyślnie False)
+
+        Returns:
+            Słownik z wynikami klasyfikacji
+        """
         try:
             print(f"DEBUG: Rozpoczynam klasyfikację obrazu: {image_path}")
 
@@ -244,19 +252,64 @@ class ImageClassifier:
                 f"DEBUG: Końcowy wynik - klasa: {class_name}, pewność: {confidence:.4f}"
             )
 
-            return {
+            # Przygotuj podstawowy wynik
+            result = {
                 "class_id": predicted_class,
                 "class_name": class_name,
                 "confidence": confidence,
             }
+
+            # Jeśli potrzebny jest ranking, dodaj go
+            if return_ranking:
+                all_probabilities = probabilities[0].cpu().numpy()
+                class_ranking = []
+
+                for idx, prob in enumerate(all_probabilities):
+                    class_key = str(idx)
+                    if class_key not in self.class_names:
+                        try:
+                            if int(class_key) in self.class_names:
+                                class_key = int(class_key)
+                        except ValueError:
+                            pass
+
+                    class_name_for_idx = self.class_names.get(class_key)
+                    if class_name_for_idx is None:
+                        class_name_for_idx = f"Kategoria_{idx}"
+
+                    class_ranking.append(
+                        {
+                            "class_id": idx,
+                            "class_name": class_name_for_idx,
+                            "confidence": float(prob),
+                        }
+                    )
+
+                # Sortowanie malejąco według pewności
+                class_ranking.sort(key=lambda x: x["confidence"], reverse=True)
+
+                # Dodaj ranking do wyniku
+                result["class_ranking"] = class_ranking
+
+            return result
+
         except Exception as e:
             error_msg = f"Błąd w ai.classifier.predict: {str(e)}"
             print(f"DEBUG: Wystąpił błąd: {error_msg}")
             print(f"DEBUG: Traceback: {traceback.format_exc()}")
             raise ValueError(error_msg)
 
-    def batch_predict(self, image_paths, batch_size=16):
-        """Przewidywanie kategorii dla wielu obrazów w trybie wsadowym."""
+    def batch_predict(self, image_paths, batch_size=16, return_ranking=False):
+        """Przewidywanie kategorii dla wielu obrazów w trybie wsadowym.
+
+        Args:
+            image_paths: Lista ścieżek do obrazów
+            batch_size: Rozmiar batcha do przetwarzania
+            return_ranking: Czy zwrócić pełny ranking wszystkich klas (domyślnie False)
+
+        Returns:
+            Lista słowników z wynikami klasyfikacji
+        """
         # Dynamiczne określanie optymalnego rozmiaru batcha, jeśli nie określono
         if batch_size is None:
             batch_size = self.auto_select_batch_size()
@@ -312,13 +365,46 @@ class ImageClassifier:
                         f"DEBUG: batch_predict() - j={j}, predicted_class={predicted_class}, class_name={class_name}"
                     )
 
-                results.append(
-                    {
-                        "class_id": predicted_class,
-                        "class_name": class_name,
-                        "confidence": confidence,
-                    }
-                )
+                # Przygotuj podstawowy wynik
+                result = {
+                    "class_id": predicted_class,
+                    "class_name": class_name,
+                    "confidence": confidence,
+                }
+
+                # Jeśli potrzebny jest ranking, dodaj go
+                if return_ranking:
+                    all_probabilities = probabilities[j].cpu().numpy()
+                    class_ranking = []
+
+                    for idx, prob in enumerate(all_probabilities):
+                        class_key = str(idx)
+                        if class_key not in self.class_names:
+                            try:
+                                if int(class_key) in self.class_names:
+                                    class_key = int(class_key)
+                            except ValueError:
+                                pass
+
+                        class_name_for_idx = self.class_names.get(class_key)
+                        if class_name_for_idx is None:
+                            class_name_for_idx = f"Kategoria_{idx}"
+
+                        class_ranking.append(
+                            {
+                                "class_id": idx,
+                                "class_name": class_name_for_idx,
+                                "confidence": float(prob),
+                            }
+                        )
+
+                    # Sortowanie malejąco według pewności
+                    class_ranking.sort(key=lambda x: x["confidence"], reverse=True)
+
+                    # Dodaj ranking do wyniku
+                    result["class_ranking"] = class_ranking
+
+                results.append(result)
 
             # Wyczyść pamięć GPU
             if torch.cuda.is_available():
@@ -326,13 +412,14 @@ class ImageClassifier:
 
         return results
 
-    def batch_predict_threaded(self, image_paths, num_threads=4):
+    def batch_predict_threaded(self, image_paths, num_threads=4, return_ranking=False):
         """
         Przewidywanie kategorii dla wielu obrazów z wykorzystaniem wielu wątków.
 
         Args:
             image_paths: Lista ścieżek do obrazów
             num_threads: Liczba wątków do wykorzystania
+            return_ranking: Czy zwrócić pełny ranking wszystkich klas (domyślnie False)
 
         Returns:
             Lista wyników klasyfikacji
@@ -342,7 +429,10 @@ class ImageClassifier:
         results = []
 
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = [executor.submit(self.predict, path) for path in image_paths]
+            futures = [
+                executor.submit(self.predict, path, return_ranking)
+                for path in image_paths
+            ]
             results = [future.result() for future in futures]
 
         return results
@@ -415,7 +505,9 @@ class ImageClassifier:
         else:
             print("Kwantyzacja jest obsługiwana tylko dla CPU")
 
-    def batch_predict_with_cache(self, image_paths, batch_size=16, use_cache=True):
+    def batch_predict_with_cache(
+        self, image_paths, batch_size=16, use_cache=True, return_ranking=False
+    ):
         """
         Przewidywanie kategorii dla wielu obrazów w trybie wsadowym z cache'owaniem.
 
@@ -423,6 +515,7 @@ class ImageClassifier:
             image_paths: Lista ścieżek do obrazów
             batch_size: Rozmiar wsadu do przetwarzania
             use_cache: Czy używać cache'a dla wcześniej przetworzonych obrazów
+            return_ranking: Czy zwrócić pełny ranking wszystkich klas (domyślnie False)
 
         Returns:
             Lista wyników klasyfikacji
@@ -454,7 +547,7 @@ class ImageClassifier:
             ]
 
         # Przetwórz obrazy, które nie są w cache'u
-        batch_results = self.batch_predict(to_process, batch_size)
+        batch_results = self.batch_predict(to_process, batch_size, return_ranking)
 
         # Zaktualizuj cache
         for i, path in enumerate(to_process):
