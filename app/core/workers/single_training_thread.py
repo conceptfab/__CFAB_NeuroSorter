@@ -57,7 +57,13 @@ class SingleTrainingThread(QThread):
                 task_path = self.task_path_or_data
             else:
                 task_data = self.task_path_or_data
-                task_path = None
+                # Zapisz dane zadania do pliku
+                task_name = task_data.get("name", "Bez nazwy")
+                task_path = os.path.join("data", "tasks", f"{task_name}.json")
+                os.makedirs(os.path.dirname(task_path), exist_ok=True)
+                with open(task_path, "w", encoding="utf-8") as f:
+                    json.dump(task_data, f, indent=4, ensure_ascii=False)
+                self.logger.info(f"Zapisano dane zadania do pliku: {task_path}")
 
             task_name = task_data.get("name", "Bez nazwy")
             task_type = task_data.get("typ", "trening")

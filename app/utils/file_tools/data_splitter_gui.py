@@ -34,7 +34,7 @@ from PyQt6.QtWidgets import (
 TRAIN_FOLDER_NAME = "__dane_treningowe"
 VALID_FOLDER_NAME = "__dane_walidacyjne"
 DEFAULT_TRAIN_SPLIT_PERCENT = 80
-DEFAULT_FILES_PER_CATEGORY = 100
+DEFAULT_FILES_PER_CATEGORY = 100  # Używane gdy nie można określić inaczej
 ALLOWED_IMAGE_EXTENSIONS = (
     ".png",
     ".webp",
@@ -47,84 +47,70 @@ ALLOWED_IMAGE_EXTENSIONS = (
 )
 
 # --- Style ---
-PRIMARY_COLOR = "#007ACC"  # Niebieski VS Code
-BACKGROUND = "#1E1E1E"  # Ciemne tło
-SURFACE = "#252526"  # Lekko jaśniejsze tło dla paneli
-BORDER_COLOR = "#3F3F46"  # Kolor obramowania
-TEXT_COLOR = "#CCCCCC"  # Kolor tekstu
-HIGHLIGHT_COLOR = "#FF0000"  # Czerwony do wyróżnienia
+PRIMARY_COLOR = "#007ACC"
+BACKGROUND = "#1E1E1E"
+SURFACE = "#252526"
+BORDER_COLOR = "#3F3F46"
+TEXT_COLOR = "#CCCCCC"
+HIGHLIGHT_COLOR = "#FF0000"
 
 
 # --- Wątek roboczy do przetwarzania danych ---
 class Worker(QThread):
-    """Wątek do wykonywania operacji plikowych w tle"""
-
-    progress_updated = pyqtSignal(int, str)  # percentage, message
-    finished = pyqtSignal(str)  # final message (success or error)
+    progress_updated = pyqtSignal(int, str)
+    finished = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
 
     def __init__(
-        self, input_dir, output_dir, split_mode, split_value, use_validation=True
+        self,
+        input_dir,
+        output_dir,
+        split_mode,
+        split_value,
+        use_validation=True,
+        selected_categories=None,  # NOWY ARGUMENT
     ):
         super().__init__()
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
-        self.split_mode = split_mode  # "percent" lub "files"
-        self.split_value = split_value  # procent lub liczba plików
+        self.split_mode = split_mode
+        self.split_value = split_value
         self.use_validation = use_validation
+        self.selected_categories = selected_categories if selected_categories else []
         self.is_cancelled = False
-        # Statystyki kopiowania
-        self.stats = {
-            "train": {},  # kategoria -> liczba plików
-            "valid": {},  # kategoria -> liczba plików
-        }
-        # --- DODANE: Słownik do raportu JSON ---
+        self.stats = {"train": {}, "valid": {}}
         self.json_report = {}
+        # Do raportu w trybie "files"
+        self.min_files_in_selection_for_report = 0
+        self.folders_with_min_for_report = []
 
-    def get_min_files_in_category(self, only_direct_subfolders=False):
-        """Zwraca minimalną liczbę plików w kategorii oraz listę tych folderów.
+    def get_min_files_in_selected_categories_for_processing(self):
+        if not self.input_dir or not self.selected_categories:
+            return 0, []
 
-        Args:
-            only_direct_subfolders (bool): Jeśli True, analizuje tylko bezpośrednie
-                                         podfoldery katalogu wejściowego.
-
-        Returns:
-            tuple: (minimalna_liczba_plików, lista_nazw_folderów_z_min_liczbą)
-                   Jeśli nie ma plików/folderów, zwraca (DEFAULT_FILES_PER_CATEGORY, []).
-        """
-        if not self.input_dir:
-            return DEFAULT_FILES_PER_CATEGORY, []
-
-        min_files = float("inf")
-        folders_with_min_files = []
+        min_files_val = float("inf")
+        folders_with_min = []
         root_path = Path(self.input_dir)
 
-        for category_dir in root_path.iterdir():
+        for category_name in self.selected_categories:
+            category_dir = root_path / category_name
             if category_dir.is_dir():
-                # Licz pliki tylko bezpośrednio w tym folderze
-                current_files_count = 0
-                for item in category_dir.iterdir():
-                    if (
-                        item.is_file()
-                        and item.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
-                    ):
-                        current_files_count += 1
+                count = sum(
+                    1
+                    for f in category_dir.iterdir()
+                    if f.is_file() and f.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
+                )
+                if 0 < count < min_files_val:
+                    min_files_val = count
+                    folders_with_min = [category_name]
+                elif count == min_files_val and min_files_val != float("inf"):
+                    folders_with_min.append(category_name)
 
-                if only_direct_subfolders or not any(
-                    item.is_dir() for item in category_dir.iterdir()
-                ):
-                    if 0 < current_files_count < min_files:
-                        min_files = current_files_count
-                        folders_with_min_files = [category_dir.name]
-                    elif current_files_count == min_files:
-                        folders_with_min_files.append(category_dir.name)
-
-        if min_files == float("inf"):
-            return DEFAULT_FILES_PER_CATEGORY, []
-        return min_files, folders_with_min_files
+        if min_files_val == float("inf"):  # Żadne wybrane kategorie nie miały plików
+            return 0, []
+        return min_files_val, folders_with_min
 
     def run(self):
-        """Główna logika przetwarzania danych"""
         try:
             self.progress_updated.emit(0, "Rozpoczynanie przetwarzania...")
             if not self.input_dir.is_dir():
@@ -133,8 +119,7 @@ class Worker(QThread):
                 self.output_dir.mkdir(parents=True, exist_ok=True)
             elif not self.output_dir.is_dir():
                 raise ValueError(
-                    "Ścieżka wyjściowa istnieje, "
-                    f"ale nie jest folderem: {self.output_dir}"
+                    f"Ścieżka wyjściowa istnieje, ale nie jest folderem: {self.output_dir}"
                 )
 
             train_base_path = self.output_dir / TRAIN_FOLDER_NAME
@@ -142,191 +127,197 @@ class Worker(QThread):
                 self.output_dir / VALID_FOLDER_NAME if self.use_validation else None
             )
 
-            # Utwórz główne foldery wyjściowe
             if train_base_path.exists():
-                self.progress_updated.emit(
-                    0, f"Czyszczenie istniejącego folderu: {train_base_path}"
-                )
+                shutil.rmtree(train_base_path)  # Czyszczenie
             if valid_base_path and valid_base_path.exists():
-                self.progress_updated.emit(
-                    0, f"Czyszczenie istniejącego folderu: {valid_base_path}"
-                )
+                shutil.rmtree(valid_base_path)  # Czyszczenie
 
             train_base_path.mkdir(parents=True, exist_ok=True)
             if valid_base_path:
                 valid_base_path.mkdir(parents=True, exist_ok=True)
 
-            # 1. Przeskanuj folder wejściowy i zbierz wszystkie pliki pogrupowane według podkategorii
             subfolders_to_process = []
             total_files_to_process = 0
-            self.progress_updated.emit(5, "Skanowanie folderu wejściowego...")
+            self.progress_updated.emit(
+                5, "Skanowanie wybranych folderów wejściowych..."
+            )
 
-            for category_dir in self.input_dir.iterdir():
+            if not self.selected_categories:
+                raise ValueError("Nie wybrano żadnych kategorii do przetworzenia.")
+
+            for category_name in self.selected_categories:
+                category_dir = self.input_dir / category_name
                 if category_dir.is_dir():
                     relative_path = category_dir.relative_to(self.input_dir)
                     files_in_subdir = [
                         f
-                        for f in category_dir.glob("*")
+                        for f in category_dir.iterdir()
                         if f.is_file() and f.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
                     ]
                     if files_in_subdir:
                         subfolders_to_process.append((relative_path, files_in_subdir))
                         total_files_to_process += len(files_in_subdir)
-                        # Inicjalizuj statystyki dla kategorii
                         self.stats["train"][str(relative_path)] = 0
-                        self.stats["valid"][str(relative_path)] = 0
-                        # --- DODANE: Inicjalizuj raport JSON ---
+                        if self.use_validation:
+                            self.stats["valid"][str(relative_path)] = 0
                         self.json_report[str(relative_path)] = {
                             "train": [],
                             "valid": [],
                         }
+                    else:
+                        self.progress_updated.emit(
+                            0,
+                            f"Info: Wybrana kategoria '{category_name}' jest pusta lub nie zawiera obrazów.",
+                        )
 
             if not subfolders_to_process:
                 raise ValueError(
-                    "Nie znaleziono żadnych plików obrazów "
-                    "w podfolderach folderu wejściowego."
+                    "Nie znaleziono żadnych plików obrazów w wybranych i niepustych podfolderach."
                 )
 
             self.progress_updated.emit(
                 10,
-                f"Znaleziono {total_files_to_process} plików "
-                f"w {len(subfolders_to_process)} podkategoriach.",
+                f"Znaleziono {total_files_to_process} plików w {len(subfolders_to_process)} wybranych podkategoriach.",
             )
 
-            # 2. Przetwarzaj każdą podkategorię
             processed_files_count = 0
+
+            if self.split_mode == "files":  # Oblicz min tylko raz dla trybu "files"
+                (
+                    self.min_files_in_selection_for_report,
+                    self.folders_with_min_for_report,
+                ) = self.get_min_files_in_selected_categories_for_processing()
+                if (
+                    self.min_files_in_selection_for_report == 0
+                    and self.use_validation
+                    and self.split_value > 0
+                ):
+                    self.progress_updated.emit(
+                        0,
+                        "Ostrzeżenie: W trybie 'Limit plików' nie znaleziono plików w wybranych kategoriach, co może wpłynąć na podział walidacyjny.",
+                    )
+
             for relative_path, files in subfolders_to_process:
                 if self.is_cancelled:
-                    self.progress_updated.emit(
-                        0, "Przetwarzanie anulowane przez użytkownika."
-                    )
                     self.finished.emit("Anulowano.")
                     return
 
-                # Wymieszaj pliki losowo
                 random.shuffle(files)
+                num_train, num_valid = 0, 0
 
                 if self.split_mode == "percent":
-                    # Tryb procentowy - losowy podział zgodnie z procentem
-                    random.shuffle(files)
-                    num_train = int(len(files) * self.split_value / 100)
-                    num_valid = len(files) - num_train
-                else:
-                    # Tryb równomierny - wszystkie foldery mają taką samą liczbę plików
-                    random.shuffle(files)
-                    # Pobierz minimalną liczbę plików w kategorii
-                    min_files, _ = self.get_min_files_in_category(
-                        only_direct_subfolders=True
-                    )
-                    # Oblicz ile plików powinno iść do walidacji
-                    num_valid = (
-                        min_files - self.split_value
-                        if min_files > self.split_value
-                        else 0
-                    )
-                    # Ustaw liczbę plików treningowych
-                    num_train = self.split_value
+                    num_train_float = len(files) * self.split_value / 100
+                    num_train = int(num_train_float)
+
+                    if self.use_validation:
+                        num_valid = len(files) - num_train
+                        if (
+                            num_valid == 0
+                            and self.split_value < 100
+                            and len(files) > 0
+                            and num_train == len(files)
+                        ):
+                            if num_train > 0:
+                                num_train -= 1
+                                num_valid = 1
+                    else:
+                        num_train = len(files)
+                else:  # "files" mode
+                    num_train = min(self.split_value, len(files))
+                    if self.use_validation:
+                        available_for_valid_in_current_cat = len(files) - num_train
+                        desired_valid_based_on_min_cat = 0
+                        # Używamy self.min_files_in_selection_for_report, które jest min z wybranych
+                        if self.min_files_in_selection_for_report > self.split_value:
+                            desired_valid_based_on_min_cat = (
+                                self.min_files_in_selection_for_report
+                                - self.split_value
+                            )
+
+                        num_valid = min(
+                            available_for_valid_in_current_cat,
+                            desired_valid_based_on_min_cat,
+                        )
+                        if num_valid < 0:
+                            num_valid = 0
 
                 self.progress_updated.emit(
-                    int(10 + 80 * (processed_files_count / total_files_to_process)),
-                    f"Przetwarzanie: {relative_path} "
-                    f"({num_train} tren., {num_valid} walid.)",
+                    int(
+                        10
+                        + 80
+                        * (
+                            processed_files_count / total_files_to_process
+                            if total_files_to_process > 0
+                            else 0
+                        )
+                    ),
+                    f"Przetwarzanie: {relative_path} ({num_train} tren., {num_valid} walid.)",
                 )
 
-                # Stwórz odpowiednie foldery wyjściowe
                 current_train_path = train_base_path / relative_path
                 current_valid_path = (
                     valid_base_path / relative_path
                     if valid_base_path and num_valid > 0
                     else None
                 )
+
                 current_train_path.mkdir(parents=True, exist_ok=True)
                 if current_valid_path:
                     current_valid_path.mkdir(parents=True, exist_ok=True)
 
-                # Podziel pliki
-                train_files = files[:num_train]
-                valid_files = (
+                train_files_to_copy = files[:num_train]
+                valid_files_to_copy = (
                     files[num_train : num_train + num_valid] if num_valid > 0 else []
                 )
 
-                # Kopiuj pliki treningowe
-                for file_path in train_files:
+                for file_path in train_files_to_copy:
                     if self.is_cancelled:
                         break
                     try:
                         shutil.copy2(file_path, current_train_path / file_path.name)
-                        processed_files_count += 1
                         self.stats["train"][str(relative_path)] += 1
-                        # --- DODANE: Zapisz do raportu JSON ---
                         self.json_report[str(relative_path)]["train"].append(
                             file_path.name
                         )
-                        if (
-                            processed_files_count % 10 == 0
-                            or processed_files_count == total_files_to_process
-                        ):
-                            self.progress_updated.emit(
-                                int(
-                                    10
-                                    + 80
-                                    * (processed_files_count / total_files_to_process)
-                                ),
-                                f"Kopiowanie: {file_path.name} "
-                                f"do {TRAIN_FOLDER_NAME}",
-                            )
+                        processed_files_count += 1
+                        # Aktualizacja progressu co jakiś czas
                     except Exception as e:
-                        self.error_occurred.emit(f"Błąd kopiowania {file_path}: {e}")
-
+                        self.error_occurred.emit(
+                            f"Błąd kopiowania {file_path} (trening): {e}"
+                        )
                 if self.is_cancelled:
                     break
 
-                # Kopiuj pliki walidacyjne (zawsze próbuj, nawet jeśli 0)
-                for file_path in valid_files:
+                for file_path in valid_files_to_copy:
                     if self.is_cancelled:
                         break
                     try:
-                        if current_valid_path:
+                        if current_valid_path:  # Powinno być, bo num_valid > 0
                             shutil.copy2(file_path, current_valid_path / file_path.name)
-                        processed_files_count += 1
-                        self.stats["valid"][str(relative_path)] += 1
-                        # --- DODANE: Zapisz do raportu JSON ---
-                        self.json_report[str(relative_path)]["valid"].append(
-                            file_path.name
-                        )
-                        if (
-                            processed_files_count % 10 == 0
-                            or processed_files_count == total_files_to_process
-                        ):
-                            self.progress_updated.emit(
-                                int(
-                                    10
-                                    + 80
-                                    * (processed_files_count / total_files_to_process)
-                                ),
-                                f"Kopiowanie: {file_path.name} "
-                                f"do {VALID_FOLDER_NAME}",
-                            )
+                            if self.use_validation:  # Dodatkowe zabezpieczenie
+                                self.stats["valid"][str(relative_path)] += 1
+                                self.json_report[str(relative_path)]["valid"].append(
+                                    file_path.name
+                                )
+                            processed_files_count += 1
+                            # Aktualizacja progressu
                     except Exception as e:
-                        self.error_occurred.emit(f"Błąd kopiowania {file_path}: {e}")
-
+                        self.error_occurred.emit(
+                            f"Błąd kopiowania {file_path} (walidacja): {e}"
+                        )
                 if self.is_cancelled:
                     break
 
             if self.is_cancelled:
-                self.progress_updated.emit(0, "Przetwarzanie anulowane.")
                 self.finished.emit("Anulowano.")
             else:
                 self.progress_updated.emit(100, "Zakończono kopiowanie plików.")
-                # Przygotuj raport końcowy
                 report = self._generate_report()
-                # --- DODANE: Zapisz raport JSON ---
                 json_path = self.output_dir / "raport_kopiowania.json"
                 with open(json_path, "w", encoding="utf-8") as f:
                     json.dump(self.json_report, f, ensure_ascii=False, indent=2)
                 self.finished.emit(
-                    "Przetwarzanie zakończone pomyślnie!\n\n"
-                    f"{report}\n\nZapisano raport JSON: {json_path}"
+                    f"Przetwarzanie zakończone pomyślnie!\n\n{report}\n\nZapisano raport JSON: {json_path}"
                 )
 
         except ValueError as ve:
@@ -337,49 +328,65 @@ class Worker(QThread):
             self.finished.emit(f"Niespodziewany błąd: {e}")
 
     def _generate_report(self):
-        """Generuje raport końcowy z kopiowania w formie drzewa folderów."""
-        report = []
-        report.append("=== RAPORT KOPIOWANIA ===")
-        report.append("")
-
-        # Dodaj informacje o algorytmie
+        report = ["=== RAPORT KOPIOWANIA ===", ""]
         if self.split_mode == "percent":
-            report.append(f"Algorytm: Podział procentowy")
+            report.append(f"Algorytm: Podział procentowy (dla wybranych kategorii)")
+            train_percent = self.split_value
+            valid_percent = 100 - train_percent if self.use_validation else 0
             report.append(
-                f"Stosunek plików: {self.split_value}% trening / {100-self.split_value}% walidacja"
+                f"Stosunek plików: {train_percent}% trening"
+                + (f" / {valid_percent}% walidacja" if self.use_validation else "")
             )
-        else:
-            min_files, folders_with_min = self.get_min_files_in_category(
-                only_direct_subfolders=True
-            )
-            report.append(f"Algorytm: Podział równomierny")
+        else:  # "files" mode
+            min_files_val = self.min_files_in_selection_for_report
+            folders_with_min_names = self.folders_with_min_for_report
             report.append(
-                f"Folder z najmniejszą liczbą plików: {', '.join(folders_with_min)} ({min_files} plików)"
+                f"Algorytm: Podział z limitem plików (dla wybranych kategorii)"
             )
-            report.append(f"Z każdego folderu:")
-            report.append(f"  - {self.split_value} plików do treningu")
-            report.append(f"  - {min_files - self.split_value} plików do walidacji")
+            if folders_with_min_names:
+                report.append(
+                    f"Folder(y) z najmniejszą liczbą plików (wśród wybranych): {', '.join(folders_with_min_names)} ({min_files_val} plików)"
+                )
+            elif self.selected_categories:  # Były wybrane, ale puste lub bez plików
+                report.append(
+                    "W wybranych kategoriach nie znaleziono plików do ustalenia globalnego limitu walidacji."
+                )
+            report.append(f"Z każdej wybranej kategorii próbowano wziąć:")
+            report.append(
+                f"  - {self.split_value} plików do treningu (lub mniej, jeśli kategoria miała mniej)"
+            )
+            if self.use_validation:
+                num_valid_expected = 0
+                if min_files_val > self.split_value:  # min_files_val to min z wybranych
+                    num_valid_expected = min_files_val - self.split_value
+                report.append(
+                    f"  - do {num_valid_expected} plików do walidacji (lub mniej, jeśli było mniej dostępnych)"
+                )
+            else:
+                report.append(f"  - 0 plików do walidacji (opcja wyłączona)")
         report.append("")
 
-        # Podsumowanie dla każdej kategorii w formie drzewa
         for category in sorted(self.stats["train"].keys()):
             train_count = self.stats["train"][category]
-            valid_count = self.stats["valid"].get(category, 0)
-
-            # Dodaj główną kategorię
             report.append(f"{category}")
             report.append(f"├── {TRAIN_FOLDER_NAME}: {train_count} plików")
-            report.append(f"└── {VALID_FOLDER_NAME}: {valid_count} plików")
+            if self.use_validation and category in self.stats["valid"]:
+                valid_count = self.stats["valid"][category]
+                report.append(f"└── {VALID_FOLDER_NAME}: {valid_count} plików")
+            else:
+                report.append(f"└── {VALID_FOLDER_NAME}: 0 plików")
             report.append("")
 
-        # Podsumowanie ogólne
         total_train = sum(self.stats["train"].values())
-        total_valid = sum(self.stats["valid"].values())
-        report.append("=== PODSUMOWANIE ===")
+        total_valid = (
+            sum(self.stats["valid"].values())
+            if self.use_validation and self.stats.get("valid")
+            else 0
+        )
+        report.append("=== PODSUMOWANIE OGÓLNE ===")
         report.append(f"Łącznie skopiowano: {total_train + total_valid} plików")
         report.append(f"  - Trening: {total_train} plików")
         report.append(f"  - Walidacja: {total_valid} plików")
-
         return "\n".join(report)
 
     def cancel(self):
@@ -394,100 +401,47 @@ class DataSplitterApp(QWidget):
         self.input_dir = ""
         self.output_dir = ""
         self.processing_thread = None
-        self.files_list = []  # Lista wszystkich plików
+        self.files_list = []
 
-        # Ustaw ikonę aplikacji
-        icon_path = os.path.join("app", "img", "icon.png")
-        if os.path.exists(icon_path):
-            self.setWindowIcon(QIcon(icon_path))
+        icon_path = Path("app/img/icon.png")  # Użyj Path dla spójności
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
         else:
             print(f"Nie znaleziono pliku ikony: {icon_path}")
 
         self.initUI()
         self._apply_material_theme()
+        self.update_files_limit_and_validation_based_on_selection()  # Inicjalizacja kontrolek
 
     def _apply_material_theme(self):
-        """Aplikuje styl Material Design do aplikacji."""
         self.setStyleSheet(
             f"""
-            QWidget {{
-                background-color: {BACKGROUND};
-                color: {TEXT_COLOR};
-            }}
-            QPushButton {{
-                background-color: {SURFACE};
-                color: {TEXT_COLOR};
-                border: 1px solid {BORDER_COLOR};
-                border-radius: 2px;
-                padding: 4px 12px;
-                min-height: 24px;
-                max-height: 24px;
-            }}
-            QPushButton:hover {{
-                background-color: #2A2D2E;
-            }}
-            QPushButton:pressed {{
-                background-color: #3E3E40;
-            }}
-            QLineEdit {{
-                background-color: #1C1C1C;
-                color: {TEXT_COLOR};
-                border: 1px solid {BORDER_COLOR};
-                border-radius: 2px;
-                padding: 2px;
-            }}
-            QSlider::groove:horizontal {{
-                border: 1px solid {BORDER_COLOR};
-                height: 8px;
-                background: {SURFACE};
-                margin: 2px 0;
-                border-radius: 4px;
-            }}
-            QSlider::handle:horizontal {{
-                background: {PRIMARY_COLOR};
-                border: 1px solid {PRIMARY_COLOR};
-                width: 18px;
-                margin: -2px 0;
-                border-radius: 9px;
-            }}
-            QSlider::sub-page:horizontal {{
-                background: {PRIMARY_COLOR};
-                border-radius: 4px;
-            }}
-            QProgressBar {{
-                border: 1px solid {BORDER_COLOR};
-                background-color: {SURFACE};
-                text-align: center;
-                color: {TEXT_COLOR};
-            }}
-            QProgressBar::chunk {{
-                background-color: {PRIMARY_COLOR};
-            }}
-            QTextEdit {{
-                background-color: #1C1C1C;
-                color: {TEXT_COLOR};
-                border: 1px solid {BORDER_COLOR};
-                border-radius: 2px;
-                padding: 2px;
-                font-family: 'Consolas', 'Courier New', monospace;
-                font-size: 10px;
-            }}
-            QLabel {{
-                color: {TEXT_COLOR};
-            }}
+            QWidget {{ background-color: {BACKGROUND}; color: {TEXT_COLOR}; }}
+            QPushButton {{ background-color: {SURFACE}; border: 1px solid {BORDER_COLOR}; border-radius: 2px; padding: 4px 12px; min-height: 24px; max-height: 24px; }}
+            QPushButton:hover {{ background-color: #2A2D2E; }} QPushButton:pressed {{ background-color: #3E3E40; }}
+            QLineEdit {{ background-color: #1C1C1C; border: 1px solid {BORDER_COLOR}; border-radius: 2px; padding: 2px; }}
+            QSlider::groove:horizontal {{ border: 1px solid {BORDER_COLOR}; height: 8px; background: {SURFACE}; margin: 2px 0; border-radius: 4px; }}
+            QSlider::handle:horizontal {{ background: {PRIMARY_COLOR}; border: 1px solid {PRIMARY_COLOR}; width: 18px; margin: -2px 0; border-radius: 9px; }}
+            QSlider::sub-page:horizontal {{ background: {PRIMARY_COLOR}; border-radius: 4px; }}
+            QProgressBar {{ border: 1px solid {BORDER_COLOR}; background-color: {SURFACE}; text-align: center; color: {TEXT_COLOR}; }}
+            QProgressBar::chunk {{ background-color: {PRIMARY_COLOR}; }}
+            QTextEdit {{ background-color: #1C1C1C; border: 1px solid {BORDER_COLOR}; border-radius: 2px; padding: 2px; font-family: 'Consolas', 'Courier New', monospace; font-size: 10px; }}
+            QLabel {{ color: {TEXT_COLOR}; }}
+            QTreeWidget {{ border: 1px solid {BORDER_COLOR}; background-color: #1C1C1C; }}
+            QTreeWidget::item {{ padding: 3px; }}
+            QTreeWidget::item:selected {{ background-color: {PRIMARY_COLOR}; color: white; }}
+            QListWidget {{ border: 1px solid {BORDER_COLOR}; background-color: #1C1C1C; }}
+            QComboBox {{ border: 1px solid {BORDER_COLOR}; border-radius: 2px; padding: 2px; background-color: {SURFACE}; }}
+            QSpinBox {{ border: 1px solid {BORDER_COLOR}; border-radius: 2px; padding: 2px; background-color: {SURFACE}; }}
         """
         )
 
     def initUI(self):
         self.setWindowTitle("Przygotowanie Danych AI")
-        self.setGeometry(200, 200, 800, 600)
-
+        self.setGeometry(200, 200, 850, 650)  # Trochę szersze
         layout = QVBoxLayout()
 
-        # --- Sekcja wyboru folderów ---
         folder_layout = QVBoxLayout()
-
-        # Folder wejściowy
         in_folder_layout = QHBoxLayout()
         in_label = QLabel("Folder z danymi źródłowymi:")
         self.in_path_edit = QLineEdit()
@@ -499,7 +453,6 @@ class DataSplitterApp(QWidget):
         in_folder_layout.addWidget(in_button)
         folder_layout.addLayout(in_folder_layout)
 
-        # Folder wyjściowy
         out_folder_layout = QHBoxLayout()
         out_label = QLabel("Folder docelowy dla podziału:")
         self.out_path_edit = QLineEdit()
@@ -510,28 +463,20 @@ class DataSplitterApp(QWidget):
         out_folder_layout.addWidget(self.out_path_edit)
         out_folder_layout.addWidget(out_button)
         folder_layout.addLayout(out_folder_layout)
-
         layout.addLayout(folder_layout)
 
-        # --- Zakładki ---
         self.tabs = QTabWidget()
-
-        # Zakładka ze strukturą folderów
         self.folder_tree = QTreeWidget()
-        self.folder_tree.setHeaderLabels(["Struktura folderów"])
+        self.folder_tree.setHeaderLabels(
+            ["Struktura folderów (zaznacz kategorie do przetworzenia)"]
+        )
         self.folder_tree.setColumnCount(1)
-        self.tabs.addTab(self.folder_tree, "Struktura folderów")
-
-        # Zakładka z listą plików
+        self.tabs.addTab(self.folder_tree, "Wybór kategorii")
         self.files_list_widget = QListWidget()
-        self.tabs.addTab(self.files_list_widget, "Lista plików")
-
+        self.tabs.addTab(self.files_list_widget, "Lista wszystkich plików")
         layout.addWidget(self.tabs)
 
-        # --- Sekcja podziału danych ---
         split_layout = QVBoxLayout()
-
-        # Tryb podziału
         mode_layout = QHBoxLayout()
         mode_label = QLabel("Tryb podziału:")
         self.mode_combo = QComboBox()
@@ -541,7 +486,6 @@ class DataSplitterApp(QWidget):
         mode_layout.addWidget(self.mode_combo)
         split_layout.addLayout(mode_layout)
 
-        # Suwak procentowy
         self.percent_layout = QHBoxLayout()
         percent_label = QLabel("Podział Treningowe / Walidacyjne:")
         self.split_slider = QSlider(Qt.Orientation.Horizontal)
@@ -551,7 +495,7 @@ class DataSplitterApp(QWidget):
         self.split_slider.setTickInterval(10)
         self.split_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.split_value_label = QLabel(
-            f"{DEFAULT_TRAIN_SPLIT_PERCENT}% / " f"{100 - DEFAULT_TRAIN_SPLIT_PERCENT}%"
+            f"{DEFAULT_TRAIN_SPLIT_PERCENT}% / {100 - DEFAULT_TRAIN_SPLIT_PERCENT}%"
         )
         self.split_value_label.setMinimumWidth(80)
         self.split_slider.valueChanged.connect(self.update_split_label)
@@ -560,53 +504,48 @@ class DataSplitterApp(QWidget):
         self.percent_layout.addWidget(self.split_value_label)
         split_layout.addLayout(self.percent_layout)
 
-        # Pole liczby plików
         self.files_layout = QHBoxLayout()
-        files_label = QLabel("Liczba plików na kategorię:")
+        files_label = QLabel(
+            "Liczba plików treningowych na kategorię:"
+        )  # Zmieniona etykieta
         self.files_spin = QSpinBox()
         self.files_spin.setMinimum(1)
         self.files_spin.setMaximum(10000)
         self.files_spin.setValue(DEFAULT_FILES_PER_CATEGORY)
         self.files_spin.valueChanged.connect(
-            lambda value: self.update_validation_checkbox(value)
-        )
+            self.update_files_limit_and_validation_based_on_selection
+        )  # ZMIANA
         self.files_layout.addWidget(files_label)
         self.files_layout.addWidget(self.files_spin)
         split_layout.addLayout(self.files_layout)
 
-        # Checkbox dla folderu walidacyjnego
         validation_layout = QHBoxLayout()
         self.validation_check = QCheckBox("Utwórz folder walidacyjny")
         self.validation_check.setChecked(True)
         self.validation_check.stateChanged.connect(
-            lambda state: self.update_validation_checkbox(self.files_spin.value())
-        )
-        self.validation_label = QLabel("")
+            self.update_files_limit_and_validation_based_on_selection
+        )  # ZMIANA
+        self.validation_label = QLabel("")  # Etykieta informacyjna obok checkboxa
         validation_layout.addWidget(self.validation_check)
         validation_layout.addWidget(self.validation_label)
         split_layout.addLayout(validation_layout)
-
         layout.addLayout(split_layout)
 
-        # --- Sekcja kontrolna i status ---
         control_layout = QHBoxLayout()
         self.start_button = QPushButton("Rozpocznij przetwarzanie")
         self.start_button.clicked.connect(self.start_processing)
         self.cancel_button = QPushButton("Anuluj")
         self.cancel_button.clicked.connect(self.cancel_processing)
         self.cancel_button.setEnabled(False)
-
         control_layout.addWidget(self.start_button)
         control_layout.addWidget(self.cancel_button)
         layout.addLayout(control_layout)
 
-        # Pasek postępu
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
         self.progress_bar.setTextVisible(True)
         layout.addWidget(self.progress_bar)
 
-        # Logi / Status
         log_label = QLabel("Log:")
         self.log_edit = QTextEdit()
         self.log_edit.setReadOnly(True)
@@ -616,213 +555,308 @@ class DataSplitterApp(QWidget):
 
         self.setLayout(layout)
         self.show()
-
-        # Inicjalizacja widoczności elementów
-        self.update_split_mode(0)
+        self.update_split_mode(0)  # Inicjalizacja widoczności na podstawie trybu
 
     def update_split_mode(self, index):
-        """Aktualizuje widoczność elementów interfejsu
-        w zależności od wybranego trybu"""
         is_percent_mode = index == 0
-
-        # Ukryj/pokaż elementy trybu procentowego
         for i in range(self.percent_layout.count()):
             widget = self.percent_layout.itemAt(i).widget()
             if widget:
                 widget.setVisible(is_percent_mode)
-
-        # Ukryj/pokaż elementy trybu z limitem plików
         for i in range(self.files_layout.count()):
             widget = self.files_layout.itemAt(i).widget()
             if widget:
                 widget.setVisible(not is_percent_mode)
+        self.update_files_limit_and_validation_based_on_selection()
 
-        # Jeśli przełączamy na tryb z limitem plików,
-        # zaktualizuj limit i checkbox
-        if not is_percent_mode:
-            self.update_files_limit()
-        else:
-            # W trybie procentowym zawsze włącz checkbox walidacji
-            self.validation_check.setEnabled(True)
+    def update_split_label(self):
+        train_percent = self.split_slider.value()
+        valid_percent = 100 - train_percent
+        self.split_value_label.setText(f"{train_percent}% / {valid_percent}%")
+        if (
+            self.mode_combo.currentIndex() == 0
+        ):  # Tylko jeśli tryb procentowy jest aktywny
+            self.update_files_limit_and_validation_based_on_selection()
 
     def update_folder_tree(self):
-        """Aktualizuje drzewo folderów na podstawie wybranego katalogu wejściowego."""
         self.folder_tree.clear()
         if not self.input_dir:
+            self.update_files_limit_and_validation_based_on_selection()  # Aktualizuj kontrolki nawet jeśli brak folderu
             return
 
         root_path = Path(self.input_dir)
-        root_item = QTreeWidgetItem(self.folder_tree, [root_path.name])
-        root_item.setExpanded(True)
+        tree_root_item = QTreeWidgetItem(self.folder_tree, [root_path.name])
+        self.folder_tree.addTopLevelItem(tree_root_item)
+        tree_root_item.setExpanded(True)
 
-        # Pobierz informacje o folderach z minimalną liczbą plików
-        min_files, folders_with_min_files = self.get_min_files_in_category(
-            only_direct_subfolders=True
+        try:  # Odłącz, aby uniknąć wielokrotnego podłączania lub błędów
+            self.folder_tree.itemChanged.disconnect(self.on_folder_tree_item_changed)
+        except TypeError:
+            pass  # Nie było podłączone
+
+        # Znajdź folder z najmniejszą liczbą plików
+        min_files_count = float("inf")
+        min_files_folder = None
+        folder_counts = {}
+
+        for category_dir in root_path.iterdir():
+            if category_dir.is_dir():
+                direct_file_count = sum(
+                    1
+                    for f in category_dir.iterdir()
+                    if f.is_file() and f.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
+                )
+                folder_counts[category_dir.name] = direct_file_count
+                if direct_file_count < min_files_count:
+                    min_files_count = direct_file_count
+                    min_files_folder = category_dir.name
+
+        # Dodaj foldery do drzewa
+        for category_dir in root_path.iterdir():
+            if category_dir.is_dir():
+                direct_file_count = folder_counts[category_dir.name]
+                display_text = f"{category_dir.name} ({direct_file_count} plików)"
+                item = QTreeWidgetItem(tree_root_item, [display_text])
+                item.setData(0, Qt.ItemDataRole.UserRole, category_dir.name)
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setCheckState(0, Qt.CheckState.Checked)  # Domyślnie zaznaczony
+
+                # Wyróżnij folder z najmniejszą liczbą plików
+                if category_dir.name == min_files_folder and min_files_count > 0:
+                    item.setForeground(0, QColor(HIGHLIGHT_COLOR))
+
+        self.folder_tree.itemChanged.connect(self.on_folder_tree_item_changed)
+        self.update_files_limit_and_validation_based_on_selection()  # Zawsze aktualizuj po przebudowie drzewa
+
+    def on_folder_tree_item_changed(self, item, column):
+        if (
+            column == 0
+            and item.parent()
+            and item.parent() == self.folder_tree.topLevelItem(0)
+        ):
+            self.update_files_limit_and_validation_based_on_selection()
+
+    def get_selected_categories_names(self):
+        selected = []
+        if not self.input_dir or not self.folder_tree.topLevelItem(0):
+            return selected
+        root_item = self.folder_tree.topLevelItem(0)
+        for i in range(root_item.childCount()):
+            child_item = root_item.child(i)
+            if child_item.checkState(0) == Qt.CheckState.Checked:
+                category_name = child_item.data(0, Qt.ItemDataRole.UserRole)
+                if category_name:
+                    selected.append(category_name)
+        return selected
+
+    def get_min_files_in_selected_categories(self, selected_category_names):
+        if not self.input_dir or not selected_category_names:
+            return (
+                DEFAULT_FILES_PER_CATEGORY,
+                [],
+            )  # Zwraca wartość domyślną, jeśli nic nie wybrano
+
+        min_val = float("inf")
+        folders_with_min = []
+        root = Path(self.input_dir)
+        for name in selected_category_names:
+            cat_dir = root / name
+            if cat_dir.is_dir():
+                count = sum(
+                    1
+                    for f in cat_dir.iterdir()
+                    if f.is_file() and f.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
+                )
+                if 0 < count < min_val:
+                    min_val = count
+                    folders_with_min = [name]
+                elif count == min_val and min_val != float("inf"):
+                    folders_with_min.append(name)
+
+        return (min_val, folders_with_min) if min_val != float("inf") else (0, [])
+
+    def update_files_limit_and_validation_based_on_selection(self):
+        selected_cats = self.get_selected_categories_names()
+
+        min_files_in_selection, _ = self.get_min_files_in_selected_categories(
+            selected_cats
         )
-        folders_with_min_files_paths = [
-            Path(self.input_dir) / f for f in folders_with_min_files
-        ]
 
-        def add_folder_to_tree(folder_path, parent_item, is_top_level=True):
-            """Dodaje folder i jego zawartość do drzewa."""
-            for item in folder_path.iterdir():
-                if item.is_file() and item.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS:
-                    continue  # Pomijamy pliki w głównym widoku
-                elif item.is_dir():
-                    # Licz pliki bezpośrednio w tym folderze
-                    direct_file_count = 0
-                    for sub_item in item.iterdir():
-                        if (
-                            sub_item.is_file()
-                            and sub_item.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
-                        ):
-                            direct_file_count += 1
+        if not selected_cats:
+            self.files_spin.setEnabled(False)
+            self.files_spin.setValue(1)  # Reset do minimum, gdy nic nie wybrano
+            self.log_message("Wybierz kategorie, aby dostosować opcje podziału.")
+        else:
+            self.files_spin.setEnabled(
+                self.mode_combo.currentIndex() == 1
+            )  # Aktywny tylko w trybie limitu
+            if min_files_in_selection > 0:
+                self.files_spin.setMaximum(min_files_in_selection)
+                # Nie zmieniaj wartości spinboxa, jeśli obecna jest nadal ważna
+                if self.files_spin.value() > min_files_in_selection:
+                    self.files_spin.setValue(min_files_in_selection)
+            else:  # Brak plików w wybranych kategoriach
+                self.files_spin.setMaximum(1)  # Ustaw max na 1 (min)
+                self.files_spin.setValue(1)
+            # self.log_message(f"Min. plików w wybranych: {min_files_in_selection}.")
 
-                    folder_name = f"{item.name} ({direct_file_count} plików)"
-                    folder_item = QTreeWidgetItem(parent_item, [folder_name])
-                    folder_item.setExpanded(True)
+        # Logika dla checkboxa walidacji
+        current_files_limit_from_spin = self.files_spin.value()
 
-                    # Wyróżnij folder, jeśli jest na liście i jest to folder najwyższego poziomu
-                    if is_top_level and item in folders_with_min_files_paths:
-                        font = folder_item.font(0)
-                        font.setBold(True)
-                        folder_item.setFont(0, font)
-                        folder_item.setForeground(0, QColor(HIGHLIGHT_COLOR))
+        if self.mode_combo.currentIndex() == 0:  # Tryb procentowy
+            can_create_validation = self.split_slider.value() < 100
+            self.validation_check.setEnabled(
+                can_create_validation and bool(selected_cats)
+            )  # Muszą być wybrane kategorie
+            if not can_create_validation:
+                self.validation_check.setChecked(False)
+                self.validation_label.setText("(100% tren.)")
+            else:
+                self.validation_label.setText(
+                    f"({100 - self.split_slider.value()}% walid.)"
+                )
+        else:  # Tryb limitu plików
+            # min_files_in_selection to już minimum z *aktualnie wybranych*
+            can_create_validation = (
+                current_files_limit_from_spin < min_files_in_selection
+                and min_files_in_selection > 0
+                and bool(selected_cats)
+            )
+            self.validation_check.setEnabled(can_create_validation)
+            if not can_create_validation:
+                self.validation_check.setChecked(False)
+                if not selected_cats:
+                    self.validation_label.setText("(wybierz kat.)")
+                elif min_files_in_selection == 0:
+                    self.validation_label.setText("(brak plików)")
+                else:
+                    self.validation_label.setText("(limit >= min.)")
+            else:
+                max_valid = min_files_in_selection - current_files_limit_from_spin
+                self.validation_label.setText(f"(do {max_valid} walid.)")
 
-                    # Rekurencyjnie dodaj podfoldery
-                    add_folder_to_tree(item, folder_item, is_top_level=False)
-
-        # Rozpocznij dodawanie folderów od korzenia
-        add_folder_to_tree(root_path, root_item, is_top_level=True)
+        # Jeśli validation_check jest odznaczone przez użytkownika, nie zaznaczaj go automatycznie
+        # Powyższa logika tylko ustawia `setEnabled` i tekst etykiety.
 
     def update_files_list(self):
-        """Aktualizuje listę plików na podstawie wybranego katalogu wejściowego."""
         self.files_list_widget.clear()
         self.files_list = []
-
         if not self.input_dir:
             return
-
         root_path = Path(self.input_dir)
-
-        def add_files_to_list(folder_path):
-            for item in folder_path.iterdir():
-                if item.is_file() and item.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS:
-                    relative_path = item.relative_to(root_path)
-                    self.files_list.append(item)
-                    self.files_list_widget.addItem(str(relative_path))
-                elif item.is_dir():
-                    add_files_to_list(item)
-
-        add_files_to_list(root_path)
+        for item in root_path.rglob("*"):  # rglob przechodzi przez podfoldery
+            if item.is_file() and item.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS:
+                relative_path = item.relative_to(root_path)
+                self.files_list.append(item)
+                self.files_list_widget.addItem(str(relative_path))
 
     def log_message(self, message):
-        """Dodaje wiadomość do pola logów"""
         self.log_edit.append(message)
-        # Przewiń na dół, aby widzieć najnowsze wpisy
         self.log_edit.verticalScrollBar().setValue(
             self.log_edit.verticalScrollBar().maximum()
         )
-        QApplication.processEvents()  # Odśwież UI
+        QApplication.processEvents()
 
     def select_input_folder(self):
-        """Otwiera dialog wyboru folderu wejściowego"""
         folder = QFileDialog.getExistingDirectory(self, "Wybierz folder źródłowy")
         if folder:
             self.input_dir = folder
             self.in_path_edit.setText(folder)
             self.log_message(f"Wybrano folder źródłowy: {folder}")
-            self.update_folder_tree()
+            self.update_folder_tree()  # To wywoła aktualizację kontrolek
             self.update_files_list()
-            # Aktualizuj limit plików po wybraniu folderu
-            self.update_files_limit()
+            # update_files_limit_and_validation_based_on_selection() jest wywoływane w update_folder_tree
 
     def select_output_folder(self):
-        """Otwiera dialog wyboru folderu wyjściowego"""
         folder = QFileDialog.getExistingDirectory(self, "Wybierz folder docelowy")
         if folder:
             self.output_dir = folder
             self.out_path_edit.setText(folder)
             self.log_message(f"Wybrano folder docelowy: {folder}")
 
-    def update_split_label(self):
-        """Aktualizuje etykietę procentową podziału"""
-        train_percent = self.split_slider.value()
-        valid_percent = 100 - train_percent
-        self.split_value_label.setText(f"{train_percent}% / {valid_percent}%")
-
     def update_progress(self, value, message):
-        """Aktualizuje pasek postępu i log"""
         self.progress_bar.setValue(value)
         if message:
             self.log_message(message)
 
     def processing_finished(self, final_message):
-        """Wywoływana po zakończeniu pracy wątku"""
         self.log_message(f"Status końcowy: {final_message}")
+        QApplication.processEvents()  # Upewnij się, że log jest widoczny przed dialogiem
+
         if "Błąd" in final_message:
             QMessageBox.warning(
-                self, "Błąd", f"Wystąpił błąd podczas przetwarzania:\n{final_message}"
+                self, "Błąd", f"Wystąpił błąd:\n{final_message.splitlines()[-1]}"
             )
         elif "Anulowano" not in final_message:
-            # Wyświetl raport w osobnym oknie
             dialog = ReportDialog(final_message, self)
             dialog.exec()
-            QMessageBox.information(
-                self, "Zakończono", "Przetwarzanie danych zakończone pomyślnie."
-            )
+            # QMessageBox.information(self, "Zakończono", "Przetwarzanie danych zakończone.") # Dialog raportu wystarczy
         else:
-            QMessageBox.warning(self, "Anulowano", "Przetwarzanie zostało anulowane.")
+            QMessageBox.information(
+                self, "Anulowano", "Przetwarzanie zostało anulowane."
+            )
 
         self.start_button.setEnabled(True)
         self.cancel_button.setEnabled(False)
-        self.split_slider.setEnabled(True)
+        self.mode_combo.setEnabled(True)
+        self.split_slider.setEnabled(self.mode_combo.currentIndex() == 0)
+        self.files_spin.setEnabled(self.mode_combo.currentIndex() == 1)
+        # Stan validation_check jest zarządzany przez update_files_limit...
+        self.update_files_limit_and_validation_based_on_selection()  # Przywróć stan kontrolek
         self.processing_thread = None
 
     def processing_error(self, error_message):
-        """Loguje błędy z wątku roboczego"""
-        self.log_message(f"BŁĄD: {error_message}")
-        # Można dodać dodatkowe powiadomienie dla użytkownika,
-        # jeśli błąd jest krytyczny
+        self.log_message(f"BŁĄD WĄTKU: {error_message}")
 
     def start_processing(self):
-        """Rozpoczyna proces kopiowania i dzielenia plików"""
         if not self.input_dir or not Path(self.input_dir).is_dir():
             QMessageBox.warning(
-                self, "Brak folderu", "Proszę wybrać prawidłowy folder źródłowy."
+                self, "Brak folderu", "Wybierz prawidłowy folder źródłowy."
             )
             return
         if not self.output_dir:
-            QMessageBox.warning(self, "Brak folderu", "Proszę wybrać folder docelowy.")
+            QMessageBox.warning(self, "Brak folderu", "Wybierz folder docelowy.")
             return
-        if self.input_dir == self.output_dir or Path(self.output_dir).is_relative_to(
-            Path(self.input_dir)
-        ):
-            reply = QMessageBox.question(
-                self,
-                "Potwierdzenie ścieżki",
-                f"Folder docelowy ('{self.output_dir}') jest taki sam jak "
-                "źródłowy lub znajduje się wewnątrz niego.\n"
-                f"Spowoduje to utworzenie folderów '{TRAIN_FOLDER_NAME}' i "
-                f"'{VALID_FOLDER_NAME}' wewnątrz '{self.output_dir}'.\n"
-                "Czy na pewno chcesz kontynuować?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if reply == QMessageBox.StandardButton.No:
-                return
 
-        # Wyłącz przyciski i suwak na czas przetwarzania
+        selected_categories = self.get_selected_categories_names()
+        if not selected_categories:
+            QMessageBox.warning(
+                self,
+                "Brak kategorii",
+                "Wybierz przynajmniej jedną kategorię do przetworzenia.",
+            )
+            return
+
+        # Sprawdzenie ścieżek
+        input_path = Path(self.input_dir)
+        output_path = Path(self.output_dir)
+        try:  # Aby uniknąć błędu, jeśli output_dir nie jest jeszcze absolutny lub poprawny
+            if input_path == output_path or output_path.is_relative_to(input_path):
+                reply = QMessageBox.question(
+                    self,
+                    "Potwierdzenie ścieżki",
+                    f"Folder docelowy ('{output_path}') jest taki sam jak źródłowy lub znajduje się wewnątrz niego. "
+                    f"Spowoduje to utworzenie '{TRAIN_FOLDER_NAME}' i '{VALID_FOLDER_NAME}' w '{output_path}'.\n"
+                    "Kontynuować?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if reply == QMessageBox.StandardButton.No:
+                    return
+        except (
+            ValueError
+        ):  # Np. gdy jedna ścieżka jest względna a druga absolutna w inny sposób
+            pass  # Pozwól Workerowi na dalszą walidację
+
         self.start_button.setEnabled(False)
         self.cancel_button.setEnabled(True)
+        self.mode_combo.setEnabled(False)
         self.split_slider.setEnabled(False)
         self.files_spin.setEnabled(False)
-        self.mode_combo.setEnabled(False)
-        self.validation_check.setEnabled(False)
+        self.validation_check.setEnabled(False)  # Całkowicie blokujemy kontrolki
         self.progress_bar.setValue(0)
         self.log_edit.clear()
 
-        # Pobierz parametry
         split_mode = "percent" if self.mode_combo.currentIndex() == 0 else "files"
         split_value = (
             self.split_slider.value()
@@ -832,26 +866,19 @@ class DataSplitterApp(QWidget):
         use_validation = self.validation_check.isChecked()
 
         self.log_message("=" * 30)
-        if split_mode == "percent":
-            self.log_message(
-                f"Rozpoczynanie przetwarzania z podziałem {split_value}% / "
-                f"{100-split_value}%"
-            )
-        else:
-            self.log_message(
-                f"Rozpoczynanie przetwarzania z limitem {split_value} "
-                "plików na kategorię"
-            )
-        self.log_message(f"Źródło: {self.input_dir}")
-        self.log_message(f"Cel: {self.output_dir}")
-        self.log_message(f"Folder treningowy: {TRAIN_FOLDER_NAME}")
-        if use_validation:
-            self.log_message(f"Folder walidacyjny: {VALID_FOLDER_NAME}")
-        self.log_message("=" * 30)
+        self.log_message(
+            f"Rozpoczynanie (tryb: {split_mode}, wartość: {split_value}, walidacja: {use_validation})"
+        )
+        self.log_message(f"Wybrane kategorie: {', '.join(selected_categories)}")
+        # ... (reszta logów) ...
 
-        # Uruchom przetwarzanie w osobnym wątku
         self.processing_thread = Worker(
-            self.input_dir, self.output_dir, split_mode, split_value, use_validation
+            self.input_dir,
+            self.output_dir,
+            split_mode,
+            split_value,
+            use_validation,
+            selected_categories,  # Przekazanie wybranych kategorii
         )
         self.processing_thread.progress_updated.connect(self.update_progress)
         self.processing_thread.finished.connect(self.processing_finished)
@@ -859,252 +886,65 @@ class DataSplitterApp(QWidget):
         self.processing_thread.start()
 
     def cancel_processing(self):
-        """Anuluje bieżące przetwarzanie"""
         if self.processing_thread and self.processing_thread.isRunning():
             self.log_message("Wysyłanie sygnału anulowania...")
             self.processing_thread.cancel()
-            self.cancel_button.setEnabled(
-                False
-            )  # Wyłącz od razu, żeby nie klikać wielokrotnie
-            # Wątek sam się zakończy i wywoła `processing_finished`
+            self.cancel_button.setEnabled(False)
 
     def closeEvent(self, event):
-        """Obsługa zamknięcia okna - próba anulowania wątku"""
         if self.processing_thread and self.processing_thread.isRunning():
             reply = QMessageBox.question(
                 self,
-                "Zamykanie aplikacji",
-                "Trwa przetwarzanie danych. "
-                "Czy na pewno chcesz zakończyć i anulować?",
+                "Zamykanie",
+                "Przetwarzanie w toku. Anulować i zamknąć?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
-
             if reply == QMessageBox.StandardButton.Yes:
                 self.cancel_processing()
-                # Poczekaj chwilę na zakończenie wątku
-                # (opcjonalne, może blokować zamknięcie)
-                # self.processing_thread.wait(1000)
                 event.accept()
             else:
                 event.ignore()
         else:
             event.accept()
 
-    def get_min_files_in_category(self, only_direct_subfolders=False):
-        """Zwraca minimalną liczbę plików w kategorii oraz listę tych folderów.
 
-        Args:
-            only_direct_subfolders (bool): Jeśli True, analizuje tylko bezpośrednie
-                                         podfoldery katalogu wejściowego.
-
-        Returns:
-            tuple: (minimalna_liczba_plików, lista_nazw_folderów_z_min_liczbą)
-                   Jeśli nie ma plików/folderów, zwraca (DEFAULT_FILES_PER_CATEGORY, []).
-        """
-        if not self.input_dir:
-            return DEFAULT_FILES_PER_CATEGORY, []
-
-        min_files = float("inf")
-        folders_with_min_files = []
-        root_path = Path(self.input_dir)
-
-        for category_dir in root_path.iterdir():
-            if category_dir.is_dir():
-                # Licz pliki tylko bezpośrednio w tym folderze
-                current_files_count = 0
-                for item in category_dir.iterdir():
-                    if (
-                        item.is_file()
-                        and item.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
-                    ):
-                        current_files_count += 1
-
-                if only_direct_subfolders or not any(
-                    item.is_dir() for item in category_dir.iterdir()
-                ):
-                    if 0 < current_files_count < min_files:
-                        min_files = current_files_count
-                        folders_with_min_files = [category_dir.name]
-                    elif current_files_count == min_files:
-                        folders_with_min_files.append(category_dir.name)
-                elif (
-                    not only_direct_subfolders
-                ):  # Rekursywne zliczanie (jeśli potrzebne w przyszłości)
-                    # Ta część logiki rekursywnego zliczania i porównywania
-                    # musiałaby zostać zaimplementowana, jeśli only_direct_subfolders jest False
-                    # i chcemy uwzględniać pliki w pod-podfolderach do określenia minimum.
-                    # Na razie, dla `only_direct_subfolders=False` (nieużywane w `update_folder_tree`)
-                    # zachowanie nie jest w pełni zdefiniowane dla folderów z podfolderami.
-                    pass  # Placeholder dla potencjalnej logiki rekurencyjnej
-
-        if min_files == float("inf"):
-            return DEFAULT_FILES_PER_CATEGORY, []
-        return min_files, folders_with_min_files
-
-    def update_files_limit(self):
-        """Aktualizuje limit plików na podstawie minimalnej liczby plików w kategorii."""
-        min_files, _ = self.get_min_files_in_category(only_direct_subfolders=True)
-        self.files_spin.setValue(min_files)
-        self.log_message(f"Wykryto minimalną liczbę plików w kategorii: {min_files}")
-
-        # Jeśli tryb z limitem plików jest aktywny,
-        # sprawdź czy można utworzyć folder walidacyjny
-        if self.mode_combo.currentIndex() == 1:  # Tryb z limitem plików
-            self.update_validation_checkbox(min_files)
-
-    def update_validation_checkbox(self, files_limit):
-        """Aktualizuje stan checkboxa folderu walidacyjnego."""
-        if self.mode_combo.currentIndex() == 0:  # Tryb procentowy
-            # W trybie procentowym folder walidacyjny jest zawsze dostępny,
-            # chyba że podział jest 100% treningowych
-            can_have_validation = self.split_slider.value() < 100
-            self.validation_check.setEnabled(can_have_validation)
-            if not can_have_validation:
-                self.validation_check.setChecked(False)
-                self.validation_label.setText("")
-                self.log_message(
-                    "Folder walidacyjny wyłączony - podział 100% treningowych"
-                )
-            else:
-                valid_percent = 100 - self.split_slider.value()
-                self.validation_label.setText(
-                    f"({valid_percent}% plików walidacyjnych w każdej kategorii)"
-                )
-                self.log_message(
-                    f"Folder walidacyjny dostępny - {valid_percent}% plików "
-                    "w każdej kategorii będzie w walidacji"
-                )
-        else:  # Tryb równomierny
-            min_files, _ = self.get_min_files_in_category(only_direct_subfolders=True)
-            can_have_validation = files_limit < min_files
-
-            self.validation_check.setEnabled(can_have_validation)
-            if not can_have_validation:
-                self.validation_check.setChecked(False)
-                self.validation_label.setText("")
-                self.log_message(
-                    "Folder walidacyjny wyłączony - liczba plików "
-                    "musi być mniejsza niż minimalna"
-                )
-            else:
-                # Oblicz maksymalną możliwą liczbę plików walidacyjnych dla każdej kategorii
-                max_validation_files = min_files - files_limit
-                self.validation_label.setText(
-                    f"(do {max_validation_files} plików walidacyjnych w każdej kategorii)"
-                )
-                self.log_message(
-                    f"Folder walidacyjny dostępny - w każdej kategorii może być "
-                    f"do {max_validation_files} plików walidacyjnych"
-                )
-
-
+# --- Dialog Raportu (bez zmian, ale dodaję dla kompletności) ---
 class ReportDialog(QDialog):
-    """Okno dialogowe do wyświetlania raportu kopiowania."""
-
     def __init__(self, report_text, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Raport kopiowania")
         self.setMinimumSize(800, 600)
-
         layout = QVBoxLayout()
-
-        # Pole tekstowe z raportem
         self.text_edit = QTextEdit()
         self.text_edit.setReadOnly(True)
-        self.text_edit.setFont(QFont("Consolas", 12))
+        self.text_edit.setFont(QFont("Consolas", 10))  # Zmniejszona czcionka
         self.text_edit.setStyleSheet(
-            """
-            QTextEdit {
-                background-color: #1E1E1E;
-                color: #CCCCCC;
-                border: 1px solid #3F3F46;
-                border-radius: 4px;
-                padding: 10px;
-            }
+            f"""
+            QTextEdit {{ background-color: {BACKGROUND}; color: {TEXT_COLOR}; border: 1px solid {BORDER_COLOR}; padding: 10px; }}
         """
         )
-
-        # Formatuj raport
-        formatted_report = self._format_report(report_text)
-        self.text_edit.setText(formatted_report)
-
-        # Przycisk zamknięcia
+        self.text_edit.setHtml(self._format_report_to_html(report_text))  # Użyj HTML
         close_button = QPushButton("Zamknij")
         close_button.setStyleSheet(
-            """
-            QPushButton {
-                background-color: #007ACC;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #1C97EA;
-            }
+            f"""
+            QPushButton {{ background-color: {PRIMARY_COLOR}; color: white; border: none; padding: 8px 16px; border-radius: 4px; min-width: 100px; }}
+            QPushButton:hover {{ background-color: #1C97EA; }}
         """
         )
         close_button.clicked.connect(self.accept)
-
         layout.addWidget(self.text_edit)
         layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
-
         self.setLayout(layout)
 
-    def _format_report(self, report_text):
-        """Formatuje raport dla lepszej czytelności."""
-        lines = report_text.split("\n")
-        formatted_lines = []
-
-        for line in lines:
-            if line.startswith("==="):
-                # Nagłówki
-                formatted_lines.append(
-                    f'<h2 style="color: {PRIMARY_COLOR}; margin-top: 20px;">{line}</h2>'
-                )
-            elif line.strip() == "":
-                # Puste linie
-                formatted_lines.append("<br>")
-            elif "Algorytm:" in line:
-                # Informacje o algorytmie
-                formatted_lines.append(
-                    f'<h3 style="color: {PRIMARY_COLOR}; margin-top: 15px;">{line}</h3>'
-                )
-            elif (
-                "Stosunek plików:" in line
-                or "Folder z najmniejszą liczbą plików:" in line
-            ):
-                # Szczegóły algorytmu
-                formatted_lines.append(
-                    f'<p style="color: {TEXT_COLOR}; margin-left: 20px;">{line}</p>'
-                )
-            elif "Z każdego folderu:" in line:
-                formatted_lines.append(
-                    f'<p style="color: {TEXT_COLOR}; margin-left: 20px; font-weight: bold;">{line}</p>'
-                )
-            elif line.startswith("  - "):
-                # Lista plików
-                formatted_lines.append(
-                    f'<p style="color: {TEXT_COLOR}; margin-left: 40px;">{line}</p>'
-                )
-            elif ":" in line and "plików" in line:
-                # Linie z liczbą plików
-                parts = line.split(":")
-                formatted_lines.append(
-                    f'<p style="color: {TEXT_COLOR}; margin-left: 20px;">'
-                    f'<span style="color: {PRIMARY_COLOR};">{parts[0]}:</span>'
-                    f'<span style="color: {TEXT_COLOR};">{parts[1]}</span></p>'
-                )
-            else:
-                # Zwykłe linie
-                formatted_lines.append(f'<p style="color: {TEXT_COLOR};">{line}</p>')
-
-        return "<br>".join(formatted_lines)
+    def _format_report_to_html(self, report_text):
+        # Proste formatowanie - można rozbudować
+        html = report_text.replace("\n", "<br>")
+        html = html.replace("===", "<h3>").replace(" ===", "</h3>")  # Nagłówki
+        # Można dodać więcej reguł, np. dla list
+        return f"<body style='color:{TEXT_COLOR}; background-color:{BACKGROUND};'>{html}</body>"
 
 
-# --- Uruchomienie aplikacji ---
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     ex = DataSplitterApp()

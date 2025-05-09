@@ -426,7 +426,9 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             if result == QtWidgets.QDialog.DialogCode.Accepted:
                 task_config = dialog.get_task_config()
                 if task_config:
-                    task_file = os.path.join("data", "tasks", task_config["name"])
+                    # Usuń rozszerzenie .json jeśli już istnieje w nazwie
+                    task_name = task_config["name"].replace(".json", "")
+                    task_file = os.path.join("data", "tasks", f"{task_name}.json")
                     os.makedirs(os.path.dirname(task_file), exist_ok=True)
                     with open(task_file, "w", encoding="utf-8") as f:
                         json.dump(task_config, f, indent=4)
@@ -609,12 +611,53 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             self.parent.task_progress_details.setText("")
             self.parent.stop_task_btn.setEnabled(False)
 
-            # Zmień status zadania na 'Zakończony'
-            self.parent.logger.info(
-                f"Zmieniam status zadania {task_name} na 'Zakończony'"
-            )
-            self._set_task_status(task_name, "Zakończony")
-            self.parent.logger.info(f"Status zadania {task_name} został zmieniony")
+            # Zapisz wyniki do pliku zadania
+            tasks_dir = os.path.join("data", "tasks")
+            # Usuń rozszerzenie .json jeśli już istnieje w nazwie
+            task_name = task_name.replace(".json", "")
+            task_file = os.path.join(tasks_dir, f"{task_name}.json")
+
+            if os.path.exists(task_file):
+                try:
+                    # Wczytaj aktualne dane zadania
+                    with open(task_file, "r", encoding="utf-8") as f:
+                        task_data = json.load(f)
+
+                    # Dodaj wyniki treningu
+                    task_data["status"] = "Zakończony"
+                    task_data["model_filename"] = model_filename
+                    task_data["accuracy"] = accuracy
+                    task_data["epochs_trained"] = epochs_trained
+                    task_data["training_time"] = training_time
+                    task_data["training_time_str"] = str(
+                        datetime.timedelta(seconds=int(training_time))
+                    )
+
+                    # Dodaj dodatkowe metryki jeśli są dostępne
+                    if "history" in result:
+                        history = result["history"]
+                        if "train_acc" in history:
+                            task_data["train_accuracy"] = history["train_acc"][-1]
+                        if "train_loss" in history:
+                            task_data["train_loss"] = history["train_loss"][-1]
+                        if "val_acc" in history:
+                            task_data["validation_accuracy"] = history["val_acc"][-1]
+                        if "val_loss" in history:
+                            task_data["validation_loss"] = history["val_loss"][-1]
+
+                    # Zapisz zaktualizowane dane
+                    with open(task_file, "w", encoding="utf-8") as f:
+                        json.dump(task_data, f, indent=4, ensure_ascii=False)
+
+                    self.parent.logger.info(
+                        f"Zapisano wyniki treningu do pliku: {task_file}"
+                    )
+                except Exception as e:
+                    self.parent.logger.error(
+                        f"Błąd podczas zapisywania wyników: {str(e)}"
+                    )
+            else:
+                self.parent.logger.error(f"Nie znaleziono pliku zadania: {task_file}")
 
             # Zapisz wykres treningu
             if hasattr(self, "training_visualization") and self.training_visualization:
@@ -644,6 +687,9 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                     self.parent.logger.error(
                         f"Błąd podczas zapisywania wykresu: {plot_error}"
                     )
+
+            # Odśwież listę zadań
+            self.refresh()
 
         except Exception as e:
             self.parent.logger.error(
@@ -860,6 +906,10 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             # Wyczyść dane wizualizacji przed rozpoczęciem nowego zadania
             if hasattr(self, "training_visualization") and self.training_visualization:
                 self.training_visualization.clear_data()
+
+            # Usuń rozszerzenie .json jeśli już istnieje w nazwie
+            task_name = os.path.basename(task_file).replace(".json", "")
+            task_file = os.path.join("data", "tasks", f"{task_name}.json")
 
             # Utwórz nowy wątek z pojedynczym zadaniem
             self.training_thread = SingleTrainingThread(task_file)
