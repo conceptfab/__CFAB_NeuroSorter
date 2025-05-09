@@ -65,7 +65,7 @@ class ModelManager(QWidget, TabInterface):
 
         # Tabela modeli
         self.models_table = QTableWidget()
-        self.models_table.setColumnCount(11)
+        self.models_table.setColumnCount(10)
         self.models_table.setHorizontalHeaderLabels(
             [
                 "Wybierz",
@@ -73,12 +73,11 @@ class ModelManager(QWidget, TabInterface):
                 "Data utworzenia",
                 "Dokładność",
                 "Rozmiar (MB)",
-                "Status",
+                "Kategorie modelu",
                 "Czas treningu",
-                "Epoki",
-                "Batch size",
-                "Learning rate",
-                "Optimizer",
+                "Architektura modelu",
+                "Wariant modelu",
+                "Optymizer",
             ]
         )
         self.models_table.horizontalHeader().setStretchLastSection(True)
@@ -87,12 +86,11 @@ class ModelManager(QWidget, TabInterface):
         self.models_table.setColumnWidth(2, 150)
         self.models_table.setColumnWidth(3, 80)
         self.models_table.setColumnWidth(4, 80)
-        self.models_table.setColumnWidth(5, 80)
+        self.models_table.setColumnWidth(5, 100)
         self.models_table.setColumnWidth(6, 100)
-        self.models_table.setColumnWidth(7, 60)
-        self.models_table.setColumnWidth(8, 80)
-        self.models_table.setColumnWidth(9, 80)
-        self.models_table.setColumnWidth(10, 100)
+        self.models_table.setColumnWidth(7, 120)
+        self.models_table.setColumnWidth(8, 100)
+        self.models_table.setColumnWidth(9, 120)
         self.models_table.verticalHeader().setVisible(False)
         self.models_table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
@@ -109,53 +107,64 @@ class ModelManager(QWidget, TabInterface):
             new_width = int(width * 1.3)
             self.models_table.setColumnWidth(col, new_width)
 
-        # Przyciski zarządzania modelami
+        # Przyciski
         buttons_layout = QHBoxLayout()
-        buttons_layout.setSpacing(4)
+        buttons_layout.setSpacing(8)  # Odstęp między przyciskami
+
+        # Ustawienia wspólne dla wszystkich przycisków
+        button_width = 120  # Stała szerokość dla wszystkich przycisków
+        button_height = 24  # Stała wysokość dla wszystkich przycisków
 
         self.load_btn = QPushButton("Załaduj model")
-        self.load_btn.setFixedHeight(24)
+        self.load_btn.setFixedSize(button_width, button_height)
+        self.load_btn.setProperty("action", "success")
         buttons_layout.addWidget(self.load_btn)
 
-        self.export_btn = QPushButton("Eksportuj model")
-        self.export_btn.setFixedHeight(24)
-        buttons_layout.addWidget(self.export_btn)
+        self.refresh_btn = QPushButton("Odśwież")
+        self.refresh_btn.setFixedSize(button_width, button_height)
+        self.refresh_btn.setProperty("action", "primary")
+        buttons_layout.addWidget(self.refresh_btn)
 
-        self.export_config_btn = QPushButton("Eksportuj konfigurację")
-        self.export_config_btn.setFixedHeight(24)
-        buttons_layout.addWidget(self.export_config_btn)
-
-        self.import_config_btn = QPushButton("Importuj konfigurację")
-        self.import_config_btn.setFixedHeight(24)
-        buttons_layout.addWidget(self.import_config_btn)
-
-        self.delete_btn = QPushButton("Usuń model")
-        self.delete_btn.setFixedHeight(24)
-        buttons_layout.addWidget(self.delete_btn)
-
-        self.rename_btn = QPushButton("Zmień nazwę")
-        self.rename_btn.setFixedHeight(24)
-        buttons_layout.addWidget(self.rename_btn)
-
-        self.clone_btn = QPushButton("Klonuj model")
-        self.clone_btn.setFixedHeight(24)
-        buttons_layout.addWidget(self.clone_btn)
-
-        self.show_mapping_btn = QPushButton("Pokaż mapowanie")
-        self.show_mapping_btn.setFixedHeight(24)
-        buttons_layout.addWidget(self.show_mapping_btn)
+        self.class_mapping_btn = QPushButton("Mapowanie klas")
+        self.class_mapping_btn.setFixedSize(button_width, button_height)
+        buttons_layout.addWidget(self.class_mapping_btn)
 
         self.stats_btn = QPushButton("Statystyki")
-        self.stats_btn.setFixedHeight(24)
+        self.stats_btn.setFixedSize(button_width, button_height)
         buttons_layout.addWidget(self.stats_btn)
 
         self.compare_btn = QPushButton("Porównaj modele")
-        self.compare_btn.setFixedHeight(24)
+        self.compare_btn.setFixedSize(button_width, button_height)
         buttons_layout.addWidget(self.compare_btn)
 
-        self.refresh_btn = QPushButton("Odśwież")
-        self.refresh_btn.setFixedHeight(24)
-        buttons_layout.addWidget(self.refresh_btn)
+        buttons_layout.addStretch()
+
+        self.rename_btn = QPushButton("Zmień nazwę")
+        self.rename_btn.setFixedSize(button_width, button_height)
+        buttons_layout.addWidget(self.rename_btn)
+
+        self.clone_btn = QPushButton("Klonuj model")
+        self.clone_btn.setFixedSize(button_width, button_height)
+        buttons_layout.addWidget(self.clone_btn)
+
+        self.export_btn = QPushButton("Eksportuj model")
+        self.export_btn.setFixedSize(button_width, button_height)
+        buttons_layout.addWidget(self.export_btn)
+
+        self.export_config_btn = QPushButton("Eksportuj konfig")
+        self.export_config_btn.setFixedSize(button_width, button_height)
+        buttons_layout.addWidget(self.export_config_btn)
+
+        self.import_config_btn = QPushButton("Importuj konfig")
+        self.import_config_btn.setFixedSize(button_width, button_height)
+        buttons_layout.addWidget(self.import_config_btn)
+
+        buttons_layout.addStretch()
+
+        self.delete_btn = QPushButton("Usuń model")
+        self.delete_btn.setFixedSize(button_width, button_height)
+        self.delete_btn.setProperty("action", "warning")
+        buttons_layout.addWidget(self.delete_btn)
 
         models_layout.addLayout(buttons_layout)
         layout.addWidget(models_panel, 1)
@@ -169,7 +178,7 @@ class ModelManager(QWidget, TabInterface):
         self.delete_btn.clicked.connect(self._delete_selected_model)
         self.rename_btn.clicked.connect(self._rename_selected_model)
         self.clone_btn.clicked.connect(self._clone_selected_model)
-        self.show_mapping_btn.clicked.connect(self._show_class_mapping)
+        self.class_mapping_btn.clicked.connect(self._show_class_mapping)
         self.stats_btn.clicked.connect(self._show_model_stats)
         self.compare_btn.clicked.connect(self._compare_models)
         self.refresh_btn.clicked.connect(self.refresh)
@@ -228,9 +237,9 @@ class ModelManager(QWidget, TabInterface):
                 config_path = os.path.splitext(model_path)[0] + "_config.json"
                 accuracy = "Nieznana"
                 training_time = "Nieznany"
-                epochs = "Nieznana"
-                batch_size = "Nieznany"
-                learning_rate = "Nieznany"
+                categories = "Nieznane"
+                architecture = "Nieznana"
+                variant = "Nieznany"
                 optimizer = "Nieznany"
 
                 if os.path.exists(config_path):
@@ -255,61 +264,42 @@ class ModelManager(QWidget, TabInterface):
                                         training_time = f"{float(train_time_val):.1f}s"
                                     except Exception:
                                         training_time = str(train_time_val)
-                                training_params = metadata.get(
-                                    "training_params", {}
-                                ).get("config", {})
-                                if training_params:
-                                    ep_val = training_params.get("epochs", "Nieznana")
-                                    if isinstance(ep_val, dict):
-                                        epochs = "Nieznana"
-                                    else:
-                                        epochs = str(ep_val)
-                                    bs_val = training_params.get(
-                                        "batch_size", "Nieznany"
-                                    )
-                                    if isinstance(bs_val, dict):
-                                        batch_size = "Nieznany"
-                                    else:
-                                        batch_size = str(bs_val)
-                                    lr_val = training_params.get(
-                                        "learning_rate", "Nieznany"
-                                    )
-                                    if isinstance(lr_val, dict):
-                                        learning_rate = "Nieznany"
-                                    else:
-                                        learning_rate = str(lr_val)
-                                    opt_val = training_params.get(
-                                        "optimizer", "Nieznany"
-                                    )
-                                    if isinstance(opt_val, dict):
-                                        optimizer = "Nieznany"
-                                    else:
-                                        optimizer = str(opt_val)
+
+                                # Pobierz kategorie modelu
+                                class_names = metadata.get("class_names", {})
+                                categories = (
+                                    len(class_names)
+                                    if isinstance(class_names, dict)
+                                    else "Nieznane"
+                                )
+
+                                # Pobierz architekturę modelu
+                                training_params = metadata.get("training_params", {})
+                                config = training_params.get("config", {})
+                                model_config = config.get("model", {})
+                                architecture = model_config.get(
+                                    "architecture", "Nieznana"
+                                )
+
+                                # Pobierz wariant modelu
+                                variant = model_config.get("variant", "Nieznany")
+
+                                # Pobierz optimizer z treningu
+                                training_config = config.get("training", {})
+                                optimizer = training_config.get("optimizer", "Nieznany")
                     except Exception:
                         pass
+
                 self.models_table.setItem(row, 3, QTableWidgetItem(accuracy))
+                self.models_table.setItem(row, 5, QTableWidgetItem(str(categories)))
                 self.models_table.setItem(row, 6, QTableWidgetItem(training_time))
-                self.models_table.setItem(row, 7, QTableWidgetItem(epochs))
-                self.models_table.setItem(row, 8, QTableWidgetItem(batch_size))
-                self.models_table.setItem(row, 9, QTableWidgetItem(learning_rate))
-                self.models_table.setItem(row, 10, QTableWidgetItem(optimizer))
+                self.models_table.setItem(row, 7, QTableWidgetItem(str(architecture)))
+                self.models_table.setItem(row, 8, QTableWidgetItem(str(variant)))
+                self.models_table.setItem(row, 9, QTableWidgetItem(str(optimizer)))
 
                 # Rozmiar pliku
                 size_mb = os.path.getsize(model_path) / (1024 * 1024)
                 self.models_table.setItem(row, 4, QTableWidgetItem(f"{size_mb:.2f} MB"))
-
-                # Status
-                status = ""
-                if hasattr(self.parent, "model_loaded") and hasattr(
-                    self.parent, "model_path"
-                ):
-                    if (
-                        self.parent.model_loaded
-                        and self.parent.model_path
-                        and os.path.basename(self.parent.model_path) == model
-                    ):
-                        status = "Aktywny"
-                self.models_table.setItem(row, 5, QTableWidgetItem(status))
 
             # Dostosuj szerokość kolumn
             self.models_table.resizeColumnsToContents()

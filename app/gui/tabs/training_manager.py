@@ -318,23 +318,32 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         )
         add_task_layout.addWidget(add_task_header)
 
+        # Kontener na elementy w jednej linii
+        controls_container = QtWidgets.QWidget()
+        controls_layout = QtWidgets.QHBoxLayout(controls_container)
+        controls_layout.setContentsMargins(0, 0, 0, 0)
+        controls_layout.setSpacing(8)
+
         # Wybór typu zadania
-        task_type_layout = QtWidgets.QHBoxLayout()
         task_type_label = QtWidgets.QLabel("Typ zadania:")
         task_type_label.setFixedWidth(120)
         self.task_type_combo = QtWidgets.QComboBox()
         self.task_type_combo.addItems(
-            ["Training nowego modelu", "Doszkalanie istniejącego modelu"]
+            ["Trening nowego modelu", "Doszkalanie istniejącego modelu"]
         )
-
-        task_type_layout.addWidget(task_type_label)
-        task_type_layout.addWidget(self.task_type_combo)
-        add_task_layout.addLayout(task_type_layout)
 
         # Przycisk dodania zadania
         self.add_task_btn = QtWidgets.QPushButton("Dodaj zadanie do kolejki")
         self.add_task_btn.setFixedHeight(24)
-        add_task_layout.addWidget(self.add_task_btn)
+
+        # Dodaj wszystkie elementy do layoutu poziomego
+        controls_layout.addWidget(task_type_label)
+        controls_layout.addWidget(self.task_type_combo)
+        controls_layout.addWidget(self.add_task_btn)
+        controls_layout.addStretch(1)  # Dodaj rozciągnięcie na końcu
+
+        # Dodaj kontener do głównego layoutu
+        add_task_layout.addWidget(controls_container)
 
         parent_layout.addWidget(add_task_panel)
 
@@ -413,7 +422,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             task_type = self.task_type_combo.currentText()
 
             # Wybierz odpowiedni dialog w zależności od typu zadania
-            if task_type == "Training nowego modelu":
+            if task_type == "Trening nowego modelu":
                 dialog = TrainingTaskConfigDialog(
                     parent=self,
                     settings=self.settings,

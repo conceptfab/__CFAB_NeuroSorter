@@ -158,8 +158,8 @@ class MainWindow(QMainWindow):
         try:
             # Kolory zgodne z Material Design i VS Code
             primary_color = "#007ACC"  # Niebieski VS Code
-            # primary_variant = "#005A9E"  # Ciemniejszy niebieski - usunięto nieużywaną zmienną
-            # secondary_color = "#1E1E1E"  # Ciemny szary - usunięto nieużywaną zmienną
+            success_color = "#10B981"  # Zielony
+            warning_color = "#DC2626"  # Czerwony
             background = "#1E1E1E"  # Ciemne tło
             surface = "#252526"  # Lekko jaśniejsze tło dla paneli
             border_color = "#3F3F46"  # Kolor obramowania
@@ -186,6 +186,39 @@ class MainWindow(QMainWindow):
                 }}
                 QPushButton:pressed {{
                     background-color: #3E3E40;
+                }}
+                QPushButton[action="primary"] {{
+                    background-color: {primary_color};
+                    color: white;
+                    border: none;
+                }}
+                QPushButton[action="primary"]:hover {{
+                    background-color: #1C97EA;
+                }}
+                QPushButton[action="primary"]:pressed {{
+                    background-color: #005A9E;
+                }}
+                QPushButton[action="warning"] {{
+                    background-color: {warning_color};
+                    color: white;
+                    border: none;
+                }}
+                QPushButton[action="warning"]:hover {{
+                    background-color: #EF4444;
+                }}
+                QPushButton[action="warning"]:pressed {{
+                    background-color: #B91C1C;
+                }}
+                QPushButton[action="success"] {{
+                    background-color: {success_color};
+                    color: white;
+                    border: none;
+                }}
+                QPushButton[action="success"]:hover {{
+                    background-color: #34D399;
+                }}
+                QPushButton[action="success"]:pressed {{
+                    background-color: #059669;
                 }}
                 QTabWidget::pane {{
                     border: 1px solid {border_color};
