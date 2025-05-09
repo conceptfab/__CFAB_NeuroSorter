@@ -1,62 +1,98 @@
 [
     {
+        "date": "2025-05-10T00:41:57.958908",
+        "image_path": "F:/______training_database_V2/animal/1029298.58f8d5abeabbd.jpg",
         "class_name": "animal",
-        "confidence": 0.9921875,
-        "date": "2025-05-09T21:43:20.063449",
-        "image_path": "F:/______training_database_V2/animal/73204.5304fbb771471.jpg"
+        "confidence": 0.93896484375
     },
     {
-        "class_name": "arm_chair",
-        "confidence": 0.423583984375,
-        "date": "2025-05-09T22:17:51.358767",
-        "image_path": "F:/______training_database_V2/animal/Animated Flying Monarch Butterfly Rigged for Cinema 4D.jpg"
-    },
-    {
+        "date": "2025-05-10T00:42:06.668806",
+        "image_path": "F:/______training_database_V2/animal/Black Photon Clownfish.thumb.jpeg",
         "class_name": "animal",
-        "confidence": 0.98828125,
-        "date": "2025-05-09T22:18:32.711330",
-        "image_path": "F:/______training_database_V2/animal/blackhead-ball-python.jpeg"
+        "confidence": 0.888671875
     },
     {
+        "date": "2025-05-10T00:42:12.549971",
+        "image_path": "F:/______training_database_V2/animal/Cat with pillow.jpg",
         "class_name": "animal",
-        "confidence": 0.9990234375,
-        "date": "2025-05-09T22:19:09.479831",
-        "image_path": "F:/______training_database_V2/animal/American Bald Eagle Animated.jpg"
+        "confidence": 0.8125
     },
     {
-        "date": "2025-05-09T23:23:27.990529",
-        "image_path": "F:/______training_database_V2/animal/animated-snakes-pack.jpeg",
+        "date": "2025-05-10T00:42:18.043025",
+        "image_path": "F:/______training_database_V2/animal/Dove (Animated).jpg",
+        "class_name": "animal",
+        "confidence": 0.5751953125
+    },
+    {
+        "date": "2025-05-10T00:42:27.184370",
+        "image_path": "F:/______training_database_V2/childroom/1.jpg",
         "class_name": "childroom",
-        "confidence": 0.302490234375
+        "confidence": 0.466796875
     },
     {
-        "date": "2025-05-09T23:23:40.740037",
-        "image_path": "F:/______training_database_V2/car/3D Taco Foodtruck PBR model.jpg",
-        "class_name": "car",
-        "confidence": 0.978515625
+        "date": "2025-05-10T00:42:32.462232",
+        "image_path": "F:/______training_database_V2/childroom/282054.557dbf2375a3c.jpeg",
+        "class_name": "childroom",
+        "confidence": 0.7578125
     },
     {
-        "date": "2025-05-09T23:23:53.233574",
-        "image_path": "F:/______training_database_V2/car/2156638.5b9e624e6ed82 2.jpg",
-        "class_name": "technology",
-        "confidence": 0.552734375
+        "date": "2025-05-10T00:42:37.560140",
+        "image_path": "F:/______training_database_V2/childroom/612752.57b6b7437b965.jpeg",
+        "class_name": "childroom",
+        "confidence": 0.8330078125
     },
     {
-        "date": "2025-05-09T23:23:59.766909",
-        "image_path": "F:/______training_database_V2/car/15705.526af96ecb3ad.jpg",
-        "class_name": "car",
-        "confidence": 0.978515625
+        "date": "2025-05-10T00:42:42.585263",
+        "image_path": "F:/______training_database_V2/childroom/Cartoon Cat Rigged 3D cartoon.jpg",
+        "class_name": "childroom",
+        "confidence": 0.97607421875
     },
     {
-        "date": "2025-05-09T23:26:41.139027",
-        "image_path": "F:/______training_database_V2/car/2764012.5e7c5f93b1f31 4.jpg",
-        "class_name": "car",
-        "confidence": 0.99169921875
+        "date": "2025-05-10T00:42:51.517646",
+        "image_path": "F:/______training_database_V2/flower/119357.5401a23de01f1.jpg",
+        "class_name": "flower",
+        "confidence": 0.9208984375
     },
     {
-        "date": "2025-05-09T23:26:53.185278",
-        "image_path": "F:/______training_database_V2/car/1924_Alfa_Romeo_P2.jpg",
-        "class_name": "car",
-        "confidence": 0.98681640625
+        "date": "2025-05-10T00:42:56.558805",
+        "image_path": "F:/______training_database_V2/flower/191427.54f463dd6fede.jpg",
+        "class_name": "flower",
+        "confidence": 0.337158203125
+    },
+    {
+        "date": "2025-05-10T00:43:11.491260",
+        "image_path": "F:/______training_database_V2/flower/259821.555ef16b2a01b.jpg",
+        "class_name": "flower",
+        "confidence": 0.61865234375
+    },
+    {
+        "date": "2025-05-10T00:43:20.474720",
+        "image_path": "F:/______training_database_V2/flower/45370.526ed71c9e461.jpg",
+        "class_name": "flower",
+        "confidence": 0.53857421875
+    },
+    {
+        "date": "2025-05-10T00:43:29.115047",
+        "image_path": "F:/______training_database_V2/animal/American Sparrow Fur Animated Rigged.jpg",
+        "class_name": "animal",
+        "confidence": 0.99755859375
+    },
+    {
+        "date": "2025-05-10T00:43:33.601365",
+        "image_path": "F:/______training_database_V2/animal/bear-animations.jpeg",
+        "class_name": "animal",
+        "confidence": 0.96337890625
+    },
+    {
+        "date": "2025-05-10T00:43:41.151090",
+        "image_path": "F:/______training_database_V2/animal/Cockroach American Animated (FUR).jpg",
+        "class_name": "vehicle",
+        "confidence": 0.256591796875
+    },
+    {
+        "date": "2025-05-10T00:43:46.273348",
+        "image_path": "F:/______training_database_V2/animal/Fish Pack 30 - Animated.jpg",
+        "class_name": "flower",
+        "confidence": 0.39990234375
     }
 ]

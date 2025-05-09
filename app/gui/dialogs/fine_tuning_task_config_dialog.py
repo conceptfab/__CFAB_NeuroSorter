@@ -182,6 +182,20 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.normalization_combo = QtWidgets.QComboBox()
         self.normalization_combo.addItems(["RGB", "BGR"])
 
+        # AutoAugment
+        self.autoaugment_check = QtWidgets.QCheckBox()
+        self.autoaugment_check.setChecked(False)
+
+        # RandAugment
+        self.randaugment_check = QtWidgets.QCheckBox()
+        self.randaugment_check.setChecked(False)
+        self.randaugment_n_spin = QtWidgets.QSpinBox()
+        self.randaugment_n_spin.setRange(1, 10)
+        self.randaugment_n_spin.setValue(2)
+        self.randaugment_m_spin = QtWidgets.QSpinBox()
+        self.randaugment_m_spin.setRange(0, 30)
+        self.randaugment_m_spin.setValue(9)
+
     def _setup_logging(self):
         """Konfiguracja logowania dla okna dialogowego."""
         self.logger = logging.getLogger(__name__)

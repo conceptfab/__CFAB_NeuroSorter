@@ -68,6 +68,92 @@ def verify_directory_structure(directory):
     return True
 
 
+def map_class_indices(base_class_names, new_class_folders):
+    """
+    Mapuje indeksy klas z modelu bazowego do nowych klas w zbiorze treningowym.
+
+    Args:
+        base_class_names: Słownik mapujący indeksy na nazwy klas w modelu bazowym
+        new_class_folders: Lista nazw folderów (klas) w zbiorze treningowym
+
+    Returns:
+        dict: Mapowanie nowych indeksów na indeksy bazowe
+    """
+    # Odwróć słownik klas bazowego modelu (nazwa klasy -> indeks)
+    base_names_to_idx = {
+        name.lower(): int(idx) for idx, name in base_class_names.items()
+    }
+
+    # Utwórz mapowanie nowych indeksów na indeksy bazowe
+    index_mapping = {}
+    for new_idx, folder_name in enumerate(sorted(new_class_folders)):
+        # Jeśli klasa występuje w modelu bazowym, użyj jej oryginalnego indeksu
+        if folder_name.lower() in base_names_to_idx:
+            base_idx = base_names_to_idx[folder_name.lower()]
+            index_mapping[new_idx] = base_idx
+            print(
+                f"  Mapowanie klasy: {folder_name} (nowy indeks {new_idx}) -> (bazowy indeks {base_idx})"
+            )
+        else:
+            # Jeśli to nowa klasa, oznacz jako -1 (będzie wymagała inicjalizacji)
+            index_mapping[new_idx] = -1
+            print(
+                f"  Nowa klasa: {folder_name} (nowy indeks {new_idx}) -> brak w modelu bazowym"
+            )
+
+    return index_mapping
+
+
+def verify_model_config(model_path, class_names):
+    """
+    Weryfikuje zgodność konfiguracji modelu z pliku config.json z podanymi nazwami klas.
+
+    Args:
+        model_path: Ścieżka do modelu
+        class_names: Słownik mapujący indeksy na nazwy klas
+
+    Returns:
+        bool: True jeśli konfiguracja jest zgodna, False w przeciwnym razie
+    """
+    import json
+    import os
+
+    # Sprawdź czy istnieje plik config.json
+    config_path = os.path.join(os.path.dirname(model_path), "config.json")
+    if not os.path.exists(config_path):
+        print(f"Uwaga: Nie znaleziono pliku konfiguracyjnego {config_path}")
+        return False
+
+    try:
+        # Wczytaj konfigurację
+        with open(config_path, "r") as f:
+            config = json.load(f)
+
+        # Sprawdź zgodność klas
+        if "class_names" in config:
+            config_classes = config["class_names"]
+            # Porównaj nazwy klas
+            for idx, name in class_names.items():
+                if (
+                    idx in config_classes
+                    and config_classes[idx].lower() != name.lower()
+                ):
+                    print(
+                        f"Niezgodność klasy: {idx}, model: {config_classes[idx]}, "
+                        f"oczekiwana: {name}"
+                    )
+                    return False
+
+            print("✓ Konfiguracja modelu jest zgodna z nazwami klas")
+            return True
+        else:
+            print("Nie znaleziono listy klas w pliku konfiguracyjnym")
+            return False
+    except Exception as e:
+        print(f"Błąd podczas weryfikacji pliku konfiguracyjnego: {e}")
+        return False
+
+
 def fine_tune_model(
     base_model_path,
     train_dir,
@@ -146,6 +232,9 @@ def fine_tune_model(
     print("\nŁadowanie modelu bazowego...")
     base_classifier = ImageClassifier(weights_path=base_model_path)
 
+    # Weryfikuj konfigurację modelu
+    verify_model_config(base_model_path, base_classifier.class_names)
+
     # Wyświetl informacje o modelu bazowym
     model_info = base_classifier.get_model_info()
     print(f"Typ modelu: {model_info['model_type']}")
@@ -178,6 +267,12 @@ def fine_tune_model(
         print(f"Zmiana liczby klas: {original_num_classes} -> {new_num_classes}")
         print("Dostosowanie ostatniej warstwy modelu...")
 
+        # Mapuj klasy bazowe do nowych klas
+        class_index_mapping = map_class_indices(
+            base_classifier.class_names, train_folders
+        )
+
+        # Zmodyfikuj ostatnią warstwę w zależności od typu modelu
         if isinstance(model, nn.Sequential):
             # Dla modeli typu Sequential
             print("Model jest typu Sequential")
@@ -187,11 +282,30 @@ def fine_tune_model(
 
             # Znajdź ostatnią warstwę Linear w modelu
             last_linear_layer = None
+            last_linear_idx = None
             for i in range(len(model) - 1, -1, -1):
                 if isinstance(model[i], nn.Linear):
                     last_linear_layer = model[i]
+                    last_linear_idx = i
                     in_features = last_linear_layer.in_features
-                    model[i] = nn.Linear(in_features, new_num_classes)
+
+                    # Utwórz nową warstwę Linear
+                    new_layer = nn.Linear(in_features, new_num_classes)
+
+                    # Inicjalizuj wagi dla klas istniejących w modelu bazowym
+                    with torch.no_grad():
+                        for new_idx, base_idx in class_index_mapping.items():
+                            if base_idx >= 0 and base_idx < original_num_classes:
+                                # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
+                                new_layer.weight.data[new_idx] = (
+                                    last_linear_layer.weight.data[base_idx]
+                                )
+                                new_layer.bias.data[new_idx] = (
+                                    last_linear_layer.bias.data[base_idx]
+                                )
+
+                    # Zastąp starą warstwę nową
+                    model[i] = new_layer
                     print(
                         f"Zmodyfikowano warstwę Linear w Sequential: "
                         f"in_features={in_features}, "
@@ -220,70 +334,95 @@ def fine_tune_model(
                     )
         elif hasattr(model, "fc"):  # dla ResNet
             try:
-                # Sprawdź wymiary wejściowe
-                if hasattr(model.fc, "in_features"):
-                    in_features = model.fc.in_features
-                else:
-                    # Spróbuj określić wymiary na podstawie ostatniej warstwy
-                    for name, module in model.named_modules():
-                        if isinstance(module, nn.Linear):
-                            in_features = module.out_features
-                            break
-                    else:
-                        # Jeśli nie znaleziono warstwy Linear, spróbuj określić wymiary z warstwy avgpool
-                        if hasattr(model, "avgpool"):
-                            # Dla ResNet, sprawdź wymiary po warstwie avgpool
-                            dummy_input = torch.randn(1, 3, 224, 224)
+                if isinstance(model.fc, nn.Sequential):
+                    # Obsługa przypadku, gdy fc jest typu Sequential
+                    print("Warstwa fc jest typu Sequential")
+                    print("Warstwy w fc:")
+                    for i, layer in enumerate(model.fc):
+                        print(f"  {i}: {type(layer)}")
+
+                    # Znajdź ostatnią warstwę Linear w fc
+                    last_linear_layer = None
+                    last_linear_idx = None
+                    for i in range(len(model.fc) - 1, -1, -1):
+                        if isinstance(model.fc[i], nn.Linear):
+                            last_linear_layer = model.fc[i]
+                            last_linear_idx = i
+                            in_features = last_linear_layer.in_features
+
+                            # Utwórz nową warstwę Linear
+                            new_layer = nn.Linear(in_features, new_num_classes)
+
+                            # Inicjalizuj wagi dla klas istniejących w modelu bazowym
                             with torch.no_grad():
-                                x = model.conv1(dummy_input)
-                                x = model.bn1(x)
-                                x = model.relu(x)
-                                x = model.maxpool(x)
-                                x = model.layer1(x)
-                                x = model.layer2(x)
-                                x = model.layer3(x)
-                                x = model.layer4(x)
-                                x = model.avgpool(x)
-                                x = torch.flatten(x, 1)
-                                in_features = x.shape[1]
-                                print(f"Określono wymiary wejściowe: {in_features}")
-                        else:
-                            raise ValueError(
-                                "Nie można określić wymiarów wejściowych dla warstwy fc"
+                                for new_idx, base_idx in class_index_mapping.items():
+                                    if (
+                                        base_idx >= 0
+                                        and base_idx < original_num_classes
+                                    ):
+                                        # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
+                                        new_layer.weight.data[new_idx] = (
+                                            last_linear_layer.weight.data[base_idx]
+                                        )
+                                        new_layer.bias.data[new_idx] = (
+                                            last_linear_layer.bias.data[base_idx]
+                                        )
+
+                            # Zastąp starą warstwę nową
+                            model.fc[i] = new_layer
+                            print(
+                                f"Zmodyfikowano warstwę Linear w fc: "
+                                f"in_features={in_features}, "
+                                f"out_features={new_num_classes}"
                             )
+                            break
 
-                print(f"Wymiary wejściowe warstwy fc: {in_features}")
+                    if last_linear_layer is None:
+                        # Jeśli nie znaleziono warstwy Linear w fc
+                        raise ValueError(
+                            "Nie znaleziono warstwy Linear w Sequential fc"
+                        )
+                else:
+                    # Oryginalny kod dla przypadku, gdy fc nie jest Sequential
+                    in_features = model.fc.in_features
 
-                # Sprawdź czy wymiary są poprawne
-                if in_features != 512 and in_features != 1024:
+                    # Utwórz nową warstwę Linear
+                    new_layer = nn.Linear(in_features, new_num_classes)
+
+                    # Inicjalizuj wagi dla klas istniejących w modelu bazowym
+                    with torch.no_grad():
+                        for new_idx, base_idx in class_index_mapping.items():
+                            if base_idx >= 0 and base_idx < original_num_classes:
+                                # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
+                                new_layer.weight.data[new_idx] = model.fc.weight.data[
+                                    base_idx
+                                ]
+                                new_layer.bias.data[new_idx] = model.fc.bias.data[
+                                    base_idx
+                                ]
+
+                    # Zastąp starą warstwę nową
+                    model.fc = new_layer
                     print(
-                        f"Ostrzeżenie: Nieoczekiwane wymiary wejściowe: {in_features}"
+                        "Zmodyfikowano warstwę fc: "
+                        f"in_features={in_features}, "
+                        f"out_features={new_num_classes}"
                     )
-                    # Spróbuj określić wymiary na podstawie warstwy avgpool
-                    if hasattr(model, "avgpool"):
-                        dummy_input = torch.randn(1, 3, 224, 224)
-                        with torch.no_grad():
-                            x = model.conv1(dummy_input)
-                            x = model.bn1(x)
-                            x = model.relu(x)
-                            x = model.maxpool(x)
-                            x = model.layer1(x)
-                            x = model.layer2(x)
-                            x = model.layer3(x)
-                            x = model.layer4(x)
-                            x = model.avgpool(x)
-                            x = torch.flatten(x, 1)
-                            in_features = x.shape[1]
-                            print(f"Poprawione wymiary wejściowe: {in_features}")
-
-                model.fc = nn.Linear(in_features, new_num_classes)
-                print(
-                    f"Zmodyfikowano warstwę fc: "
-                    f"in_features={in_features}, "
-                    f"out_features={new_num_classes}"
-                )
             except Exception as e:
                 print(f"Błąd podczas modyfikacji warstwy fc: {e}")
+                # Wyświetl dodatkowe informacje diagnostyczne
+                print(f"Typ modelu: {type(model)}")
+                print(f"Atrybuty modelu: {dir(model)}")
+                if hasattr(model, "fc"):
+                    print(f"Typ warstwy fc: {type(model.fc)}")
+                    if isinstance(model.fc, nn.Sequential):
+                        print("fc jest typu Sequential z warstwami:")
+                        for i, layer in enumerate(model.fc):
+                            print(f"  {i}: {type(layer)}")
+                    elif hasattr(model.fc, "in_features"):
+                        print(f"in_features warstwy fc: {model.fc.in_features}")
+                    if hasattr(model.fc, "out_features"):
+                        print(f"out_features warstwy fc: {model.fc.out_features}")
                 raise
         elif hasattr(model, "classifier"):  # dla EfficientNet, MobileNet
             print(f"Typ modelu: {type(model)}")
@@ -299,9 +438,28 @@ def fine_tune_model(
                 for i in range(len(model.classifier) - 1, -1, -1):
                     if isinstance(model.classifier[i], nn.Linear):
                         in_features = model.classifier[i].in_features
-                        model.classifier[i] = nn.Linear(in_features, new_num_classes)
+
+                        # Utwórz nową warstwę Linear
+                        new_layer = nn.Linear(in_features, new_num_classes)
+
+                        # Inicjalizuj wagi dla klas istniejących w modelu bazowym
+                        with torch.no_grad():
+                            for new_idx, base_idx in class_index_mapping.items():
+                                if base_idx >= 0 and base_idx < original_num_classes:
+                                    # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
+                                    new_layer.weight.data[new_idx] = model.classifier[
+                                        i
+                                    ].weight.data[base_idx]
+                                    new_layer.bias.data[new_idx] = model.classifier[
+                                        i
+                                    ].bias.data[base_idx]
+
+                        # Zastąp starą warstwę nową
+                        model.classifier[i] = new_layer
                         print(
-                            f"Zmodyfikowano warstwę Linear w classifier: in_features={in_features}, out_features={new_num_classes}"
+                            f"Zmodyfikowano warstwę Linear w classifier: "
+                            f"in_features={in_features}, "
+                            f"out_features={new_num_classes}"
                         )
                         break
                 else:
@@ -346,15 +504,36 @@ def fine_tune_model(
                         "linear", nn.Linear(in_features, new_num_classes)
                     )
                     print(
-                        f"Dodano nową warstwę Linear: in_features={in_features}, out_features={new_num_classes}"
+                        f"Dodano nową warstwę Linear: "
+                        f"in_features={in_features}, "
+                        f"out_features={new_num_classes}"
                     )
             else:
                 print("Classifier nie jest typu Sequential")
                 if isinstance(model.classifier, nn.Linear):
                     in_features = model.classifier.in_features
-                    model.classifier = nn.Linear(in_features, new_num_classes)
+
+                    # Utwórz nową warstwę Linear
+                    new_layer = nn.Linear(in_features, new_num_classes)
+
+                    # Inicjalizuj wagi dla klas istniejących w modelu bazowym
+                    with torch.no_grad():
+                        for new_idx, base_idx in class_index_mapping.items():
+                            if base_idx >= 0 and base_idx < original_num_classes:
+                                # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
+                                new_layer.weight.data[new_idx] = (
+                                    model.classifier.weight.data[base_idx]
+                                )
+                                new_layer.bias.data[new_idx] = (
+                                    model.classifier.bias.data[base_idx]
+                                )
+
+                    # Zastąp starą warstwę nową
+                    model.classifier = new_layer
                     print(
-                        f"Zmodyfikowano warstwę classifier: in_features={in_features}, out_features={new_num_classes}"
+                        f"Zmodyfikowano warstwę classifier: "
+                        f"in_features={in_features}, "
+                        f"out_features={new_num_classes}"
                     )
                 else:
                     raise ValueError(
@@ -362,9 +541,28 @@ def fine_tune_model(
                     )
         elif hasattr(model, "heads"):  # dla ViT
             in_features = model.heads.head.in_features
-            model.heads.head = nn.Linear(in_features, new_num_classes)
+
+            # Utwórz nową warstwę Linear
+            new_layer = nn.Linear(in_features, new_num_classes)
+
+            # Inicjalizuj wagi dla klas istniejących w modelu bazowym
+            with torch.no_grad():
+                for new_idx, base_idx in class_index_mapping.items():
+                    if base_idx >= 0 and base_idx < original_num_classes:
+                        # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
+                        new_layer.weight.data[new_idx] = model.heads.head.weight.data[
+                            base_idx
+                        ]
+                        new_layer.bias.data[new_idx] = model.heads.head.bias.data[
+                            base_idx
+                        ]
+
+            # Zastąp starą warstwę nową
+            model.heads.head = new_layer
             print(
-                f"Zmodyfikowano warstwę heads.head: in_features={in_features}, out_features={new_num_classes}"
+                f"Zmodyfikowano warstwę heads.head: "
+                f"in_features={in_features}, "
+                f"out_features={new_num_classes}"
             )
         else:
             raise ValueError(f"Nieznana architektura modelu: {type(model)}")
@@ -1231,16 +1429,24 @@ def compare_base_and_finetuned(base_model_path, finetuned_model_path, test_dir):
     print(f"Dokładność modelu po fine-tuningu: {results['finetuned_accuracy']:.2%}")
     print(f"Poprawa: {results['improvement']:.2%}")
     print(
-        f"Obrazy poprawnie klasyfikowane przez oba modele: {results['both_correct']} ({results['both_correct']/results['total']:.2%})"
+        "Obrazy poprawnie klasyfikowane przez oba modele: "
+        f"{results['both_correct']} "
+        f"({results['both_correct']/results['total']:.2%})"
     )
     print(
-        f"Obrazy poprawnie klasyfikowane tylko przez model bazowy: {results['base_only_correct']} ({results['base_only_correct']/results['total']:.2%})"
+        "Obrazy poprawnie klasyfikowane tylko przez model bazowy: "
+        f"{results['base_only_correct']} "
+        f"({results['base_only_correct']/results['total']:.2%})"
     )
     print(
-        f"Obrazy poprawnie klasyfikowane tylko przez model po fine-tuningu: {results['finetuned_only_correct']} ({results['finetuned_only_correct']/results['total']:.2%})"
+        "Obrazy poprawnie klasyfikowane tylko przez model po fine-tuningu: "
+        f"{results['finetuned_only_correct']} "
+        f"({results['finetuned_only_correct']/results['total']:.2%})"
     )
     print(
-        f"Obrazy błędnie klasyfikowane przez oba modele: {results['both_incorrect']} ({results['both_incorrect']/results['total']:.2%})"
+        "Obrazy błędnie klasyfikowane przez oba modele: "
+        f"{results['both_incorrect']} "
+        f"({results['both_incorrect']/results['total']:.2%})"
     )
 
     # Pokaż kilka przykładów

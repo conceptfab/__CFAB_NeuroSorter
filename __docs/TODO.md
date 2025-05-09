@@ -1,27 +1,26 @@
 usuwac plik extract_config
+Zatrzymaj bieżace zadanie przycisk nie dziala
+Progress bar przy tuningu nie działa
+skaler poprawic - opcje skalowania
 
 automatyczne zapisywanie wizualizacji treningu
 progres bar przy fine_tuningu
-
+poprawic widok modeli w tabeli
 drag end drop IMAGE
 
-wczytywanie wariantu modelu z profilu
 
 kolorowe przyciski
 poprawi dodawanie zadan
 
-scaller
-walidacja danych treningowych i 
 
-profile
+
+
+
 wszystkie modele:
 resnet50
 vit
 mobilenet
 
-
-
-- doszkalanie ;
 
 settings - ładowanie ustwien!!!!
 
