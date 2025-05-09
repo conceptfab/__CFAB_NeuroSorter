@@ -18,9 +18,45 @@
         "image_path": "F:/______training_database_V2/animal/blackhead-ball-python.jpeg"
     },
     {
-        "date": "2025-05-09T22:19:09.479831",
-        "image_path": "F:/______training_database_V2/animal/American Bald Eagle Animated.jpg",
         "class_name": "animal",
-        "confidence": 0.9990234375
+        "confidence": 0.9990234375,
+        "date": "2025-05-09T22:19:09.479831",
+        "image_path": "F:/______training_database_V2/animal/American Bald Eagle Animated.jpg"
+    },
+    {
+        "date": "2025-05-09T23:23:27.990529",
+        "image_path": "F:/______training_database_V2/animal/animated-snakes-pack.jpeg",
+        "class_name": "childroom",
+        "confidence": 0.302490234375
+    },
+    {
+        "date": "2025-05-09T23:23:40.740037",
+        "image_path": "F:/______training_database_V2/car/3D Taco Foodtruck PBR model.jpg",
+        "class_name": "car",
+        "confidence": 0.978515625
+    },
+    {
+        "date": "2025-05-09T23:23:53.233574",
+        "image_path": "F:/______training_database_V2/car/2156638.5b9e624e6ed82 2.jpg",
+        "class_name": "technology",
+        "confidence": 0.552734375
+    },
+    {
+        "date": "2025-05-09T23:23:59.766909",
+        "image_path": "F:/______training_database_V2/car/15705.526af96ecb3ad.jpg",
+        "class_name": "car",
+        "confidence": 0.978515625
+    },
+    {
+        "date": "2025-05-09T23:26:41.139027",
+        "image_path": "F:/______training_database_V2/car/2764012.5e7c5f93b1f31 4.jpg",
+        "class_name": "car",
+        "confidence": 0.99169921875
+    },
+    {
+        "date": "2025-05-09T23:26:53.185278",
+        "image_path": "F:/______training_database_V2/car/1924_Alfa_Romeo_P2.jpg",
+        "class_name": "car",
+        "confidence": 0.98681640625
     }
 ]

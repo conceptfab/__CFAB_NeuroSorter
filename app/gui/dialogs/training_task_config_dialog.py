@@ -256,7 +256,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             try:
                 with open(profile_file, "r", encoding="utf-8") as f:
                     profile_data = json.load(f)
-                    if profile_data.get("type") == "trening":
+                    if profile_data.get("type") == "training":
                         self.profile_list.addItem(profile_file.stem)
             except Exception as e:
                 self.logger.error(
@@ -487,7 +487,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 new_profile = self.current_profile.copy()
                 new_profile["info"] = f"Klon profilu {current_name}"
                 new_profile["description"] = f"Klon profilu {current_name}"
-                new_profile["type"] = "trening"  # Upewniamy się, że typ jest ustawiony
+                new_profile["type"] = "training"  # Upewniamy się, że typ jest ustawiony
 
                 new_path = self.profiles_dir / f"{new_name}.json"
                 with open(new_path, "w", encoding="utf-8") as f:
@@ -520,7 +520,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             if ok and name:
                 profile_data = {
-                    "type": "trening",
+                    "type": "training",
                     "info": (
                         f"Profil dla {self.arch_combo.currentText()} "
                         f"{self.variant_combo.currentText()}"
@@ -1315,13 +1315,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
     def _on_accept(self):
         """Obsługa zatwierdzenia konfiguracji."""
         try:
-            # Sprawdź czy nazwa zadania jest pusta
-            task_name = self.name_edit.text().strip()
-            if not task_name:
-                QtWidgets.QMessageBox.warning(
-                    self, "Błąd", "Nazwa zadania nie może być pusta."
-                )
-                return
+            # Generowanie nazwy zadania automatycznie
+            variant = self.variant_combo.currentText()
+            num_classes = self.num_classes_spin.value()
+            now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+            task_name = f"{variant}_{num_classes}_{now}"
 
             # Sprawdź czy katalog treningowy jest ustawiony
             train_dir = self.train_dir_edit.text().strip()

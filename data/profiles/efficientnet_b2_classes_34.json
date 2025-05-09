@@ -106,4 +106,13 @@
         "use_gradcam": true,
         "use_feature_maps": true
       },
-      "early_st
+      "early_stopping": {
+        "use": true,
+        "patience": 10,
+        "min_delta": 0.001,
+        "monitor": "val_loss",
+        "mode": "min"
+      }
+    }
+  }
+}

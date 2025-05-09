@@ -19,7 +19,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
     UNFREEZE_ALL = "unfreeze_all"
     UNFREEZE_GRADUAL_END = "unfreeze_gradual_end"
     UNFREEZE_GRADUAL_START = "unfreeze_gradual_start"
-    UNFREEZE_AFTER_EPOCHS = "unfreeze_after_epoochs"
+    UNFREEZE_AFTER_EPOCHS = "unfreeze_after_epochs"
 
     def __init__(self, parent=None, settings=None, hardware_profile=None):
         super().__init__(parent)
@@ -152,6 +152,24 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.cache_dataset_check = QtWidgets.QCheckBox()
         self.cache_dataset_check.setChecked(False)
 
+        # AutoAugment
+        self.autoaugment_check = QtWidgets.QCheckBox()
+        self.autoaugment_check.setChecked(False)
+
+        # RandAugment
+        self.randaugment_check = QtWidgets.QCheckBox()
+        self.randaugment_check.setChecked(False)
+        self.randaugment_n_spin = QtWidgets.QSpinBox()
+        self.randaugment_n_spin.setRange(1, 10)
+        self.randaugment_n_spin.setValue(2)  # Domyślna wartość N
+        self.randaugment_m_spin = QtWidgets.QSpinBox()
+        self.randaugment_m_spin.setRange(1, 15)  # Zakres dla M
+        self.randaugment_m_spin.setValue(9)  # Domyślna wartość M
+
+        # Normalization
+        self.normalization_combo = QtWidgets.QComboBox()
+        self.normalization_combo.addItems(["RGB", "BGR"])
+
     def _setup_logging(self):
         """Konfiguracja logowania dla okna dialogowego."""
         self.logger = logging.getLogger(__name__)
@@ -260,6 +278,12 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             self._update_augmentation_dependent_controls
         )
         self.cutmix_check.stateChanged.connect(
+            self._update_augmentation_dependent_controls
+        )
+        self.autoaugment_check.stateChanged.connect(
+            self._update_augmentation_dependent_controls
+        )
+        self.randaugment_check.stateChanged.connect(
             self._update_augmentation_dependent_controls
         )
 
@@ -776,6 +800,21 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                                 "use": self.cutmix_check.isChecked(),
                                 "alpha": self.cutmix_alpha_spin.value(),
                             },
+                            "autoaugment": {
+                                "use": self.autoaugment_check.isChecked(),
+                            },
+                            "randaugment": {
+                                "use": self.randaugment_check.isChecked(),
+                                "n": self.randaugment_n_spin.value(),
+                                "m": self.randaugment_m_spin.value(),
+                            },
+                            "advanced": {
+                                "contrast": self.contrast_spin.value(),
+                                "saturation": self.saturation_spin.value(),
+                                "hue": self.hue_spin.value(),
+                                "shear": self.shear_spin.value(),
+                                "channel_shift": self.channel_shift_spin.value(),
+                            },
                         },
                         "preprocessing": {
                             "normalization": {
@@ -1086,6 +1125,33 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             if "alpha" in cutmix_config:
                 self.cutmix_alpha_spin.setValue(cutmix_config["alpha"])
 
+            # AutoAugment
+            autoaugment_config = augmentation_config.get("autoaugment", {})
+            if "use" in autoaugment_config:
+                self.autoaugment_check.setChecked(autoaugment_config["use"])
+
+            # RandAugment
+            randaugment_config = augmentation_config.get("randaugment", {})
+            if "use" in randaugment_config:
+                self.randaugment_check.setChecked(randaugment_config["use"])
+            if "n" in randaugment_config:
+                self.randaugment_n_spin.setValue(randaugment_config["n"])
+            if "m" in randaugment_config:
+                self.randaugment_m_spin.setValue(randaugment_config["m"])
+
+            # Advanced augmentation
+            advanced_config = augmentation_config.get("advanced", {})
+            if "contrast" in advanced_config:
+                self.contrast_spin.setValue(advanced_config["contrast"])
+            if "saturation" in advanced_config:
+                self.saturation_spin.setValue(advanced_config["saturation"])
+            if "hue" in advanced_config:
+                self.hue_spin.setValue(advanced_config["hue"])
+            if "shear" in advanced_config:
+                self.shear_spin.setValue(advanced_config["shear"])
+            if "channel_shift" in advanced_config:
+                self.channel_shift_spin.setValue(advanced_config["channel_shift"])
+
             # 5. Aktualizacja parametrów preprocessingu
             preprocessing_config = config.get("preprocessing", {})
 
@@ -1376,7 +1442,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
     def _on_architecture_changed(self, architecture: str):
         """Obsługa zmiany architektury modelu."""
         self._update_variant_combo(architecture)
-        self.logger.debug(f"Zmieniono architekturę na: {architecture}")
 
     def _create_augmentation_tab(self) -> QtWidgets.QWidget:
         """Tworzy zakładkę z parametrami augmentacji."""
@@ -1468,6 +1533,22 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
         cutmix_group.setLayout(cutmix_layout)
         aug_layout.addRow(cutmix_group)
+
+        # AutoAugment
+        autoaugment_group = QtWidgets.QGroupBox("AutoAugment")
+        autoaugment_layout = QtWidgets.QFormLayout()
+        autoaugment_layout.addRow("Use AutoAugment:", self.autoaugment_check)
+        autoaugment_group.setLayout(autoaugment_layout)
+        aug_layout.addRow(autoaugment_group)
+
+        # RandAugment
+        randaugment_group = QtWidgets.QGroupBox("RandAugment")
+        randaugment_layout = QtWidgets.QFormLayout()
+        randaugment_layout.addRow("Use RandAugment:", self.randaugment_check)
+        randaugment_layout.addRow("N (num_ops):", self.randaugment_n_spin)
+        randaugment_layout.addRow("M (magnitude):", self.randaugment_m_spin)
+        randaugment_group.setLayout(randaugment_layout)
+        aug_layout.addRow(randaugment_group)
 
         # Advanced augmentation
         advanced_group = QtWidgets.QGroupBox("Advanced")
@@ -1580,6 +1661,8 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         form = QtWidgets.QFormLayout()
 
         # Normalizacja
+        form.addRow("Normalizacja:", self.normalization_combo)
+
         norm_group = QtWidgets.QGroupBox("Normalizacja")
         norm_layout = QtWidgets.QFormLayout()
 
@@ -2218,6 +2301,13 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                         "n": self.randaugment_n_spin.value(),
                         "m": self.randaugment_m_spin.value(),
                     },
+                    "advanced": {
+                        "contrast": self.contrast_spin.value(),
+                        "saturation": self.saturation_spin.value(),
+                        "hue": self.hue_spin.value(),
+                        "shear": self.shear_spin.value(),
+                        "channel_shift": self.channel_shift_spin.value(),
+                    },
                 },
                 "preprocessing": {
                     "normalization": self.normalization_combo.currentText(),
@@ -2364,7 +2454,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         """Aktualizuje kontrolki zależne od architektury."""
         architecture = self.arch_combo.currentText()
         self._update_variant_combo(architecture)
-        self._on_architecture_changed(architecture)
 
     def _update_training_dependent_controls(self):
         """Aktualizuje kontrolki zależne od parametrów treningu."""
@@ -2426,6 +2515,14 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         # CutMix
         cutmix_enabled = self.cutmix_check.isChecked()
         self.cutmix_alpha_spin.setEnabled(cutmix_enabled)
+
+        # AutoAugment
+        # self.autoaugment_check - stan zarządzany przez użytkownika
+
+        # RandAugment
+        randaugment_enabled = self.randaugment_check.isChecked()
+        self.randaugment_n_spin.setEnabled(randaugment_enabled)
+        self.randaugment_m_spin.setEnabled(randaugment_enabled)
 
     def _update_preprocessing_dependent_controls(self):
         """Aktualizuje kontrolki zależne od preprocessingu."""

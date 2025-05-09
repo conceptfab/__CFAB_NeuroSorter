@@ -5,6 +5,7 @@ progres bar przy fine_tuningu
 
 drag end drop IMAGE
 
+wczytywanie wariantu modelu z profilu
 
 kolorowe przyciski
 poprawi dodawanie zadan

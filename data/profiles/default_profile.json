@@ -79,6 +79,21 @@
       "cutmix": {
         "use": false,
         "alpha": 0.2
+      },
+      "autoaugment": {
+        "use": false
+      },
+      "randaugment": {
+        "use": false,
+        "n": 2,
+        "m": 9
+      },
+      "advanced": {
+        "contrast": 0.2,
+        "saturation": 0.2,
+        "hue": 0.1,
+        "shear": 0.1,
+        "channel_shift": 0.0
       }
     },
     "preprocessing": {

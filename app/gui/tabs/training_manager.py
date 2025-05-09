@@ -25,7 +25,7 @@ from app.utils.file_utils import (
 
 
 class TrainingManager(QtWidgets.QWidget, TabInterface):
-    """Klasa zarządzająca zakładką treningu."""
+    """Klasa zarządzająca zakładką trainingu."""
 
     def __init__(self, parent=None, settings=None):
         self.logger = logging.getLogger("TrainingManager")
@@ -55,7 +55,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         profile_info_layout.setContentsMargins(0, 0, 0, 0)
 
         # Nagłówek sekcji
-        optimization_header = QtWidgets.QLabel("OPTYMALIZACJA TRENINGU")
+        optimization_header = QtWidgets.QLabel("OPTYMALIZACJA TRAININGU")
         optimization_header.setStyleSheet(
             "font-weight: bold; color: #CCCCCC; "
             "font-size: 11px; padding-bottom: 4px;"
@@ -77,7 +77,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         )
         self.use_optimization_checkbox.setChecked(True)
         self.use_optimization_checkbox.setToolTip(
-            "Automatycznie dobiera parametry treningu "
+            "Automatycznie dobiera parametry trainingu "
             "na podstawie profilu sprzętowego"
         )
         profile_controls_layout.addWidget(self.use_optimization_checkbox)
@@ -98,15 +98,15 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         # === Początek zmian: Dodanie QTabWidget ===
         self.tabs = QtWidgets.QTabWidget()
 
-        # Zakładka 1: Kolejka zadań treningowych
+        # Zakładka 1: Kolejka zadań trainingowych
         queue_panel_widget = self._create_queue_panel_widget()
-        self.tabs.addTab(queue_panel_widget, "Kolejka zadań treningowych")
+        self.tabs.addTab(queue_panel_widget, "Kolejka zadań trainingowych")
 
-        # Zakładka 2: Wizualizacja treningu
+        # Zakładka 2: Wizualizacja trainingu
         self.training_visualization = TrainingVisualization(
             parent=self, settings=self.settings
         )
-        self.tabs.addTab(self.training_visualization, "Wizualizacja treningu")
+        self.tabs.addTab(self.training_visualization, "Wizualizacja trainingu")
 
         layout.addWidget(
             self.tabs, 1
@@ -114,11 +114,11 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         # === Koniec zmian: Dodanie QTabWidget ===
 
         # Stara implementacja (przed QTabWidget) - zakomentowana lub usunięta
-        # # Panel wizualizacji treningu
+        # # Panel wizualizacji trainingu
         # self.training_visualization = TrainingVisualization()
         # layout.addWidget(self.training_visualization)
         #
-        # # Panel kolejki zadań treningowych (skalowalny)
+        # # Panel kolejki zadań trainingowych (skalowalny)
         # queue_panel = self._create_queue_panel_widget()
         # layout.addWidget(queue_panel, 1)  # <- skalowalny na wysokość
 
@@ -144,7 +144,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         self._refresh_task_queue()
 
     def _refresh_task_queue(self):
-        """Odświeża listę zadań treningowych w kolejce."""
+        """Odświeża listę zadań trainingowych w kolejce."""
         try:
             # Wyczyść tabelę
             self.tasks_table.setRowCount(0)
@@ -243,21 +243,21 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
 
                     self.tasks_table.setCellWidget(row, 10, action_widget)
 
-                    # Dodaj wyniki treningu jeśli zadanie jest zakończone
+                    # Dodaj wyniki trainingu jeśli zadanie jest zakończone
                     if status == "Zakończony":
-                        # Czas treningu
+                        # Czas trainingu
                         training_time = task_data.get("training_time_str", "")
                         self.tasks_table.setItem(
                             row, 5, QtWidgets.QTableWidgetItem(training_time)
                         )
 
-                        # Dokładność treningu
+                        # Dokładność trainingu
                         train_acc = task_data.get("train_accuracy", 0)
                         self.tasks_table.setItem(
                             row, 6, QtWidgets.QTableWidgetItem(f"{train_acc:.2f}")
                         )
 
-                        # Strata treningu
+                        # Strata trainingu
                         train_loss = task_data.get("train_loss", 0)
                         self.tasks_table.setItem(
                             row, 7, QtWidgets.QTableWidgetItem(f"{train_loss:.2f}")
@@ -287,9 +287,9 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                 width = self.tasks_table.columnWidth(col)
                 if col == 0:  # Kolumna "Nazwa"
                     new_width = int(width * 1.15)
-                elif col == 5:  # Kolumna "Czas treningu"
+                elif col == 5:  # Kolumna "Czas trainingu"
                     new_width = int(width * 1.4)
-                elif col in [6, 7, 8, 9]:  # Kolumny z wynikami treningu
+                elif col in [6, 7, 8, 9]:  # Kolumny z wynikami trainingu
                     new_width = int(width * 1.0)
                 else:
                     new_width = int(width * 1.6)
@@ -305,13 +305,13 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             )
 
     def _create_add_task_panel(self, parent_layout):
-        """Tworzy panel dodawania nowego zadania treningowego."""
+        """Tworzy panel dodawania nowego zadania trainingowego."""
         add_task_panel = QtWidgets.QWidget()
         add_task_layout = QtWidgets.QVBoxLayout(add_task_panel)
         add_task_layout.setContentsMargins(0, 0, 0, 0)
 
         # Nagłówek sekcji
-        add_task_header = QtWidgets.QLabel("DODAJ NOWE ZADANIE TRENINGOWE")
+        add_task_header = QtWidgets.QLabel("DODAJ NOWE ZADANIE TRAININGOWE")
         add_task_header.setStyleSheet(
             "font-weight: bold; color: #CCCCCC; "
             "font-size: 11px; padding-bottom: 4px;"
@@ -324,7 +324,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         task_type_label.setFixedWidth(120)
         self.task_type_combo = QtWidgets.QComboBox()
         self.task_type_combo.addItems(
-            ["Trening nowego modelu", "Doszkalanie istniejącego modelu"]
+            ["Training nowego modelu", "Doszkalanie istniejącego modelu"]
         )
 
         task_type_layout.addWidget(task_type_label)
@@ -339,14 +339,14 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         parent_layout.addWidget(add_task_panel)
 
     def _create_queue_panel_widget(self):
-        """Tworzy i zwraca panel kolejki zadań treningowych jako widget."""
+        """Tworzy i zwraca panel kolejki zadań trainingowych jako widget."""
         queue_panel = QtWidgets.QWidget()
         queue_layout = QtWidgets.QVBoxLayout(queue_panel)
         queue_layout.setContentsMargins(0, 0, 0, 0)
         queue_layout.setSpacing(8)
 
         # Nagłówek sekcji
-        queue_header = QtWidgets.QLabel("KOLEJKA ZADAŃ TRENINGOWYCH")
+        queue_header = QtWidgets.QLabel("KOLEJKA ZADAŃ TRAININGOWYCH")
         queue_header.setStyleSheet(
             "font-weight: bold; color: #CCCCCC; "
             "font-size: 11px; padding-bottom: 4px;"
@@ -363,9 +363,9 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                 "Status",
                 "Priorytet",
                 "Utworzono",
-                "Czas treningu",
-                "Dokładność treningu",
-                "Strata treningu",
+                "Czas trainingu",
+                "Dokładność trainingu",
+                "Strata trainingu",
                 "Dokładność walidacji",
                 "Strata walidacji",
                 "Akcje",
@@ -392,7 +392,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         self.refresh_queue_btn.setFixedHeight(24)
         buttons_layout.addWidget(self.refresh_queue_btn)
 
-        self.null_btn = QtWidgets.QPushButton("Uruchom wsadowy trening")
+        self.null_btn = QtWidgets.QPushButton("Uruchom wsadowy training")
         self.null_btn.setFixedHeight(24)
         self.null_btn.clicked.connect(self._show_queue_manager)
         buttons_layout.addWidget(self.null_btn)
@@ -413,7 +413,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             task_type = self.task_type_combo.currentText()
 
             # Wybierz odpowiedni dialog w zależności od typu zadania
-            if task_type == "Trening nowego modelu":
+            if task_type == "Training nowego modelu":
                 dialog = TrainingTaskConfigDialog(
                     parent=self,
                     settings=self.settings,
@@ -442,11 +442,11 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
 
         except Exception as e:
             QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie udało się dodać zadania treningowego: {str(e)}"
+                self, "Błąd", f"Nie udało się dodać zadania trainingowego: {str(e)}"
             )
 
     def _clear_task_queue(self):
-        """Czyści kolejkę zadań treningowych."""
+        """Czyści kolejkę zadań trainingowych."""
         reply = QtWidgets.QMessageBox.question(
             self,
             "Potwierdzenie",
@@ -491,7 +491,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             )
 
     def _training_task_started(self, task_name, task_type):
-        """Obsługa rozpoczęcia zadania treningowego."""
+        """Obsługa rozpoczęcia zadania trainingowego."""
         # Logowanie
         self.parent.logger.info(f"Rozpoczęto zadanie {task_type}: {task_name}")
 
@@ -507,7 +507,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             self.training_visualization.clear_data()
 
     def _training_task_progress(self, task_name, progress, details):
-        """Obsługuje aktualizacje postępu treningu."""
+        """Obsługuje aktualizacje postępu trainingu."""
         try:
             # Pobierz dane z details i upewnij się, że mają prawidłowe wartości
             epoch = int(details.get("epoch", 0))
@@ -591,7 +591,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             self.parent.logger.error(traceback.format_exc())
 
     def _training_task_completed(self, task_name, result):
-        """Obsługuje zakończenie zadania treningowego."""
+        """Obsługuje zakończenie zadania trainingowego."""
         try:
             self.parent.logger.info(
                 f"Rozpoczynam obsługę zakończenia zadania: {task_name}"
@@ -629,7 +629,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                     with open(task_file, "r", encoding="utf-8") as f:
                         task_data = json.load(f)
 
-                    # Dodaj wyniki treningu
+                    # Dodaj wyniki trainingu
                     task_data["status"] = "Zakończony"
                     task_data["model_filename"] = model_filename
                     task_data["accuracy"] = accuracy
@@ -656,7 +656,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                         json.dump(task_data, f, indent=4, ensure_ascii=False)
 
                     self.parent.logger.info(
-                        f"Zapisano wyniki treningu do pliku: {task_file}"
+                        f"Zapisano wyniki trainingu do pliku: {task_file}"
                     )
                 except Exception as e:
                     self.parent.logger.error(

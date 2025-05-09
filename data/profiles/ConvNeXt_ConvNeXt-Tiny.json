@@ -1,5 +1,5 @@
 {
-  "type": "trening",
+  "type": "training",
   "info": "Zoptymalizowany profil dla ConvNeXt-Tiny",
   "description": "Profil dostosowany do rozpoznawania 34 kategorii, zbalansowany pod kątem szybkości i dokładności",
   "data_required": "34 klasy, 90 obrazów treningowych i 10 walidacyjnych na klasę",
