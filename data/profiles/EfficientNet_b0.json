@@ -1,10 +1,10 @@
 {
-    "name": "XXXX",
     "type": "fine_tuning",
+    "info": "Profil dla EfficientNet b0",
+    "description": "Profil utworzony przez użytkownika",
+    "data_required": "Standardowe dane do doszkalania",
+    "hardware_required": "Standardowy sprzęt",
     "config": {
-        "train_dir": "F:/_set_B/__dane_treningowe",
-        "val_dir": "F:/_set_B/__dane_walidacyjne",
-        "model_path": "F:/__CFAB_NeuroSorter/data/models/gardener.pt",
         "model": {
             "architecture": "EfficientNet",
             "variant": "b0",
@@ -12,17 +12,33 @@
             "num_classes": 2,
             "pretrained": true,
             "pretrained_weights": "imagenet",
-            "feature_extraction_only": false
+            "feature_extraction_only": false,
+            "activation": "relu",
+            "dropout_at_inference": false,
+            "global_pool": "avg",
+            "last_layer_activation": "softmax"
         },
         "training": {
+            "epochs": 100,
+            "batch_size": 32,
+            "learning_rate": 1e-06,
+            "optimizer": "Adam",
+            "scheduler": "None",
+            "num_workers": 4,
+            "warmup_epochs": 5,
+            "warmup_lr_init": 1e-06,
+            "mixed_precision": true,
+            "gradient_accumulation_steps": 1,
+            "gradient_clip": 1.0,
+            "validation_split": 0.2,
+            "evaluation_freq": 1,
+            "use_ema": false,
+            "ema_decay": 1.0,
             "unfreeze_strategy": "unfreeze_all",
             "unfreeze_after_epochs": 5,
             "unfreeze_layers": 3,
             "frozen_lr": 0.0,
-            "unfrozen_lr": 0.0,
-            "gradient_accumulation_steps": 1,
-            "mixed_precision": true,
-            "gradient_clip": 1.0
+            "unfrozen_lr": 0.0
         },
         "regularization": {
             "weight_decay": 0.0001,
@@ -34,6 +50,35 @@
             "swa": {
                 "use": false,
                 "start_epoch": 10
+            },
+            "stochastic_depth": {
+                "use": false,
+                "drop_rate": 0.2,
+                "survival_probability": 0.8
+            },
+            "random_erase": {
+                "use": false,
+                "probability": 0.25,
+                "mode": "pixel"
+            }
+        },
+        "augmentation": {
+            "basic": {
+                "use": false,
+                "rotation": 30,
+                "brightness": 0.2,
+                "shift": 0.1,
+                "zoom": 0.1,
+                "horizontal_flip": true,
+                "vertical_flip": false
+            },
+            "mixup": {
+                "use": false,
+                "alpha": 0.2
+            },
+            "cutmix": {
+                "use": false,
+                "alpha": 0.2
             }
         },
         "preprocessing": {
@@ -59,7 +104,18 @@
                 "recall": true,
                 "f1": true,
                 "topk": true,
-                "confusion_matrix": true
+                "confusion_matrix": true,
+                "auc": true
+            },
+            "logging": {
+                "use_tensorboard": true,
+                "use_wandb": false,
+                "save_to_csv": true,
+                "logging_freq": "epoch"
+            },
+            "visualization": {
+                "use_gradcam": true,
+                "use_feature_maps": true
             },
             "early_stopping": {
                 "patience": 10,
@@ -88,15 +144,5 @@
                 "precision": "int8"
             }
         }
-    },
-    "training_time": 0,
-    "training_time_str": "0:00:00",
-    "status": "Zakończony",
-    "train_accuracy": 1.0,
-    "train_loss": 0.0,
-    "validation_accuracy": 1.0,
-    "validation_loss": 0.0,
-    "model_filename": "",
-    "accuracy": 0.0,
-    "epochs_trained": 0
+    }
 }

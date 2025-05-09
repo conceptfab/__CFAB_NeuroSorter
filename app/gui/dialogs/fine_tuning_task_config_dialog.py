@@ -31,6 +31,11 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.profiles_dir = Path("data/profiles")
         self.profiles_dir.mkdir(exist_ok=True)
         self.current_profile = None
+
+        # Inicjalizacja elementów interfejsu
+        self.auc_check = QtWidgets.QCheckBox()
+        self.auc_check.setChecked(True)
+
         self._init_ui()
 
     def _setup_logging(self):
@@ -208,6 +213,26 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             self.feature_extraction_check = QtWidgets.QCheckBox()
             self.feature_extraction_check.setChecked(False)
             form.addRow("Feature extraction only:", self.feature_extraction_check)
+
+            # Activation function
+            self.activation_combo = QtWidgets.QComboBox()
+            self.activation_combo.addItems(["relu", "swish", "mish", "gelu"])
+            form.addRow("Activation:", self.activation_combo)
+
+            # Dropout at inference
+            self.dropout_at_inference_check = QtWidgets.QCheckBox()
+            self.dropout_at_inference_check.setChecked(False)
+            form.addRow("Dropout at inference:", self.dropout_at_inference_check)
+
+            # Global pooling
+            self.global_pool_combo = QtWidgets.QComboBox()
+            self.global_pool_combo.addItems(["avg", "max"])
+            form.addRow("Global pooling:", self.global_pool_combo)
+
+            # Last layer activation
+            self.last_layer_activation_combo = QtWidgets.QComboBox()
+            self.last_layer_activation_combo.addItems(["softmax", "sigmoid"])
+            form.addRow("Last layer activation:", self.last_layer_activation_combo)
 
             # Grupa profili
             profile_group = QtWidgets.QGroupBox("Dostępne profile")
@@ -588,6 +613,10 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                             "pretrained": self.pretrained_check.isChecked(),
                             "pretrained_weights": self.pretrained_weights_combo.currentText(),
                             "feature_extraction_only": self.feature_extraction_check.isChecked(),
+                            "activation": self.activation_combo.currentText(),
+                            "dropout_at_inference": self.dropout_at_inference_check.isChecked(),
+                            "global_pool": self.global_pool_combo.currentText(),
+                            "last_layer_activation": self.last_layer_activation_combo.currentText(),
                         },
                         "training": {
                             "epochs": self.epochs_spin.value(),
@@ -597,19 +626,42 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                             "scheduler": self.scheduler_combo.currentText(),
                             "num_workers": self.num_workers_spin.value(),
                             "warmup_epochs": self.warmup_epochs_spin.value(),
+                            "warmup_lr_init": self.warmup_lr_init_spin.value(),
                             "mixed_precision": self.mixed_precision_check.isChecked(),
+                            "gradient_accumulation_steps": self.grad_accum_steps_spin.value(),
+                            "gradient_clip": self.gradient_clip_spin.value(),
+                            "validation_split": self.validation_split_spin.value(),
+                            "evaluation_freq": self.eval_freq_spin.value(),
+                            "use_ema": self.use_ema_check.isChecked(),
+                            "ema_decay": self.ema_decay_spin.value(),
+                            "unfreeze_strategy": self.unfreeze_strategy_combo.currentText(),
+                            "unfreeze_after_epochs": self.unfreeze_after_epochs_spin.value(),
+                            "unfreeze_layers": self.unfreeze_layers_spin.value(),
+                            "frozen_lr": self.frozen_lr_spin.value(),
+                            "unfrozen_lr": self.unfrozen_lr_spin.value(),
                         },
                         "regularization": {
                             "weight_decay": float(self.weight_decay_spin.value()),
-                            "gradient_clip": self.gradient_clip_spin.value(),
-                            "label_smoothing": self.label_smoothing_spin.value(),
-                            "drop_connect_rate": self.drop_connect_spin.value(),
-                            "dropout_rate": self.dropout_spin.value(),
-                            "momentum": self.momentum_spin.value(),
-                            "epsilon": self.epsilon_spin.value(),
+                            "label_smoothing": float(self.label_smoothing_spin.value()),
+                            "dropout_rate": float(self.dropout_spin.value()),
+                            "drop_connect_rate": float(self.drop_connect_spin.value()),
+                            "momentum": float(self.momentum_spin.value()),
+                            "epsilon": float(self.epsilon_spin.value()),
                             "swa": {
                                 "use": self.use_swa_check.isChecked(),
-                                "start_epoch": self.swa_start_epoch_spin.value(),
+                                "start_epoch": int(self.swa_start_epoch_spin.value()),
+                            },
+                            "stochastic_depth": {
+                                "use": self.use_stoch_depth_check.isChecked(),
+                                "drop_rate": float(self.stoch_depth_drop_rate.value()),
+                                "survival_probability": float(
+                                    self.stoch_depth_survival_prob.value()
+                                ),
+                            },
+                            "random_erase": {
+                                "use": self.use_random_erase_check.isChecked(),
+                                "probability": float(self.random_erase_prob.value()),
+                                "mode": self.random_erase_mode_combo.currentText(),
                             },
                         },
                         "augmentation": {
@@ -631,6 +683,22 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                                 "alpha": self.cutmix_alpha_spin.value(),
                             },
                         },
+                        "preprocessing": {
+                            "normalization": {
+                                "mean": [
+                                    self.norm_mean_r.value(),
+                                    self.norm_mean_g.value(),
+                                    self.norm_mean_b.value(),
+                                ],
+                                "std": [
+                                    self.norm_std_r.value(),
+                                    self.norm_std_g.value(),
+                                    self.norm_std_b.value(),
+                                ],
+                            },
+                            "resize_mode": self.resize_mode_combo.currentText(),
+                            "cache_dataset": self.cache_dataset_check.isChecked(),
+                        },
                         "monitoring": {
                             "metrics": {
                                 "accuracy": self.accuracy_check.isChecked(),
@@ -639,6 +707,17 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                                 "f1": self.f1_check.isChecked(),
                                 "topk": self.topk_check.isChecked(),
                                 "confusion_matrix": self.confusion_matrix_check.isChecked(),
+                                "auc": self.auc_check.isChecked(),
+                            },
+                            "logging": {
+                                "use_tensorboard": self.use_tensorboard_check.isChecked(),
+                                "use_wandb": self.use_wandb_check.isChecked(),
+                                "save_to_csv": self.use_csv_check.isChecked(),
+                                "logging_freq": self.log_freq_combo.currentText(),
+                            },
+                            "visualization": {
+                                "use_gradcam": self.use_gradcam_check.isChecked(),
+                                "use_feature_maps": self.use_feature_maps_check.isChecked(),
                             },
                             "early_stopping": {
                                 "patience": self.patience_spin.value(),
@@ -649,6 +728,22 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                                 "best_only": self.best_only_check.isChecked(),
                                 "save_frequency": self.save_freq_spin.value(),
                                 "metric": self.checkpoint_metric_combo.currentText(),
+                            },
+                        },
+                        "advanced": {
+                            "seed": self.seed_spin.value(),
+                            "deterministic": self.deterministic_check.isChecked(),
+                            "class_weights": self.class_weights_combo.currentText(),
+                            "sampler": self.sampler_combo.currentText(),
+                            "image_channels": self.image_channels_spin.value(),
+                            "tta": {
+                                "use": self.use_tta_check.isChecked(),
+                                "num_augmentations": self.tta_num_samples_spin.value(),
+                            },
+                            "export_onnx": self.export_onnx_check.isChecked(),
+                            "quantization": {
+                                "use": self.quantization_check.isChecked(),
+                                "precision": self.quantization_precision_combo.currentText(),
                             },
                         },
                     },
@@ -711,15 +806,13 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             self.warmup_lr_init_spin.setValue(
                 training_config.get("warmup_lr_init", 0.000001)
             )
-            self.gradient_accumulation_steps_spin.setValue(
+            self.grad_accum_steps_spin.setValue(
                 training_config.get("gradient_accumulation_steps", 1)
             )
             self.validation_split_spin.setValue(
                 training_config.get("validation_split", 0.2)
             )
-            self.evaluation_freq_spin.setValue(
-                training_config.get("evaluation_freq", 1)
-            )
+            self.eval_freq_spin.setValue(training_config.get("evaluation_freq", 1))
             self.use_ema_check.setChecked(training_config.get("use_ema", False))
             self.ema_decay_spin.setValue(training_config.get("ema_decay", 0.9999))
 
@@ -736,10 +829,10 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             self.use_stochastic_depth_check.setChecked(
                 stoch_depth_config.get("use_stochastic_depth", False)
             )
-            self.stochastic_depth_drop_rate_spin.setValue(
+            self.stochastic_depth_drop_rate.setValue(
                 stoch_depth_config.get("drop_rate", 0.2)
             )
-            self.stochastic_depth_survival_prob_spin.setValue(
+            self.stochastic_depth_survival_prob.setValue(
                 stoch_depth_config.get("survival_probability", 0.8)
             )
 
@@ -748,10 +841,10 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             self.use_random_erase_check.setChecked(
                 random_erase_config.get("use_random_erase", False)
             )
-            self.random_erase_prob_spin.setValue(
+            self.random_erase_prob.setValue(
                 random_erase_config.get("probability", 0.25)
             )
-            self.random_erase_mode_combo.setCurrentText(
+            self.random_erase_mode.setCurrentText(
                 random_erase_config.get("mode", "pixel")
             )
 
@@ -862,7 +955,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # TTA
             tta_config = inference_config.get("tta", {})
             self.use_tta_check.setChecked(tta_config.get("use_tta", False))
-            self.num_tta_spin.setValue(tta_config.get("num_augmentations", 5))
+            self.tta_num_samples_spin.setValue(tta_config.get("num_augmentations", 5))
 
             # ONNX Export
             self.export_onnx_check.setChecked(
@@ -1302,6 +1395,10 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.confusion_matrix_check.setChecked(True)
         metrics_layout.addRow("Confusion matrix:", self.confusion_matrix_check)
 
+        self.auc_check = QtWidgets.QCheckBox()
+        self.auc_check.setChecked(True)
+        metrics_layout.addRow("AUC:", self.auc_check)
+
         metrics_group.setLayout(metrics_layout)
         form.addRow(metrics_group)
 
@@ -1327,6 +1424,21 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
         logging_group.setLayout(logging_layout)
         form.addRow(logging_group)
+
+        # Visualization
+        visualization_group = QtWidgets.QGroupBox("Visualization")
+        visualization_layout = QtWidgets.QFormLayout()
+
+        self.use_gradcam_check = QtWidgets.QCheckBox()
+        self.use_gradcam_check.setChecked(True)
+        visualization_layout.addRow("Use GradCAM:", self.use_gradcam_check)
+
+        self.use_feature_maps_check = QtWidgets.QCheckBox()
+        self.use_feature_maps_check.setChecked(True)
+        visualization_layout.addRow("Use Feature Maps:", self.use_feature_maps_check)
+
+        visualization_group.setLayout(visualization_layout)
+        form.addRow(visualization_group)
 
         # Early stopping
         early_stop_group = QtWidgets.QGroupBox("Early stopping")
@@ -1407,43 +1519,44 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.image_channels_spin.setValue(3)
         form.addRow("Image channels:", self.image_channels_spin)
 
-        # TTA
+        # Quantization
+        quantization_group = QtWidgets.QGroupBox("Quantization")
+        quantization_layout = QtWidgets.QFormLayout()
+
+        self.quantization_check = QtWidgets.QCheckBox("Używaj kwantyzacji")
+        self.quantization_precision_combo = QtWidgets.QComboBox()
+        self.quantization_precision_combo.addItems(["int8", "float16", "bfloat16"])
+
+        quantization_layout.addRow("", self.quantization_check)
+        quantization_layout.addRow("Precision:", self.quantization_precision_combo)
+        quantization_group.setLayout(quantization_layout)
+
+        # ONNX Export
+        onnx_group = QtWidgets.QGroupBox("ONNX Export")
+        onnx_layout = QtWidgets.QFormLayout()
+
+        self.export_onnx_check = QtWidgets.QCheckBox("Eksportuj do ONNX")
+        self.export_onnx_check.setChecked(False)
+        onnx_layout.addRow("", self.export_onnx_check)
+        onnx_group.setLayout(onnx_layout)
+
+        # Test Time Augmentation
         tta_group = QtWidgets.QGroupBox("Test Time Augmentation")
         tta_layout = QtWidgets.QFormLayout()
 
-        self.use_tta_check = QtWidgets.QCheckBox()
-        self.use_tta_check.setChecked(False)
-        tta_layout.addRow("Use TTA:", self.use_tta_check)
+        self.use_tta_check = QtWidgets.QCheckBox("Używaj TTA")
+        self.tta_num_samples_spin = QtWidgets.QSpinBox()
+        self.tta_num_samples_spin.setRange(1, 10)
+        self.tta_num_samples_spin.setValue(5)
 
-        self.num_tta_spin = QtWidgets.QSpinBox()
-        self.num_tta_spin.setRange(1, 10)
-        self.num_tta_spin.setValue(5)
-        tta_layout.addRow("Number of augmentations:", self.num_tta_spin)
-
+        tta_layout.addRow("", self.use_tta_check)
+        tta_layout.addRow("Number of samples:", self.tta_num_samples_spin)
         tta_group.setLayout(tta_layout)
-        form.addRow(tta_group)
-
-        # ONNX Export
-        self.export_onnx_check = QtWidgets.QCheckBox()
-        self.export_onnx_check.setChecked(False)
-        form.addRow("Export to ONNX:", self.export_onnx_check)
-
-        # Quantization
-        quant_group = QtWidgets.QGroupBox("Quantization")
-        quant_layout = QtWidgets.QFormLayout()
-
-        self.quantization_check = QtWidgets.QCheckBox()
-        self.quantization_check.setChecked(False)
-        quant_layout.addRow("Use quantization:", self.quantization_check)
-
-        self.quantization_precision_combo = QtWidgets.QComboBox()
-        self.quantization_precision_combo.addItems(["int8", "fp16"])
-        quant_layout.addRow("Precision:", self.quantization_precision_combo)
-
-        quant_group.setLayout(quant_layout)
-        form.addRow(quant_group)
 
         layout.addLayout(form)
+        layout.addWidget(quantization_group)
+        layout.addWidget(onnx_group)
+        layout.addWidget(tta_group)
         tab.setLayout(layout)
         return tab
 
@@ -1499,6 +1612,38 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.warmup_epochs_spin.setRange(0, 100)
         self.warmup_epochs_spin.setValue(5)
         basic_layout.addRow("Warmup epochs:", self.warmup_epochs_spin)
+
+        # Warmup learning rate init
+        self.warmup_lr_init_spin = QtWidgets.QDoubleSpinBox()
+        self.warmup_lr_init_spin.setRange(0.000001, 0.1)
+        self.warmup_lr_init_spin.setValue(0.000001)
+        self.warmup_lr_init_spin.setDecimals(6)
+        basic_layout.addRow("Warmup LR init:", self.warmup_lr_init_spin)
+
+        # Validation split
+        self.validation_split_spin = QtWidgets.QDoubleSpinBox()
+        self.validation_split_spin.setRange(0.0, 0.5)
+        self.validation_split_spin.setValue(0.2)
+        self.validation_split_spin.setDecimals(2)
+        basic_layout.addRow("Validation split:", self.validation_split_spin)
+
+        # Evaluation frequency
+        self.eval_freq_spin = QtWidgets.QSpinBox()
+        self.eval_freq_spin.setRange(1, 100)
+        self.eval_freq_spin.setValue(1)
+        basic_layout.addRow("Evaluation frequency:", self.eval_freq_spin)
+
+        # EMA
+        self.use_ema_check = QtWidgets.QCheckBox()
+        self.use_ema_check.setChecked(False)
+        basic_layout.addRow("Use EMA:", self.use_ema_check)
+
+        # EMA decay
+        self.ema_decay_spin = QtWidgets.QDoubleSpinBox()
+        self.ema_decay_spin.setRange(0.0, 1.0)
+        self.ema_decay_spin.setValue(0.9999)
+        self.ema_decay_spin.setDecimals(4)
+        basic_layout.addRow("EMA decay:", self.ema_decay_spin)
 
         basic_group.setLayout(basic_layout)
         form.addRow(basic_group)
@@ -1738,16 +1883,32 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                     "pretrained": self.pretrained_check.isChecked(),
                     "pretrained_weights": self.pretrained_weights_combo.currentText(),
                     "feature_extraction_only": self.feature_extraction_check.isChecked(),
+                    "activation": self.activation_combo.currentText(),
+                    "dropout_at_inference": self.dropout_at_inference_check.isChecked(),
+                    "global_pool": self.global_pool_combo.currentText(),
+                    "last_layer_activation": self.last_layer_activation_combo.currentText(),
                 },
                 "training": {
+                    "epochs": self.epochs_spin.value(),
+                    "batch_size": self.batch_size_spin.value(),
+                    "learning_rate": float(self.lr_spin.value()),
+                    "optimizer": self.optimizer_combo.currentText(),
+                    "scheduler": self.scheduler_combo.currentText(),
+                    "num_workers": self.num_workers_spin.value(),
+                    "warmup_epochs": self.warmup_epochs_spin.value(),
+                    "warmup_lr_init": self.warmup_lr_init_spin.value(),
+                    "mixed_precision": self.mixed_precision_check.isChecked(),
+                    "gradient_accumulation_steps": self.grad_accum_steps_spin.value(),
+                    "gradient_clip": self.gradient_clip_spin.value(),
+                    "validation_split": self.validation_split_spin.value(),
+                    "evaluation_freq": self.eval_freq_spin.value(),
+                    "use_ema": self.use_ema_check.isChecked(),
+                    "ema_decay": self.ema_decay_spin.value(),
                     "unfreeze_strategy": self.unfreeze_strategy_combo.currentText(),
                     "unfreeze_after_epochs": self.unfreeze_after_epochs_spin.value(),
                     "unfreeze_layers": self.unfreeze_layers_spin.value(),
                     "frozen_lr": self.frozen_lr_spin.value(),
                     "unfrozen_lr": self.unfrozen_lr_spin.value(),
-                    "gradient_accumulation_steps": self.grad_accum_steps_spin.value(),
-                    "mixed_precision": self.mixed_precision_check.isChecked(),
-                    "gradient_clip": self.gradient_clip_spin.value(),
                 },
                 "regularization": {
                     "weight_decay": float(self.weight_decay_spin.value()),
@@ -1759,6 +1920,37 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                     "swa": {
                         "use": self.use_swa_check.isChecked(),
                         "start_epoch": int(self.swa_start_epoch_spin.value()),
+                    },
+                    "stochastic_depth": {
+                        "use": self.use_stoch_depth_check.isChecked(),
+                        "drop_rate": float(self.stoch_depth_drop_rate.value()),
+                        "survival_probability": float(
+                            self.stoch_depth_survival_prob.value()
+                        ),
+                    },
+                    "random_erase": {
+                        "use": self.use_random_erase_check.isChecked(),
+                        "probability": float(self.random_erase_prob.value()),
+                        "mode": self.random_erase_mode_combo.currentText(),
+                    },
+                },
+                "augmentation": {
+                    "basic": {
+                        "use": self.basic_aug_check.isChecked(),
+                        "rotation": self.rotation_spin.value(),
+                        "brightness": self.brightness_spin.value(),
+                        "shift": self.shift_spin.value(),
+                        "zoom": self.zoom_spin.value(),
+                        "horizontal_flip": self.horizontal_flip_check.isChecked(),
+                        "vertical_flip": self.vertical_flip_check.isChecked(),
+                    },
+                    "mixup": {
+                        "use": self.mixup_check.isChecked(),
+                        "alpha": self.mixup_alpha_spin.value(),
+                    },
+                    "cutmix": {
+                        "use": self.cutmix_check.isChecked(),
+                        "alpha": self.cutmix_alpha_spin.value(),
                     },
                 },
                 "preprocessing": {
@@ -1785,6 +1977,17 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                         "f1": self.f1_check.isChecked(),
                         "topk": self.topk_check.isChecked(),
                         "confusion_matrix": self.confusion_matrix_check.isChecked(),
+                        "auc": self.auc_check.isChecked(),
+                    },
+                    "logging": {
+                        "use_tensorboard": self.use_tensorboard_check.isChecked(),
+                        "use_wandb": self.use_wandb_check.isChecked(),
+                        "save_to_csv": self.use_csv_check.isChecked(),
+                        "logging_freq": self.log_freq_combo.currentText(),
+                    },
+                    "visualization": {
+                        "use_gradcam": self.use_gradcam_check.isChecked(),
+                        "use_feature_maps": self.use_feature_maps_check.isChecked(),
                     },
                     "early_stopping": {
                         "patience": self.patience_spin.value(),
@@ -1805,7 +2008,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                     "image_channels": self.image_channels_spin.value(),
                     "tta": {
                         "use": self.use_tta_check.isChecked(),
-                        "num_augmentations": self.num_tta_spin.value(),
+                        "num_augmentations": self.tta_num_samples_spin.value(),
                     },
                     "export_onnx": self.export_onnx_check.isChecked(),
                     "quantization": {
@@ -1819,6 +2022,16 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 "name": self.name_edit.text().strip(),
                 "type": "fine_tuning",
                 "config": config,
+                "training_time": 0,
+                "training_time_str": "0:00:00",
+                "status": "Oczekujące",
+                "train_accuracy": 0.0,
+                "train_loss": 0.0,
+                "validation_accuracy": 0.0,
+                "validation_loss": 0.0,
+                "model_filename": "",
+                "accuracy": 0.0,
+                "epochs_trained": 0,
             }
             self.accept()
 
