@@ -934,13 +934,23 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
             # 1. Aktualizacja parametrów modelu
             if "architecture" in model_config:
+                # Najpierw ustawiamy architekturę
                 self.arch_combo.setCurrentText(model_config["architecture"])
-                # Po zmianie architektury aktualizujemy dostępne warianty
+                # To wywołanie zaktualizuje listę wariantów
                 self._update_variant_combo(model_config["architecture"])
-                self._on_architecture_changed(model_config["architecture"])
 
+            # Teraz ustawiamy wariant, po aktualizacji listy wariantów
             if "variant" in model_config:
-                self.variant_combo.setCurrentText(model_config["variant"])
+                variant = model_config["variant"]
+                # Jeśli wariant jest dostępny w aktualnej liście, ustaw go
+                idx = self.variant_combo.findText(variant)
+                if idx >= 0:
+                    self.variant_combo.setCurrentIndex(idx)
+                    self.logger.info(f"Ustawiono wariant: {variant}")
+                else:
+                    self.logger.warning(
+                        f"Wariant {variant} nie jest dostępny dla architektury {model_config.get('architecture')}"
+                    )
 
             if "input_size" in model_config:
                 self.input_size_spin.setValue(model_config["input_size"])
@@ -1188,6 +1198,9 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # Aktualizacja zależnych kontrolek
             self._update_dependent_controls()
 
+            # Na koniec aktualizujemy stan UI
+            self._update_ui_state()
+
             self.logger.info("Konfiguracja modelu została pomyślnie załadowana")
 
         except Exception as e:
@@ -1313,6 +1326,10 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
                             # Użyj metody _load_config do załadowania całej konfiguracji
                             self._load_config(config)
+
+                            # Dodaj tę linię, aby zaktualizować kontrolki zależne
+                            self._update_dependent_controls()
+
                             self.logger.info("Zastosowano konfigurację modelu")
 
                     except Exception as e:
