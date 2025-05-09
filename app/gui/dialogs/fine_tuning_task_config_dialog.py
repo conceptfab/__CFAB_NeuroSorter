@@ -173,7 +173,17 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # Architektura modelu
             self.arch_combo = QtWidgets.QComboBox()
             self.arch_combo.addItems(
-                ["EfficientNet", "ResNet", "DenseNet", "MobileNet"]
+                [
+                    "EfficientNet",
+                    "ResNet",
+                    "MobileNet",
+                    "VGG",
+                    "DenseNet",
+                    "ConvNeXt",
+                    "ConvNeXtV2",
+                    "InceptionV3",
+                    "Xception",
+                ]
             )
             form.addRow("Architektura:", self.arch_combo)
 
@@ -205,7 +215,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # Pretrained weights
             self.pretrained_weights_combo = QtWidgets.QComboBox()
             self.pretrained_weights_combo.addItems(
-                ["imagenet", "imagenet21k", "noisy-student"]
+                ["imagenet", "imagenet21k", "noisy-student", "none"]
             )
             form.addRow("Pretrained weights:", self.pretrained_weights_combo)
 
@@ -1083,6 +1093,11 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             "ResNet": ["18", "34", "50", "101", "152"],
             "DenseNet": ["121", "169", "201"],
             "MobileNet": ["v2", "v3_small", "v3_large"],
+            "VGG": ["11", "13", "16", "19"],
+            "ConvNeXt": ["tiny", "small", "base", "large", "xlarge"],
+            "ConvNeXtV2": ["tiny", "small", "base", "large", "huge"],
+            "InceptionV3": ["default"],
+            "Xception": ["default"],
         }
         if architecture in variants:
             self.variant_combo.addItems(variants[architecture])
@@ -2076,3 +2091,19 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Nie można usunąć profilu: {str(e)}"
             )
+
+    def _get_model_config(self) -> Dict[str, Any]:
+        """Zwraca konfigurację modelu."""
+        return {
+            "architecture": self.arch_combo.currentText(),
+            "variant": self.variant_combo.currentText(),
+            "input_size": self.input_size_spin.value(),
+            "num_classes": self.num_classes_spin.value(),
+            "pretrained": self.pretrained_check.isChecked(),
+            "pretrained_weights": self.pretrained_weights_combo.currentText(),
+            "feature_extraction_only": self.feature_extraction_check.isChecked(),
+            "activation": self.activation_combo.currentText(),
+            "dropout_at_inference": self.dropout_at_inference_check.isChecked(),
+            "global_pool": self.global_pool_combo.currentText(),
+            "last_layer_activation": self.last_layer_activation_combo.currentText(),
+        }
