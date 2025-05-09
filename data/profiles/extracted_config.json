@@ -1,7 +1,7 @@
 {
     "model": {
         "architecture": "EfficientNet",
-        "variant": "EfficientNet-B2",
+        "variant": "b0",
         "input_size": 288,
         "num_classes": 34
     },
@@ -9,7 +9,7 @@
         "batch_size": 48,
         "learning_rate": 0.0002,
         "optimizer": "AdamW",
-        "scheduler": "CosineAnnealingWarmRestarts",
+        "scheduler": "None",
         "warmup_epochs": 10,
         "mixed_precision": true,
         "unfreeze_layers": 12,
@@ -45,18 +45,29 @@
         }
     },
     "preprocessing": {
-        "normalization": "RGB"
+        "normalization": {
+            "mean": [
+                0.48,
+                0.46,
+                0.41
+            ],
+            "std": [
+                0.23,
+                0.22,
+                0.23
+            ]
+        }
     },
     "monitoring": {
         "early_stopping": {
             "patience": 25,
             "min_delta": 0.001,
-            "monitor": "val_f1"
+            "monitor": "val_loss"
         },
         "checkpointing": {
             "best_only": true,
             "save_frequency": 1,
-            "metric": "val_f1"
+            "metric": "val_loss"
         }
     }
 }
