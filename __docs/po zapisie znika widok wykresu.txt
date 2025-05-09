@@ -1,4 +1,12 @@
 po zapisie znika widok wykresu
+zapisywanie wykresu z ona treningu wsadowego
 odświeżanie widoku treningu wsadowego - po każdym zadaniu
 odświeżenie widoku Kolejka zadań treningowych po dodaniu zadania w widgetów
-widoki modeli nie wyswietla waznych danych z pliku json
+wybieranie modelu w katalogu modelu
+
+
+F:/_set_B/__dane_treningowe
+
+F:/_set_B/__dane_walidacyjne
+
+F:/__CFAB_NeuroSorter/data/models/gardener.pt

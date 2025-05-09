@@ -1,14 +1,11 @@
 import json
 import logging
 import os
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict
 
 from PyQt6 import QtWidgets
-from PyQt6.QtCore import Qt
 
-from app.utils.config import DEFAULT_TRAINING_PARAMS
 from app.utils.file_utils import (
     validate_training_directory,
     validate_validation_directory,
@@ -34,7 +31,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.profiles_dir = Path("data/profiles")
         self.profiles_dir.mkdir(exist_ok=True)
         self.current_profile = None
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowCloseButtonHint)
         self._init_ui()
 
     def _setup_logging(self):
@@ -124,127 +120,166 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             raise
 
     def _create_data_model_tab(self) -> QtWidgets.QWidget:
-        """Tworzy zakładkę z konfiguracją danych i modelu."""
-        tab = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout()
+        """Tworzenie zakładki Dane i Model."""
+        try:
+            self.logger.debug("Tworzenie zakładki")
+            tab = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(tab)
+            form = QtWidgets.QFormLayout()
 
-        # Model
-        model_group = QtWidgets.QGroupBox("Model")
-        model_layout = QtWidgets.QFormLayout()
+            # Nazwa zadania (obowiązkowe pole)
+            self.name_edit = QtWidgets.QLineEdit()
+            self.name_edit.setPlaceholderText("Nazwa zadania (wymagana)")
+            form.addRow("Nazwa zadania:", self.name_edit)
 
-        # Architektura
-        self.arch_combo = QtWidgets.QComboBox()
-        self.arch_combo.addItems(["EfficientNet", "ResNet", "DenseNet", "MobileNet"])
-        model_layout.addRow("Architektura:", self.arch_combo)
+            # Katalog danych treningowych
+            train_dir_layout = QtWidgets.QHBoxLayout()
+            self.train_dir_edit = QtWidgets.QLineEdit()
+            train_dir_btn = QtWidgets.QPushButton("Przeglądaj...")
+            train_dir_btn.clicked.connect(self._select_train_dir)
+            train_dir_layout.addWidget(self.train_dir_edit)
+            train_dir_layout.addWidget(train_dir_btn)
 
-        # Wariant
-        self.variant_combo = QtWidgets.QComboBox()
-        self.variant_combo.addItems(
-            [
-                "EfficientNet-B0",
-                "EfficientNet-B1",
-                "EfficientNet-B2",
-                "EfficientNet-B3",
-                "EfficientNet-B4",
-                "EfficientNet-B5",
-                "EfficientNet-B6",
-                "EfficientNet-B7",
-            ]
-        )
-        model_layout.addRow("Wariant:", self.variant_combo)
+            train_label = "Katalog treningowy:"
+            form.addRow(train_label, train_dir_layout)
 
-        # Rozmiar wejścia
-        self.input_size_spin = QtWidgets.QSpinBox()
-        self.input_size_spin.setRange(32, 1024)
-        self.input_size_spin.setValue(224)
-        self.input_size_spin.setSingleStep(32)
-        model_layout.addRow("Rozmiar wejścia:", self.input_size_spin)
+            # Katalog danych walidacyjnych
+            val_dir_layout = QtWidgets.QHBoxLayout()
+            self.val_dir_edit = QtWidgets.QLineEdit()
+            val_dir_btn = QtWidgets.QPushButton("Przeglądaj...")
+            val_dir_btn.clicked.connect(self._select_val_dir)
+            val_dir_layout.addWidget(self.val_dir_edit)
+            val_dir_layout.addWidget(val_dir_btn)
 
-        # Liczba klas
-        self.num_classes_spin = QtWidgets.QSpinBox()
-        self.num_classes_spin.setRange(2, 1000)
-        self.num_classes_spin.setValue(2)
-        model_layout.addRow("Liczba klas:", self.num_classes_spin)
+            val_label = "Katalog walidacyjny:"
+            form.addRow(val_label, val_dir_layout)
 
-        # Pretrained
-        self.pretrained_check = QtWidgets.QCheckBox()
-        self.pretrained_check.setChecked(True)
-        model_layout.addRow("Użyj pretrained:", self.pretrained_check)
+            # Model do doszkalania
+            model_path_layout = QtWidgets.QHBoxLayout()
+            self.model_path_edit = QtWidgets.QLineEdit()
+            model_path_btn = QtWidgets.QPushButton("Przeglądaj...")
+            model_path_btn.clicked.connect(self._select_model_file)
+            model_path_layout.addWidget(self.model_path_edit)
+            model_path_layout.addWidget(model_path_btn)
 
-        # Pretrained weights
-        self.pretrained_weights_combo = QtWidgets.QComboBox()
-        self.pretrained_weights_combo.addItems(
-            ["imagenet", "imagenet21k", "noisy-student"]
-        )
-        model_layout.addRow("Pretrained weights:", self.pretrained_weights_combo)
+            model_path_label = "Model do doszkalania:"
+            form.addRow(model_path_label, model_path_layout)
 
-        # Feature extraction only
-        self.feature_extraction_check = QtWidgets.QCheckBox()
-        self.feature_extraction_check.setChecked(False)
-        model_layout.addRow("Feature extraction only:", self.feature_extraction_check)
+            # Architektura modelu
+            self.arch_combo = QtWidgets.QComboBox()
+            self.arch_combo.addItems(
+                ["EfficientNet", "ResNet", "DenseNet", "MobileNet"]
+            )
+            form.addRow("Architektura:", self.arch_combo)
 
-        # Activation
-        self.activation_combo = QtWidgets.QComboBox()
-        self.activation_combo.addItems(["swish", "relu", "silu", "mish", "gelu"])
-        model_layout.addRow("Activation:", self.activation_combo)
+            # Wariant modelu
+            self.variant_combo = QtWidgets.QComboBox()
+            self._update_variant_combo("EfficientNet")
+            form.addRow("Wariant:", self.variant_combo)
+            self.arch_combo.currentTextChanged.connect(self._on_architecture_changed)
 
-        # Dropout at inference
-        self.dropout_at_inference_check = QtWidgets.QCheckBox()
-        self.dropout_at_inference_check.setChecked(False)
-        model_layout.addRow("Dropout at inference:", self.dropout_at_inference_check)
+            # Rozmiar obrazu wejściowego
+            self.input_size_spin = QtWidgets.QSpinBox()
+            self.input_size_spin.setRange(32, 1024)
+            self.input_size_spin.setValue(224)
+            self.input_size_spin.setSingleStep(32)
+            size_label = "Rozmiar obrazu:"
+            form.addRow(size_label, self.input_size_spin)
 
-        # Global pool
-        self.global_pool_combo = QtWidgets.QComboBox()
-        self.global_pool_combo.addItems(["avg", "max", "token", "none"])
-        model_layout.addRow("Global pool:", self.global_pool_combo)
+            # Liczba klas
+            self.num_classes_spin = QtWidgets.QSpinBox()
+            self.num_classes_spin.setRange(2, 1000)
+            self.num_classes_spin.setValue(2)
+            form.addRow("Liczba klas:", self.num_classes_spin)
 
-        # Last layer activation
-        self.last_layer_activation_combo = QtWidgets.QComboBox()
-        self.last_layer_activation_combo.addItems(["softmax", "sigmoid", "none"])
-        model_layout.addRow("Last layer activation:", self.last_layer_activation_combo)
+            # Pretrained
+            self.pretrained_check = QtWidgets.QCheckBox()
+            self.pretrained_check.setChecked(True)
+            form.addRow("Użyj pretrained:", self.pretrained_check)
 
-        model_group.setLayout(model_layout)
-        layout.addWidget(model_group)
+            # Pretrained weights
+            self.pretrained_weights_combo = QtWidgets.QComboBox()
+            self.pretrained_weights_combo.addItems(
+                ["imagenet", "imagenet21k", "noisy-student"]
+            )
+            form.addRow("Pretrained weights:", self.pretrained_weights_combo)
 
-        # Dane
-        data_group = QtWidgets.QGroupBox("Dane")
-        data_layout = QtWidgets.QFormLayout()
+            # Feature extraction only
+            self.feature_extraction_check = QtWidgets.QCheckBox()
+            self.feature_extraction_check.setChecked(False)
+            form.addRow("Feature extraction only:", self.feature_extraction_check)
 
-        # Katalog treningowy
-        train_dir_layout = QtWidgets.QHBoxLayout()
-        self.train_dir_edit = QtWidgets.QLineEdit()
-        self.train_dir_edit.setReadOnly(True)
-        train_dir_button = QtWidgets.QPushButton("Wybierz")
-        train_dir_button.clicked.connect(self._select_train_dir)
-        train_dir_layout.addWidget(self.train_dir_edit)
-        train_dir_layout.addWidget(train_dir_button)
-        data_layout.addRow("Katalog treningowy:", train_dir_layout)
+            # Grupa profili
+            profile_group = QtWidgets.QGroupBox("Dostępne profile")
+            profile_layout = QtWidgets.QVBoxLayout()
 
-        # Katalog walidacyjny
-        val_dir_layout = QtWidgets.QHBoxLayout()
-        self.val_dir_edit = QtWidgets.QLineEdit()
-        self.val_dir_edit.setReadOnly(True)
-        val_dir_button = QtWidgets.QPushButton("Wybierz")
-        val_dir_button.clicked.connect(self._select_val_dir)
-        val_dir_layout.addWidget(self.val_dir_edit)
-        val_dir_layout.addWidget(val_dir_button)
-        data_layout.addRow("Katalog walidacyjny:", val_dir_layout)
+            # Lista profili
+            self.profile_list = QtWidgets.QListWidget()
+            self.profile_list.currentItemChanged.connect(self._on_profile_selected)
+            self._refresh_profile_list()
+            profile_layout.addWidget(self.profile_list)
 
-        # Model do doszkalania
-        model_path_layout = QtWidgets.QHBoxLayout()
-        self.model_path_edit = QtWidgets.QLineEdit()
-        self.model_path_edit.setReadOnly(True)
-        model_path_button = QtWidgets.QPushButton("Wybierz")
-        model_path_button.clicked.connect(self._select_model_file)
-        model_path_layout.addWidget(self.model_path_edit)
-        model_path_layout.addWidget(model_path_button)
-        data_layout.addRow("Model do doszkalania:", model_path_layout)
+            # Informacje o profilu
+            info_group = QtWidgets.QGroupBox("Informacje o profilu")
+            info_layout = QtWidgets.QFormLayout()
 
-        data_group.setLayout(data_layout)
-        layout.addWidget(data_group)
+            self.profile_info = QtWidgets.QTextEdit()
+            self.profile_info.setReadOnly(True)
+            self.profile_info.setMaximumHeight(60)
+            info_layout.addRow("Info:", self.profile_info)
 
-        tab.setLayout(layout)
-        return tab
+            self.profile_description = QtWidgets.QTextEdit()
+            self.profile_description.setReadOnly(True)
+            self.profile_description.setMaximumHeight(60)
+            info_layout.addRow("Opis:", self.profile_description)
+
+            self.profile_data_required = QtWidgets.QTextEdit()
+            self.profile_data_required.setReadOnly(True)
+            self.profile_data_required.setMaximumHeight(60)
+            info_layout.addRow("Wymagane dane:", self.profile_data_required)
+
+            self.profile_hardware_required = QtWidgets.QTextEdit()
+            self.profile_hardware_required.setReadOnly(True)
+            self.profile_hardware_required.setMaximumHeight(60)
+            info_layout.addRow("Wymagany sprzęt:", self.profile_hardware_required)
+
+            info_group.setLayout(info_layout)
+            profile_layout.addWidget(info_group)
+
+            # Przyciski profilu
+            buttons_layout = QtWidgets.QHBoxLayout()
+
+            self.edit_profile_btn = QtWidgets.QPushButton("Edytuj profil")
+            self.edit_profile_btn.clicked.connect(self._edit_profile)
+            buttons_layout.addWidget(self.edit_profile_btn)
+
+            self.apply_profile_btn = QtWidgets.QPushButton("Zastosuj profil")
+            self.apply_profile_btn.clicked.connect(self._apply_profile)
+            buttons_layout.addWidget(self.apply_profile_btn)
+
+            self.clone_profile_btn = QtWidgets.QPushButton("Klonuj profil")
+            self.clone_profile_btn.clicked.connect(self._clone_profile)
+            buttons_layout.addWidget(self.clone_profile_btn)
+
+            self.save_profile_btn = QtWidgets.QPushButton("Zapisz profil")
+            self.save_profile_btn.clicked.connect(self._save_profile)
+            buttons_layout.addWidget(self.save_profile_btn)
+
+            self.delete_profile_btn = QtWidgets.QPushButton("Usuń profil")
+            self.delete_profile_btn.clicked.connect(self._delete_profile)
+            buttons_layout.addWidget(self.delete_profile_btn)
+
+            profile_layout.addLayout(buttons_layout)
+            profile_group.setLayout(profile_layout)
+
+            layout.addLayout(form)
+            layout.addWidget(profile_group)
+            return tab
+
+        except Exception as e:
+            msg = "Błąd podczas tworzenia zakładki"
+            self.logger.error(f"{msg}: {str(e)}", exc_info=True)
+            raise
 
     def _refresh_profile_list(self):
         """Odświeża listę dostępnych profili."""
@@ -254,25 +289,19 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             try:
                 with open(profile_file, "r", encoding="utf-8") as f:
                     profile_data = json.load(f)
-                    profile_type = profile_data.get("typ")
-                    self.logger.debug(
-                        f"Znaleziono profil {profile_file.stem} typu: {profile_type}"
-                    )
-                    if profile_type == "doszkalanie":
-                        profile_name = profile_file.stem
-                        self.profile_list.addItem(profile_name)
-                        self.logger.debug(f"Dodano profil {profile_name} do listy")
-                    else:
+                    if profile_data.get("type") == "fine_tuning":
+                        self.profile_list.addItem(profile_file.stem)
                         self.logger.debug(
-                            f"Pominięto profil {profile_file.stem} - nieprawidłowy typ"
+                            "Dodano profil %s do listy" % profile_file.stem
                         )
             except Exception as e:
                 self.logger.error(
-                    f"Błąd podczas wczytywania profilu {profile_file}: {str(e)}",
+                    "Błąd podczas wczytywania profilu %s: %s" % (profile_file, str(e)),
                     exc_info=True,
                 )
         self.logger.debug(
-            f"Zakończono odświeżanie listy profili. Liczba profili: {self.profile_list.count()}"
+            "Zakończono odświeżanie listy profili. Liczba profili: %s"
+            % (self.profile_list.count())
         )
 
     def _on_profile_selected(self, current, previous):
@@ -496,6 +525,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 self, "Ostrzeżenie", "Najpierw wybierz profil do sklonowania."
             )
             return
+
         try:
             current_name = self.profile_list.currentItem().text()
             new_name, ok = QtWidgets.QInputDialog.getText(
@@ -505,18 +535,24 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 QtWidgets.QLineEdit.EchoMode.Normal,
                 f"{current_name}_clone",
             )
+
             if ok and new_name:
                 new_profile = self.current_profile.copy()
                 new_profile["info"] = f"Klon profilu {current_name}"
                 new_profile["description"] = f"Klon profilu {current_name}"
-                new_profile["typ"] = "doszkalanie"
+                new_profile["type"] = (
+                    "fine_tuning"  # Upewniamy się, że typ jest ustawiony
+                )
+
                 new_path = self.profiles_dir / f"{new_name}.json"
                 with open(new_path, "w", encoding="utf-8") as f:
                     json.dump(new_profile, f, indent=4, ensure_ascii=False)
+
                 self._refresh_profile_list()
                 QtWidgets.QMessageBox.information(
                     self, "Sukces", "Profil został pomyślnie sklonowany."
                 )
+
         except Exception as e:
             self.logger.error(
                 f"Błąd podczas klonowania profilu: {str(e)}", exc_info=True
@@ -526,7 +562,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             )
 
     def _save_profile(self):
-        """Zapisuje aktualną konfigurację jako nowy profil."""
+        """Zapisuje aktualną konfigurację jako profil."""
         try:
             name, ok = QtWidgets.QInputDialog.getText(
                 self,
@@ -535,16 +571,13 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 QtWidgets.QLineEdit.EchoMode.Normal,
                 f"{self.arch_combo.currentText()}_{self.variant_combo.currentText()}",
             )
+
             if ok and name:
-                profile_name = name
                 profile_data = {
-                    "typ": "doszkalanie",
-                    "info": (
-                        f"Profil dla {self.arch_combo.currentText()} "
-                        f"{self.variant_combo.currentText()}"
-                    ),
+                    "type": "fine_tuning",
+                    "info": f"Profil dla {self.arch_combo.currentText()} {self.variant_combo.currentText()}",
                     "description": "Profil utworzony przez użytkownika",
-                    "data_required": "Standardowe dane treningowe",
+                    "data_required": "Standardowe dane do doszkalania",
                     "hardware_required": "Standardowy sprzęt",
                     "config": {
                         "model": {
@@ -552,6 +585,9 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                             "variant": self.variant_combo.currentText(),
                             "input_size": self.input_size_spin.value(),
                             "num_classes": self.num_classes_spin.value(),
+                            "pretrained": self.pretrained_check.isChecked(),
+                            "pretrained_weights": self.pretrained_weights_combo.currentText(),
+                            "feature_extraction_only": self.feature_extraction_check.isChecked(),
                         },
                         "training": {
                             "epochs": self.epochs_spin.value(),
@@ -561,30 +597,20 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                             "scheduler": self.scheduler_combo.currentText(),
                             "num_workers": self.num_workers_spin.value(),
                             "warmup_epochs": self.warmup_epochs_spin.value(),
-                            "mixed_precision": (self.mixed_precision_check.isChecked()),
+                            "mixed_precision": self.mixed_precision_check.isChecked(),
                         },
                         "regularization": {
                             "weight_decay": float(self.weight_decay_spin.value()),
                             "gradient_clip": self.gradient_clip_spin.value(),
-                            "label_smoothing": (self.label_smoothing_spin.value()),
-                            "drop_connect_rate": (self.drop_connect_spin.value()),
+                            "label_smoothing": self.label_smoothing_spin.value(),
+                            "drop_connect_rate": self.drop_connect_spin.value(),
                             "dropout_rate": self.dropout_spin.value(),
                             "momentum": self.momentum_spin.value(),
                             "epsilon": self.epsilon_spin.value(),
                             "swa": {
                                 "use": self.use_swa_check.isChecked(),
-                                "start_epoch": (self.swa_start_epoch_spin.value()),
+                                "start_epoch": self.swa_start_epoch_spin.value(),
                             },
-                        },
-                        "stochastic_depth": {
-                            "use": self.use_stoch_depth_check.isChecked(),
-                            "drop_rate": self.stoch_depth_drop_rate.value(),
-                            "survival_prob": self.stoch_depth_survival_prob.value(),
-                        },
-                        "random_erase": {
-                            "use": self.use_random_erase_check.isChecked(),
-                            "prob": self.random_erase_prob.value(),
-                            "mode": self.random_erase_mode.currentText(),
                         },
                         "augmentation": {
                             "basic": {
@@ -593,10 +619,8 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                                 "brightness": self.brightness_spin.value(),
                                 "shift": self.shift_spin.value(),
                                 "zoom": self.zoom_spin.value(),
-                                "horizontal_flip": (
-                                    self.horizontal_flip_check.isChecked()
-                                ),
-                                "vertical_flip": (self.vertical_flip_check.isChecked()),
+                                "horizontal_flip": self.horizontal_flip_check.isChecked(),
+                                "vertical_flip": self.vertical_flip_check.isChecked(),
                             },
                             "mixup": {
                                 "use": self.mixup_check.isChecked(),
@@ -614,10 +638,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                                 "recall": self.recall_check.isChecked(),
                                 "f1": self.f1_check.isChecked(),
                                 "topk": self.topk_check.isChecked(),
-                                "confusion_matrix": (
-                                    self.confusion_matrix_check.isChecked()
-                                ),
-                                "auc": self.auc_check.isChecked(),
+                                "confusion_matrix": self.confusion_matrix_check.isChecked(),
                             },
                             "early_stopping": {
                                 "patience": self.patience_spin.value(),
@@ -627,18 +648,21 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                             "checkpointing": {
                                 "best_only": self.best_only_check.isChecked(),
                                 "save_frequency": self.save_freq_spin.value(),
-                                "metric": (self.checkpoint_metric_combo.currentText()),
+                                "metric": self.checkpoint_metric_combo.currentText(),
                             },
                         },
                     },
                 }
-                profile_path = self.profiles_dir / f"{profile_name}.json"
+
+                profile_path = self.profiles_dir / f"{name}.json"
                 with open(profile_path, "w", encoding="utf-8") as f:
                     json.dump(profile_data, f, indent=4, ensure_ascii=False)
+
                 self._refresh_profile_list()
                 QtWidgets.QMessageBox.information(
                     self, "Sukces", "Profil został pomyślnie zapisany."
                 )
+
         except Exception as e:
             self.logger.error(
                 f"Błąd podczas zapisywania profilu: {str(e)}", exc_info=True
@@ -646,1032 +670,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Nie można zapisać profilu: {str(e)}"
             )
-
-    def _delete_profile(self):
-        """Usuwa wybrany profil."""
-        if not self.current_profile:
-            QtWidgets.QMessageBox.warning(
-                self, "Ostrzeżenie", "Najpierw wybierz profil do usunięcia."
-            )
-            return
-        try:
-            current_name = self.profile_list.currentItem().text()
-            profile_path = self.profiles_dir / f"{current_name}.json"
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                "Potwierdzenie",
-                f"Czy na pewno chcesz usunąć profil '{current_name}'?",
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                if profile_path.exists():
-                    profile_path.unlink()
-                    self._refresh_profile_list()
-                    self.current_profile = None
-                    self.profile_info.clear()
-                    self.profile_description.clear()
-                    self.profile_data_required.clear()
-                    self.profile_hardware_required.clear()
-                    QtWidgets.QMessageBox.information(
-                        self, "Sukces", "Profil został pomyślnie usunięty."
-                    )
-        except Exception as e:
-            self.logger.error(f"Błąd podczas usuwania profilu: {str(e)}", exc_info=True)
-            QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie można usunąć profilu: {str(e)}"
-            )
-
-    def _on_architecture_changed(self, arch_name):
-        self._update_variant_combo(arch_name)
-
-    def _update_variant_combo(self, arch_name):
-        self.variant_combo.clear()
-        if arch_name == "EfficientNet":
-            self.variant_combo.addItems(
-                [
-                    "EfficientNet-B0",
-                    "EfficientNet-B1",
-                    "EfficientNet-B2",
-                    "EfficientNet-B3",
-                    "EfficientNet-B4",
-                    "EfficientNet-B5",
-                    "EfficientNet-B6",
-                    "EfficientNet-B7",
-                ]
-            )
-        elif arch_name == "ConvNeXt":
-            self.variant_combo.addItems(
-                [
-                    "ConvNeXt-Tiny",
-                    "ConvNeXt-Small",
-                    "ConvNeXt-Base",
-                    "ConvNeXt-Large",
-                ]
-            )
-
-    def _select_fine_tuning_dir(self):
-        """Wybór katalogu danych do fine-tuningu."""
-        try:
-            title = "Wybierz katalog treningowy"
-            dir_path = QtWidgets.QFileDialog.getExistingDirectory(self, title)
-
-            if dir_path:
-                if validate_training_directory(dir_path):
-                    self.train_dir_edit.setText(dir_path)
-                else:
-                    title = "Błąd"
-                    msg = "Nieprawidłowy katalog treningowy"
-                    QtWidgets.QMessageBox.warning(self, title, msg)
-
-        except Exception as e:
-            msg = "Błąd wyboru katalogu"
-            self.logger.error(f"{msg}: {str(e)}", exc_info=True)
-
-    def _select_val_dir(self):
-        """Wybór katalogu danych walidacyjnych."""
-        try:
-            title = "Wybierz katalog walidacyjny"
-            dir_path = QtWidgets.QFileDialog.getExistingDirectory(self, title)
-
-            if dir_path:
-                if validate_validation_directory(dir_path):
-                    self.val_dir_edit.setText(dir_path)
-                else:
-                    title = "Błąd"
-                    msg = "Nieprawidłowy katalog walidacyjny"
-                    QtWidgets.QMessageBox.warning(self, title, msg)
-
-        except Exception as e:
-            msg = "Błąd wyboru katalogu"
-            self.logger.error(f"{msg}: {str(e)}", exc_info=True)
-
-    def _select_model_file(self):
-        """Wybór pliku modelu do doszkalania."""
-        try:
-            title = "Wybierz model do doszkalania"
-            file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-                self,
-                title,
-                "",
-                "Pliki modeli PyTorch (*.pt *.pth);;Wszystkie pliki (*.*)",
-            )
-
-            if file_path:
-                # Sprawdź rozszerzenie pliku
-                if not file_path.lower().endswith((".pt", ".pth")):
-                    error_msg = (
-                        f"Niewłaściwy format pliku modelu: {file_path}. "
-                        "Wymagane rozszerzenie .pt lub .pth"
-                    )
-                    self.logger.error(error_msg)
-                    QtWidgets.QMessageBox.warning(self, "Błąd", error_msg)
-                    return
-
-                self.model_path_edit.setText(file_path)
-                self.logger.info(f"Wybrano plik modelu: {file_path}")
-
-        except Exception as e:
-            msg = "Błąd wyboru pliku modelu"
-            self.logger.error(f"{msg}: {str(e)}", exc_info=True)
-            QtWidgets.QMessageBox.critical(self, "Błąd", f"{msg}: {str(e)}")
-
-    def _create_fine_tuning_params_tab(self) -> QtWidgets.QWidget:
-        """Tworzy zakładkę z parametrami fine-tuningu."""
-        tab = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout()
-
-        # Training
-        training_group = QtWidgets.QGroupBox("Training")
-        training_layout = QtWidgets.QFormLayout()
-
-        # Epochs
-        self.epochs_spin = QtWidgets.QSpinBox()
-        self.epochs_spin.setRange(1, 1000)
-        self.epochs_spin.setValue(100)
-        training_layout.addRow("Epochs:", self.epochs_spin)
-
-        # Batch size
-        self.batch_size_spin = QtWidgets.QSpinBox()
-        self.batch_size_spin.setRange(1, 1024)
-        self.batch_size_spin.setValue(32)
-        training_layout.addRow("Batch size:", self.batch_size_spin)
-
-        # Learning rate
-        self.lr_spin = QtWidgets.QDoubleSpinBox()
-        self.lr_spin.setRange(0.000001, 1.0)
-        self.lr_spin.setValue(0.001)
-        self.lr_spin.setDecimals(6)
-        training_layout.addRow("Learning rate:", self.lr_spin)
-
-        # Optimizer
-        self.optimizer_combo = QtWidgets.QComboBox()
-        self.optimizer_combo.addItems(["Adam", "AdamW", "SGD", "RMSprop"])
-        training_layout.addRow("Optimizer:", self.optimizer_combo)
-
-        # Scheduler
-        self.scheduler_combo = QtWidgets.QComboBox()
-        self.scheduler_combo.addItems(
-            ["None", "CosineAnnealingLR", "ReduceLROnPlateau", "OneCycleLR"]
-        )
-        training_layout.addRow("Scheduler:", self.scheduler_combo)
-
-        # Number of workers
-        self.num_workers_spin = QtWidgets.QSpinBox()
-        self.num_workers_spin.setRange(0, 32)
-        self.num_workers_spin.setValue(4)
-        training_layout.addRow("Number of workers:", self.num_workers_spin)
-
-        # Warmup epochs
-        self.warmup_epochs_spin = QtWidgets.QSpinBox()
-        self.warmup_epochs_spin.setRange(0, 100)
-        self.warmup_epochs_spin.setValue(5)
-        training_layout.addRow("Warmup epochs:", self.warmup_epochs_spin)
-
-        # Mixed precision
-        self.mixed_precision_check = QtWidgets.QCheckBox()
-        self.mixed_precision_check.setChecked(True)
-        training_layout.addRow("Mixed precision:", self.mixed_precision_check)
-
-        # Freeze base model
-        self.freeze_base_model = QtWidgets.QCheckBox()
-        self.freeze_base_model.setChecked(True)
-        training_layout.addRow("Freeze base model:", self.freeze_base_model)
-
-        # Unfreeze layers
-        self.unfreeze_layers = QtWidgets.QLineEdit()
-        training_layout.addRow("Unfreeze layers:", self.unfreeze_layers)
-
-        # Warmup learning rate init
-        self.warmup_lr_init_spin = QtWidgets.QDoubleSpinBox()
-        self.warmup_lr_init_spin.setRange(0.000001, 1.0)
-        self.warmup_lr_init_spin.setValue(0.000001)
-        self.warmup_lr_init_spin.setDecimals(6)
-        training_layout.addRow("Warmup LR init:", self.warmup_lr_init_spin)
-
-        # Gradient accumulation steps
-        self.grad_accum_steps_spin = QtWidgets.QSpinBox()
-        self.grad_accum_steps_spin.setRange(1, 32)
-        self.grad_accum_steps_spin.setValue(1)
-        training_layout.addRow(
-            "Gradient accumulation steps:", self.grad_accum_steps_spin
-        )
-
-        # Validation split
-        self.validation_split_spin = QtWidgets.QDoubleSpinBox()
-        self.validation_split_spin.setRange(0.1, 0.5)
-        self.validation_split_spin.setValue(0.2)
-        self.validation_split_spin.setDecimals(2)
-        training_layout.addRow("Validation split:", self.validation_split_spin)
-
-        # Evaluation frequency
-        self.eval_freq_spin = QtWidgets.QSpinBox()
-        self.eval_freq_spin.setRange(1, 100)
-        self.eval_freq_spin.setValue(1)
-        training_layout.addRow("Evaluation frequency:", self.eval_freq_spin)
-
-        # EMA
-        ema_group = QtWidgets.QGroupBox("Exponential Moving Average (EMA)")
-        ema_layout = QtWidgets.QFormLayout()
-
-        self.use_ema_check = QtWidgets.QCheckBox()
-        self.use_ema_check.setChecked(False)
-        ema_layout.addRow("Use EMA:", self.use_ema_check)
-
-        self.ema_decay_spin = QtWidgets.QDoubleSpinBox()
-        self.ema_decay_spin.setRange(0.9, 0.9999)
-        self.ema_decay_spin.setValue(0.9999)
-        self.ema_decay_spin.setDecimals(4)
-        ema_layout.addRow("EMA decay:", self.ema_decay_spin)
-
-        ema_group.setLayout(ema_layout)
-        training_layout.addRow(ema_group)
-
-        training_group.setLayout(training_layout)
-        layout.addWidget(training_group)
-
-        tab.setLayout(layout)
-        return tab
-
-    def _create_regularization_tab(self) -> QtWidgets.QWidget:
-        """Tworzy zakładkę z parametrami regularyzacji."""
-        tab = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout()
-
-        # Regularization
-        reg_group = QtWidgets.QGroupBox("Regularization")
-        reg_layout = QtWidgets.QFormLayout()
-
-        # Weight decay
-        self.weight_decay_spin = QtWidgets.QDoubleSpinBox()
-        self.weight_decay_spin.setRange(0.0, 1.0)
-        self.weight_decay_spin.setValue(0.0001)
-        self.weight_decay_spin.setDecimals(6)
-        reg_layout.addRow("Weight decay:", self.weight_decay_spin)
-
-        # Gradient clip
-        self.gradient_clip_spin = QtWidgets.QDoubleSpinBox()
-        self.gradient_clip_spin.setRange(0.0, 10.0)
-        self.gradient_clip_spin.setValue(1.0)
-        self.gradient_clip_spin.setDecimals(2)
-        reg_layout.addRow("Gradient clip:", self.gradient_clip_spin)
-
-        # Label smoothing
-        self.label_smoothing_spin = QtWidgets.QDoubleSpinBox()
-        self.label_smoothing_spin.setRange(0.0, 1.0)
-        self.label_smoothing_spin.setValue(0.1)
-        self.label_smoothing_spin.setDecimals(2)
-        reg_layout.addRow("Label smoothing:", self.label_smoothing_spin)
-
-        # Drop connect rate
-        self.drop_connect_spin = QtWidgets.QDoubleSpinBox()
-        self.drop_connect_spin.setRange(0.0, 1.0)
-        self.drop_connect_spin.setValue(0.2)
-        self.drop_connect_spin.setDecimals(2)
-        reg_layout.addRow("Drop connect rate:", self.drop_connect_spin)
-
-        # Dropout rate
-        self.dropout_spin = QtWidgets.QDoubleSpinBox()
-        self.dropout_spin.setRange(0.0, 1.0)
-        self.dropout_spin.setValue(0.2)
-        self.dropout_spin.setDecimals(2)
-        reg_layout.addRow("Dropout rate:", self.dropout_spin)
-
-        # Momentum
-        self.momentum_spin = QtWidgets.QDoubleSpinBox()
-        self.momentum_spin.setRange(0.0, 1.0)
-        self.momentum_spin.setValue(0.9)
-        self.momentum_spin.setDecimals(2)
-        reg_layout.addRow("Momentum:", self.momentum_spin)
-
-        # Epsilon
-        self.epsilon_spin = QtWidgets.QDoubleSpinBox()
-        self.epsilon_spin.setRange(1e-8, 1e-4)
-        self.epsilon_spin.setValue(1e-6)
-        self.epsilon_spin.setDecimals(8)
-        reg_layout.addRow("Epsilon:", self.epsilon_spin)
-
-        # SWA
-        swa_group = QtWidgets.QGroupBox("Stochastic Weight Averaging (SWA)")
-        swa_layout = QtWidgets.QFormLayout()
-
-        self.use_swa_check = QtWidgets.QCheckBox()
-        self.use_swa_check.setChecked(False)
-        swa_layout.addRow("Use SWA:", self.use_swa_check)
-
-        self.swa_start_epoch_spin = QtWidgets.QSpinBox()
-        self.swa_start_epoch_spin.setRange(1, 1000)
-        self.swa_start_epoch_spin.setValue(10)
-        swa_layout.addRow("Start epoch:", self.swa_start_epoch_spin)
-
-        swa_group.setLayout(swa_layout)
-        reg_layout.addRow(swa_group)
-
-        # Stochastic Depth
-        stoch_depth_group = QtWidgets.QGroupBox("Stochastic Depth")
-        stoch_depth_layout = QtWidgets.QFormLayout()
-
-        self.use_stoch_depth_check = QtWidgets.QCheckBox()
-        self.use_stoch_depth_check.setChecked(False)
-        stoch_depth_layout.addRow("Use Stochastic Depth:", self.use_stoch_depth_check)
-
-        self.stoch_depth_drop_rate = QtWidgets.QDoubleSpinBox()
-        self.stoch_depth_drop_rate.setRange(0.0, 1.0)
-        self.stoch_depth_drop_rate.setValue(0.2)
-        self.stoch_depth_drop_rate.setDecimals(2)
-        stoch_depth_layout.addRow("Drop rate:", self.stoch_depth_drop_rate)
-
-        self.stoch_depth_survival_prob = QtWidgets.QDoubleSpinBox()
-        self.stoch_depth_survival_prob.setRange(0.0, 1.0)
-        self.stoch_depth_survival_prob.setValue(0.8)
-        self.stoch_depth_survival_prob.setDecimals(2)
-        stoch_depth_layout.addRow(
-            "Survival probability:", self.stoch_depth_survival_prob
-        )
-
-        stoch_depth_group.setLayout(stoch_depth_layout)
-        reg_layout.addRow(stoch_depth_group)
-
-        # Random Erase
-        random_erase_group = QtWidgets.QGroupBox("Random Erase")
-        random_erase_layout = QtWidgets.QFormLayout()
-
-        self.use_random_erase_check = QtWidgets.QCheckBox()
-        self.use_random_erase_check.setChecked(False)
-        random_erase_layout.addRow("Use Random Erase:", self.use_random_erase_check)
-
-        self.random_erase_prob = QtWidgets.QDoubleSpinBox()
-        self.random_erase_prob.setRange(0.0, 1.0)
-        self.random_erase_prob.setValue(0.25)
-        self.random_erase_prob.setDecimals(2)
-        random_erase_layout.addRow("Probability:", self.random_erase_prob)
-
-        self.random_erase_mode = QtWidgets.QComboBox()
-        self.random_erase_mode.addItems(["pixel", "block"])
-        random_erase_layout.addRow("Mode:", self.random_erase_mode)
-
-        random_erase_group.setLayout(random_erase_layout)
-        reg_layout.addRow(random_erase_group)
-
-        reg_group.setLayout(reg_layout)
-        layout.addWidget(reg_group)
-
-        tab.setLayout(layout)
-        return tab
-
-    def _create_augmentation_tab(self) -> QtWidgets.QWidget:
-        """Tworzy zakładkę z parametrami augmentacji."""
-        tab = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout()
-
-        # Augmentation
-        aug_group = QtWidgets.QGroupBox("Augmentation")
-        aug_layout = QtWidgets.QFormLayout()
-
-        # Basic augmentation
-        basic_group = QtWidgets.QGroupBox("Basic")
-        basic_layout = QtWidgets.QFormLayout()
-
-        self.basic_aug_check = QtWidgets.QCheckBox()
-        self.basic_aug_check.setChecked(False)
-        basic_layout.addRow("Use basic augmentation:", self.basic_aug_check)
-
-        # Rotation
-        self.rotation_spin = QtWidgets.QSpinBox()
-        self.rotation_spin.setRange(0, 360)
-        self.rotation_spin.setValue(30)
-        basic_layout.addRow("Rotation:", self.rotation_spin)
-
-        # Brightness
-        self.brightness_spin = QtWidgets.QDoubleSpinBox()
-        self.brightness_spin.setRange(0.0, 1.0)
-        self.brightness_spin.setValue(0.2)
-        self.brightness_spin.setDecimals(2)
-        basic_layout.addRow("Brightness:", self.brightness_spin)
-
-        # Shift
-        self.shift_spin = QtWidgets.QDoubleSpinBox()
-        self.shift_spin.setRange(0.0, 1.0)
-        self.shift_spin.setValue(0.1)
-        self.shift_spin.setDecimals(2)
-        basic_layout.addRow("Shift:", self.shift_spin)
-
-        # Zoom
-        self.zoom_spin = QtWidgets.QDoubleSpinBox()
-        self.zoom_spin.setRange(0.0, 1.0)
-        self.zoom_spin.setValue(0.1)
-        self.zoom_spin.setDecimals(2)
-        basic_layout.addRow("Zoom:", self.zoom_spin)
-
-        # Horizontal flip
-        self.horizontal_flip_check = QtWidgets.QCheckBox()
-        self.horizontal_flip_check.setChecked(True)
-        basic_layout.addRow("Horizontal flip:", self.horizontal_flip_check)
-
-        # Vertical flip
-        self.vertical_flip_check = QtWidgets.QCheckBox()
-        self.vertical_flip_check.setChecked(False)
-        basic_layout.addRow("Vertical flip:", self.vertical_flip_check)
-
-        # Contrast
-        self.contrast_spin = QtWidgets.QDoubleSpinBox()
-        self.contrast_spin.setRange(0.0, 1.0)
-        self.contrast_spin.setValue(0.2)
-        self.contrast_spin.setDecimals(2)
-        basic_layout.addRow("Contrast:", self.contrast_spin)
-
-        # Saturation
-        self.saturation_spin = QtWidgets.QDoubleSpinBox()
-        self.saturation_spin.setRange(0.0, 1.0)
-        self.saturation_spin.setValue(0.2)
-        self.saturation_spin.setDecimals(2)
-        basic_layout.addRow("Saturation:", self.saturation_spin)
-
-        # Hue
-        self.hue_spin = QtWidgets.QDoubleSpinBox()
-        self.hue_spin.setRange(0.0, 0.5)
-        self.hue_spin.setValue(0.1)
-        self.hue_spin.setDecimals(2)
-        basic_layout.addRow("Hue:", self.hue_spin)
-
-        # Shear
-        self.shear_spin = QtWidgets.QDoubleSpinBox()
-        self.shear_spin.setRange(0.0, 1.0)
-        self.shear_spin.setValue(0.1)
-        self.shear_spin.setDecimals(2)
-        basic_layout.addRow("Shear:", self.shear_spin)
-
-        # Channel shift
-        self.channel_shift_spin = QtWidgets.QDoubleSpinBox()
-        self.channel_shift_spin.setRange(0.0, 1.0)
-        self.channel_shift_spin.setValue(0.0)
-        self.channel_shift_spin.setDecimals(2)
-        basic_layout.addRow("Channel shift:", self.channel_shift_spin)
-
-        basic_group.setLayout(basic_layout)
-        aug_layout.addRow(basic_group)
-
-        # Resize mode
-        self.resize_mode_combo = QtWidgets.QComboBox()
-        self.resize_mode_combo.addItems(["bilinear", "bicubic", "nearest", "area"])
-        aug_layout.addRow("Resize mode:", self.resize_mode_combo)
-
-        # Normalization
-        norm_group = QtWidgets.QGroupBox("Normalization")
-        norm_layout = QtWidgets.QFormLayout()
-
-        # Mean
-        mean_layout = QtWidgets.QHBoxLayout()
-        self.norm_mean_r = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_r.setRange(0.0, 1.0)
-        self.norm_mean_r.setValue(0.485)
-        self.norm_mean_r.setDecimals(3)
-        mean_layout.addWidget(self.norm_mean_r)
-
-        self.norm_mean_g = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_g.setRange(0.0, 1.0)
-        self.norm_mean_g.setValue(0.456)
-        self.norm_mean_g.setDecimals(3)
-        mean_layout.addWidget(self.norm_mean_g)
-
-        self.norm_mean_b = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_b.setRange(0.0, 1.0)
-        self.norm_mean_b.setValue(0.406)
-        self.norm_mean_b.setDecimals(3)
-        mean_layout.addWidget(self.norm_mean_b)
-
-        norm_layout.addRow("Mean (RGB):", mean_layout)
-
-        # Std
-        std_layout = QtWidgets.QHBoxLayout()
-        self.norm_std_r = QtWidgets.QDoubleSpinBox()
-        self.norm_std_r.setRange(0.0, 1.0)
-        self.norm_std_r.setValue(0.229)
-        self.norm_std_r.setDecimals(3)
-        std_layout.addWidget(self.norm_std_r)
-
-        self.norm_std_g = QtWidgets.QDoubleSpinBox()
-        self.norm_std_g.setRange(0.0, 1.0)
-        self.norm_std_g.setValue(0.224)
-        self.norm_std_g.setDecimals(3)
-        std_layout.addWidget(self.norm_std_g)
-
-        self.norm_std_b = QtWidgets.QDoubleSpinBox()
-        self.norm_std_b.setRange(0.0, 1.0)
-        self.norm_std_b.setValue(0.225)
-        self.norm_std_b.setDecimals(3)
-        std_layout.addWidget(self.norm_std_b)
-
-        norm_layout.addRow("Std (RGB):", std_layout)
-
-        norm_group.setLayout(norm_layout)
-        aug_layout.addRow(norm_group)
-
-        aug_group.setLayout(aug_layout)
-        layout.addWidget(aug_group)
-
-        tab.setLayout(layout)
-        return tab
-
-    def _create_preprocessing_tab(self):
-        """Tworzenie zakładki Preprocessing."""
-        try:
-            self.logger.debug("Tworzenie zakładki preprocessing")
-            tab = QtWidgets.QWidget()
-            layout = QtWidgets.QVBoxLayout(tab)
-            form = QtWidgets.QFormLayout()
-
-            # Normalizacja
-            self.normalization_combo = QtWidgets.QComboBox()
-            self.normalization_combo.addItems(["RGB", "BGR"])
-            form.addRow("Normalizacja:", self.normalization_combo)
-
-            # Skalowanie obrazu
-            scaling_group = QtWidgets.QGroupBox("Skalowanie obrazu")
-            scaling_layout = QtWidgets.QFormLayout()
-
-            self.scaling_method = QtWidgets.QComboBox()
-            self.scaling_method.addItems(
-                ["Bilinear", "Bicubic", "Lanczos", "Nearest", "Area"]
-            )
-            self.scaling_method.setCurrentText("Bilinear")
-
-            self.maintain_aspect_ratio = QtWidgets.QCheckBox("Zachowaj proporcje")
-            self.maintain_aspect_ratio.setChecked(True)
-
-            self.pad_to_square = QtWidgets.QCheckBox("Uzupełnij do kwadratu")
-            self.pad_to_square.setChecked(False)
-
-            self.pad_mode = QtWidgets.QComboBox()
-            self.pad_mode.addItems(["constant", "edge", "reflect", "symmetric"])
-            self.pad_mode.setCurrentText("constant")
-
-            self.pad_value = QtWidgets.QSpinBox()
-            self.pad_value.setRange(0, 255)
-            self.pad_value.setValue(0)
-
-            scaling_layout.addRow("Metoda skalowania:", self.scaling_method)
-            scaling_layout.addRow("", self.maintain_aspect_ratio)
-            scaling_layout.addRow("", self.pad_to_square)
-            scaling_layout.addRow("Tryb uzupełniania:", self.pad_mode)
-            scaling_layout.addRow("Wartość uzupełniania:", self.pad_value)
-            scaling_group.setLayout(scaling_layout)
-
-            layout.addLayout(form)
-            layout.addWidget(scaling_group)
-            return tab
-
-        except Exception as e:
-            msg = "Błąd podczas tworzenia zakładki"
-            self.logger.error(f"{msg}: {str(e)}", exc_info=True)
-            raise
-
-    def _create_monitoring_tab(self) -> QtWidgets.QWidget:
-        """Tworzy zakładkę z parametrami monitorowania."""
-        tab = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout()
-
-        # Monitoring
-        monitor_group = QtWidgets.QGroupBox("Monitoring")
-        monitor_layout = QtWidgets.QFormLayout()
-
-        # Metrics
-        metrics_group = QtWidgets.QGroupBox("Metrics")
-        metrics_layout = QtWidgets.QVBoxLayout()
-
-        self.accuracy_check = QtWidgets.QCheckBox("Accuracy")
-        self.accuracy_check.setChecked(True)
-        metrics_layout.addWidget(self.accuracy_check)
-
-        self.precision_check = QtWidgets.QCheckBox("Precision")
-        self.precision_check.setChecked(True)
-        metrics_layout.addWidget(self.precision_check)
-
-        self.recall_check = QtWidgets.QCheckBox("Recall")
-        self.recall_check.setChecked(True)
-        metrics_layout.addWidget(self.recall_check)
-
-        self.f1_check = QtWidgets.QCheckBox("F1 Score")
-        self.f1_check.setChecked(True)
-        metrics_layout.addWidget(self.f1_check)
-
-        self.topk_check = QtWidgets.QCheckBox("Top-K Accuracy")
-        self.topk_check.setChecked(False)
-        metrics_layout.addWidget(self.topk_check)
-
-        self.confusion_matrix_check = QtWidgets.QCheckBox("Confusion Matrix")
-        self.confusion_matrix_check.setChecked(False)
-        metrics_layout.addWidget(self.confusion_matrix_check)
-
-        self.auc_check = QtWidgets.QCheckBox("AUC")
-        self.auc_check.setChecked(False)
-        metrics_layout.addWidget(self.auc_check)
-
-        metrics_group.setLayout(metrics_layout)
-        monitor_layout.addRow(metrics_group)
-
-        # Logging
-        logging_group = QtWidgets.QGroupBox("Logging")
-        logging_layout = QtWidgets.QFormLayout()
-
-        self.use_tensorboard_check = QtWidgets.QCheckBox()
-        self.use_tensorboard_check.setChecked(False)
-        logging_layout.addRow("Use TensorBoard:", self.use_tensorboard_check)
-
-        self.use_wandb_check = QtWidgets.QCheckBox()
-        self.use_wandb_check.setChecked(False)
-        logging_layout.addRow("Use Weights & Biases:", self.use_wandb_check)
-
-        self.use_csv_check = QtWidgets.QCheckBox()
-        self.use_csv_check.setChecked(True)
-        logging_layout.addRow("Save to CSV:", self.use_csv_check)
-
-        self.log_freq_combo = QtWidgets.QComboBox()
-        self.log_freq_combo.addItems(["epoch", "batch"])
-        logging_layout.addRow("Logging frequency:", self.log_freq_combo)
-
-        logging_group.setLayout(logging_layout)
-        monitor_layout.addRow(logging_group)
-
-        # Visualization
-        vis_group = QtWidgets.QGroupBox("Visualization")
-        vis_layout = QtWidgets.QFormLayout()
-
-        self.use_gradcam_check = QtWidgets.QCheckBox()
-        self.use_gradcam_check.setChecked(False)
-        vis_layout.addRow("Use GradCAM:", self.use_gradcam_check)
-
-        self.use_feature_maps_check = QtWidgets.QCheckBox()
-        self.use_feature_maps_check.setChecked(False)
-        vis_layout.addRow("Use Feature Maps:", self.use_feature_maps_check)
-
-        self.use_pred_samples_check = QtWidgets.QCheckBox()
-        self.use_pred_samples_check.setChecked(False)
-        vis_layout.addRow("Use Prediction Samples:", self.use_pred_samples_check)
-
-        self.num_samples_spin = QtWidgets.QSpinBox()
-        self.num_samples_spin.setRange(1, 100)
-        self.num_samples_spin.setValue(10)
-        vis_layout.addRow("Number of samples:", self.num_samples_spin)
-
-        vis_group.setLayout(vis_layout)
-        monitor_layout.addRow(vis_group)
-
-        monitor_group.setLayout(monitor_layout)
-        layout.addWidget(monitor_group)
-
-        tab.setLayout(layout)
-        return tab
-
-    def _create_advanced_tab(self) -> QtWidgets.QWidget:
-        """Tworzy zakładkę z zaawansowanymi parametrami."""
-        tab = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout()
-
-        # Seed i determinizm
-        seed_group = QtWidgets.QGroupBox("Seed i determinizm")
-        seed_layout = QtWidgets.QFormLayout()
-
-        self.seed_spin = QtWidgets.QSpinBox()
-        self.seed_spin.setRange(0, 999999)
-        self.seed_spin.setValue(42)
-        seed_layout.addRow("Seed:", self.seed_spin)
-
-        self.deterministic_check = QtWidgets.QCheckBox()
-        self.deterministic_check.setChecked(True)
-        seed_layout.addRow("Deterministic:", self.deterministic_check)
-
-        seed_group.setLayout(seed_layout)
-        layout.addWidget(seed_group)
-
-        # Data
-        data_group = QtWidgets.QGroupBox("Data")
-        data_layout = QtWidgets.QFormLayout()
-
-        self.class_weights_combo = QtWidgets.QComboBox()
-        self.class_weights_combo.addItems(["balanced", "none"])
-        data_layout.addRow("Class weights:", self.class_weights_combo)
-
-        self.sampler_combo = QtWidgets.QComboBox()
-        self.sampler_combo.addItems(["weighted_random", "uniform", "none"])
-        data_layout.addRow("Sampler:", self.sampler_combo)
-
-        self.image_channels_spin = QtWidgets.QSpinBox()
-        self.image_channels_spin.setRange(1, 4)
-        self.image_channels_spin.setValue(3)
-        data_layout.addRow("Image channels:", self.image_channels_spin)
-
-        self.cache_dataset_check = QtWidgets.QCheckBox()
-        self.cache_dataset_check.setChecked(False)
-        data_layout.addRow("Cache dataset:", self.cache_dataset_check)
-
-        data_group.setLayout(data_layout)
-        layout.addWidget(data_group)
-
-        # Inference
-        inference_group = QtWidgets.QGroupBox("Inference")
-        inference_layout = QtWidgets.QFormLayout()
-
-        # Test Time Augmentation
-        tta_group = QtWidgets.QGroupBox("Test Time Augmentation (TTA)")
-        tta_layout = QtWidgets.QFormLayout()
-
-        self.use_tta_check = QtWidgets.QCheckBox()
-        self.use_tta_check.setChecked(False)
-        tta_layout.addRow("Use TTA:", self.use_tta_check)
-
-        self.num_tta_spin = QtWidgets.QSpinBox()
-        self.num_tta_spin.setRange(1, 10)
-        self.num_tta_spin.setValue(5)
-        tta_layout.addRow("Number of augmentations:", self.num_tta_spin)
-
-        tta_group.setLayout(tta_layout)
-        inference_layout.addRow(tta_group)
-
-        # ONNX Export
-        self.export_onnx_check = QtWidgets.QCheckBox()
-        self.export_onnx_check.setChecked(False)
-        inference_layout.addRow("Export to ONNX:", self.export_onnx_check)
-
-        # Quantization
-        quant_group = QtWidgets.QGroupBox("Quantization")
-        quant_layout = QtWidgets.QFormLayout()
-
-        self.quantization_check = QtWidgets.QCheckBox()
-        self.quantization_check.setChecked(False)
-        quant_layout.addRow("Use quantization:", self.quantization_check)
-
-        self.quantization_precision_combo = QtWidgets.QComboBox()
-        self.quantization_precision_combo.addItems(["int8", "fp16", "bf16"])
-        quant_layout.addRow("Precision:", self.quantization_precision_combo)
-
-        quant_group.setLayout(quant_layout)
-        inference_layout.addRow(quant_group)
-
-        inference_group.setLayout(inference_layout)
-        layout.addWidget(inference_group)
-
-        tab.setLayout(layout)
-        return tab
-
-    def _get_unfreeze_strategy_value(self, display_text):
-        """Konwertuje wyświetlaną wartość strategii odmrażania na wartość wewnętrzną."""
-        if "unfreeze_all" in display_text:
-            return self.UNFREEZE_ALL
-        elif "unfreeze_gradual_end" in display_text:
-            return self.UNFREEZE_GRADUAL_END
-        elif "unfreeze_gradual_start" in display_text:
-            return self.UNFREEZE_GRADUAL_START
-        elif "unfreeze_after_epoochs" in display_text:
-            return self.UNFREEZE_AFTER_EPOCHS
-        return self.UNFREEZE_ALL  # domyślna wartość
-
-    def _get_unfreeze_layers_value(self, value):
-        """Konwertuje wartość unfreeze_layers na odpowiedni format."""
-        if not value:
-            return "all"
-        try:
-            # Próba konwersji na int
-            return int(value)
-        except ValueError:
-            # Jeśli nie da się przekonwertować, zwracamy string
-            return value
-
-    def _get_scheduler_value(self, display_text):
-        """Konwertuje wyświetlaną wartość schedulera na wartość wewnętrzną."""
-        if "OneCycleLR" in display_text:
-            return "OneCycleLR"
-        elif "CosineAnnealingWarmRestarts" in display_text:
-            return "CosineAnnealingWarmRestarts"
-        elif "StepLR" in display_text:
-            return "StepLR"
-        elif "ReduceLROnPlateau" in display_text:
-            return "ReduceLROnPlateau"
-        elif "CosineAnnealingLR" in display_text:
-            return "CosineAnnealingLR"
-        return "None"  # domyślna wartość
-
-    def _validate_config(self, config: Dict[str, Any]) -> Tuple[bool, str]:
-        """Waliduje konfigurację przed zapisem."""
-        try:
-            self.logger.info("=== WALIDACJA KONFIGURACJI ===")
-            self.logger.info(f"Typ zadania: {config.get('type', 'NIEUSTAWIONY')}")
-
-            # Sprawdź wymagane pola
-            required_fields = ["name", "type", "status", "created_at", "config"]
-            for field in required_fields:
-                if field not in config:
-                    self.logger.error(f"Brak wymaganego pola: {field}")
-                    return False, f"Brak wymaganego pola: {field}"
-
-            # Sprawdź pola w config
-            config_fields = config["config"]
-            required_config_fields = ["train_dir", "data_dir", "model"]
-            for field in required_config_fields:
-                if field not in config_fields:
-                    self.logger.error(f"Brak wymaganego pola w config: {field}")
-                    return False, f"Brak wymaganego pola w config: {field}"
-
-            # Sprawdź model_path dla doszkalania
-            if config["type"] == "doszkalanie":
-                self.logger.info("Sprawdzanie konfiguracji doszkalania")
-                if "model_path" not in config_fields["model"]:
-                    self.logger.error(
-                        "Brak ścieżki do modelu w konfiguracji doszkalania"
-                    )
-                    return False, "Brak ścieżki do modelu w konfiguracji doszkalania"
-
-            self.logger.info("Walidacja zakończona sukcesem")
-            return True, ""
-
-        except Exception as e:
-            self.logger.error(f"Błąd walidacji: {str(e)}", exc_info=True)
-            return False, f"Błąd walidacji: {str(e)}"
-
-    def _check_task_exists(self, task_name: str) -> bool:
-        """Sprawdza czy zadanie o danej nazwie już istnieje."""
-        task_file = os.path.join("data", "tasks", f"{task_name}.json")
-        return os.path.exists(task_file)
-
-    def _on_accept(self):
-        """Obsługa akceptacji konfiguracji."""
-        try:
-            self.logger.info("=== ROZPOCZYNAM ZAPIS KONFIGURACJI ===")
-
-            # Walidacja katalogu treningowego
-            train_dir = self.train_dir_edit.text()
-            if not train_dir.strip():
-                self.logger.warning("Nie wybrano katalogu treningowego")
-                QtWidgets.QMessageBox.critical(
-                    self, "Błąd", "Musisz wybrać katalog danych treningowych!"
-                )
-                return
-
-            if not validate_training_directory(train_dir):
-                self.logger.error(f"Nieprawidłowy katalog treningowy: {train_dir}")
-                return
-
-            # Walidacja katalogu walidacyjnego
-            val_dir = self.val_dir_edit.text()
-            if val_dir and not validate_validation_directory(val_dir):
-                self.logger.error(f"Nieprawidłowy katalog walidacyjny: {val_dir}")
-                return
-
-            # Przygotowanie konfiguracji
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            model_name = (
-                f"{self.arch_combo.currentText()}_{self.variant_combo.currentText()}"
-            )
-            task_name = f"{model_name}_{timestamp}"
-
-            self.logger.info(f"Tworzenie zadania: {task_name}")
-
-            # Sprawdź czy zadanie już istnieje
-            if self._check_task_exists(task_name):
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    "Ostrzeżenie",
-                    f"Zadanie o nazwie {task_name} już istnieje. Wybierz inną nazwę.",
-                )
-                return
-
-            config = {
-                "name": task_name,
-                "type": "doszkalanie",  # Ustawiamy typ zadania
-                "status": "Nowy",
-                "priority": 0,
-                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "config": {
-                    "train_dir": train_dir,
-                    "data_dir": train_dir,
-                    "val_dir": val_dir,
-                    "model": {
-                        "model_path": self.model_path_edit.text(),
-                        "pretrained": self.pretrained_check.isChecked(),
-                        "pretrained_weights": self.pretrained_weights_combo.currentText(),
-                        "feature_extraction_only": self.feature_extraction_check.isChecked(),
-                        "activation": self.activation_combo.currentText(),
-                        "dropout_at_inference": self.dropout_at_inference_check.isChecked(),
-                        "global_pool": self.global_pool_combo.currentText(),
-                        "last_layer_activation": self.last_layer_activation_combo.currentText(),
-                    },
-                    "training": {
-                        "warmup_lr_init": self.warmup_lr_init_spin.value(),
-                        "gradient_accumulation_steps": self.grad_accum_steps_spin.value(),
-                        "validation_split": self.validation_split_spin.value(),
-                        "evaluation_freq": self.eval_freq_spin.value(),
-                        "use_ema": self.use_ema_check.isChecked(),
-                        "ema_decay": self.ema_decay_spin.value(),
-                    },
-                    "regularization": {
-                        "swa": {
-                            "use_swa": self.use_swa_check.isChecked(),
-                            "start_epoch": self.swa_start_epoch_spin.value(),
-                        },
-                        "stochastic_depth": {
-                            "use_stochastic_depth": self.use_stoch_depth_check.isChecked(),
-                            "drop_rate": self.stoch_depth_drop_rate.value(),
-                            "survival_probability": self.stoch_depth_survival_prob.value(),
-                        },
-                        "random_erase": {
-                            "use_random_erase": self.use_random_erase_check.isChecked(),
-                            "probability": self.random_erase_prob.value(),
-                            "mode": self.random_erase_mode.currentText(),
-                        },
-                    },
-                    "augmentation": {
-                        "contrast": self.contrast_spin.value(),
-                        "saturation": self.saturation_spin.value(),
-                        "hue": self.hue_spin.value(),
-                        "shear": self.shear_spin.value(),
-                        "channel_shift_range": self.channel_shift_spin.value(),
-                        "resize_mode": self.resize_mode_combo.currentText(),
-                        "normalization": {
-                            "mean": [
-                                self.norm_mean_r.value(),
-                                self.norm_mean_g.value(),
-                                self.norm_mean_b.value(),
-                            ],
-                            "std": [
-                                self.norm_std_r.value(),
-                                self.norm_std_g.value(),
-                                self.norm_std_b.value(),
-                            ],
-                        },
-                    },
-                    "monitoring": {
-                        "metrics": {
-                            "accuracy": self.accuracy_check.isChecked(),
-                            "precision": self.precision_check.isChecked(),
-                            "recall": self.recall_check.isChecked(),
-                            "f1": self.f1_check.isChecked(),
-                            "top_k_accuracy": self.topk_check.isChecked(),
-                            "confusion_matrix": self.confusion_matrix_check.isChecked(),
-                            "auc": self.auc_check.isChecked(),
-                        },
-                        "logging": {
-                            "use_tensorboard": self.use_tensorboard_check.isChecked(),
-                            "use_wandb": self.use_wandb_check.isChecked(),
-                            "save_to_csv": self.use_csv_check.isChecked(),
-                            "logging_freq": self.log_freq_combo.currentText(),
-                        },
-                        "visualization": {
-                            "use_gradcam": self.use_gradcam_check.isChecked(),
-                            "use_feature_maps": self.use_feature_maps_check.isChecked(),
-                            "use_prediction_samples": self.use_pred_samples_check.isChecked(),
-                            "num_samples": self.num_samples_spin.value(),
-                        },
-                    },
-                    "data": {
-                        "class_weights": self.class_weights_combo.currentText(),
-                        "sampler": self.sampler_combo.currentText(),
-                        "image_channels": self.image_channels_spin.value(),
-                        "cache_dataset": self.cache_dataset_check.isChecked(),
-                    },
-                    "inference": {
-                        "tta": {
-                            "use_tta": self.use_tta_check.isChecked(),
-                            "num_augmentations": self.num_tta_spin.value(),
-                        },
-                        "export_onnx": self.export_onnx_check.isChecked(),
-                        "quantization": {
-                            "use_quantization": self.quantization_check.isChecked(),
-                            "precision": self.quantization_precision_combo.currentText(),
-                        },
-                    },
-                    "seed": self.seed_spin.value(),
-                    "deterministic": self.deterministic_check.isChecked(),
-                },
-            }
-
-            self.logger.info(f"Typ zadania przed walidacją: {config['type']}")
-
-            # Walidacja konfiguracji
-            is_valid, error_msg = self._validate_config(config)
-            if not is_valid:
-                self.logger.error(f"Błąd walidacji: {error_msg}")
-                QtWidgets.QMessageBox.critical(self, "Błąd walidacji", error_msg)
-                return
-
-            self.task_config = config
-            self.logger.info(f"Typ zadania po walidacji: {self.task_config['type']}")
-
-            # Zapisz konfigurację do pliku
-            task_file = os.path.join("data", "tasks", f"{task_name}.json")
-            os.makedirs(os.path.dirname(task_file), exist_ok=True)
-
-            self.logger.info(f"Zapisuję konfigurację do pliku: {task_file}")
-            with open(task_file, "w", encoding="utf-8") as f:
-                json.dump(config, f, indent=4)
-
-            self.logger.info("Konfiguracja została pomyślnie zapisana")
-            self.accept()
-
-        except Exception as e:
-            msg = "Błąd podczas zapisywania konfiguracji"
-            self.logger.error(f"{msg}: {str(e)}", exc_info=True)
-            QtWidgets.QMessageBox.critical(self, "Błąd", f"{msg}: {str(e)}")
 
     def get_task_config(self):
         """Zwraca konfigurację zadania lub None, jeśli nie dodano zadania."""
@@ -1759,27 +757,52 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
             # Augmentation
             augmentation_config = config.get("augmentation", {})
-            self.contrast_spin.setValue(augmentation_config.get("contrast", 0.2))
-            self.saturation_spin.setValue(augmentation_config.get("saturation", 0.2))
-            self.hue_spin.setValue(augmentation_config.get("hue", 0.1))
-            self.shear_spin.setValue(augmentation_config.get("shear", 0.1))
-            self.channel_shift_spin.setValue(
-                augmentation_config.get("channel_shift_range", 0.0)
+
+            # Basic augmentation
+            basic_config = augmentation_config.get("basic", {})
+            self.basic_aug_check.setChecked(basic_config.get("use", False))
+            self.rotation_spin.setValue(basic_config.get("rotation", 30))
+            self.brightness_spin.setValue(basic_config.get("brightness", 0.2))
+            self.shift_spin.setValue(basic_config.get("shift", 0.1))
+            self.zoom_spin.setValue(basic_config.get("zoom", 0.1))
+            self.horizontal_flip_check.setChecked(
+                basic_config.get("horizontal_flip", True)
             )
+            self.vertical_flip_check.setChecked(
+                basic_config.get("vertical_flip", False)
+            )
+
+            # Mixup
+            mixup_config = augmentation_config.get("mixup", {})
+            self.mixup_check.setChecked(mixup_config.get("use", False))
+            self.mixup_alpha_spin.setValue(mixup_config.get("alpha", 0.2))
+
+            # CutMix
+            cutmix_config = augmentation_config.get("cutmix", {})
+            self.cutmix_check.setChecked(cutmix_config.get("use", False))
+            self.cutmix_alpha_spin.setValue(cutmix_config.get("alpha", 0.2))
+
+            # Advanced augmentation
+            advanced_config = augmentation_config.get("advanced", {})
+            self.contrast_spin.setValue(advanced_config.get("contrast", 0.2))
+            self.saturation_spin.setValue(advanced_config.get("saturation", 0.2))
+            self.hue_spin.setValue(advanced_config.get("hue", 0.1))
+            self.shear_spin.setValue(advanced_config.get("shear", 0.1))
+            self.channel_shift_spin.setValue(advanced_config.get("channel_shift", 0.0))
             self.resize_mode_combo.setCurrentText(
-                augmentation_config.get("resize_mode", "bilinear")
+                advanced_config.get("resize_mode", "bilinear")
             )
 
             # Normalization
             normalization_config = augmentation_config.get("normalization", {})
             mean = normalization_config.get("mean", [0.485, 0.456, 0.406])
             std = normalization_config.get("std", [0.229, 0.224, 0.225])
-            self.normalization_mean_r_spin.setValue(mean[0])
-            self.normalization_mean_g_spin.setValue(mean[1])
-            self.normalization_mean_b_spin.setValue(mean[2])
-            self.normalization_std_r_spin.setValue(std[0])
-            self.normalization_std_g_spin.setValue(std[1])
-            self.normalization_std_b_spin.setValue(std[2])
+            self.norm_mean_r.setValue(mean[0])
+            self.norm_mean_g.setValue(mean[1])
+            self.norm_mean_b.setValue(mean[2])
+            self.norm_std_r.setValue(std[0])
+            self.norm_std_g.setValue(std[1])
+            self.norm_std_b.setValue(std[2])
 
             # Monitoring
             monitoring_config = config.get("monitoring", {})
@@ -1804,8 +827,8 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 logging_config.get("use_tensorboard", True)
             )
             self.use_wandb_check.setChecked(logging_config.get("use_wandb", False))
-            self.save_to_csv_check.setChecked(logging_config.get("save_to_csv", True))
-            self.logging_freq_combo.setCurrentText(
+            self.use_csv_check.setChecked(logging_config.get("save_to_csv", True))
+            self.log_freq_combo.setCurrentText(
                 logging_config.get("logging_freq", "epoch")
             )
 
@@ -1910,4 +933,933 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 self,
                 "Błąd",
                 f"Nie można wybrać katalogu treningowego: {str(e)}",
+            )
+
+    def _select_val_dir(self):
+        """Wybiera katalog z danymi walidacyjnymi."""
+        try:
+            dir_path = QtWidgets.QFileDialog.getExistingDirectory(
+                self,
+                "Wybierz katalog z danymi walidacyjnymi",
+                str(Path.home()),
+                QtWidgets.QFileDialog.Option.ShowDirsOnly,
+            )
+            if dir_path:
+                if validate_validation_directory(dir_path):
+                    self.val_dir_edit.setText(dir_path)
+                    self.logger.info(f"Wybrano katalog walidacyjny: {dir_path}")
+                else:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Błąd walidacji",
+                        "Wybrany katalog nie spełnia wymagań dla danych walidacyjnych.",
+                    )
+        except Exception as e:
+            self.logger.error(f"Błąd podczas wyboru katalogu walidacyjnego: {str(e)}")
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Błąd",
+                f"Nie można wybrać katalogu walidacyjnego: {str(e)}",
+            )
+
+    def _select_model_file(self):
+        """Wybiera plik modelu do doszkalania."""
+        try:
+            file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self,
+                "Wybierz plik modelu do doszkalania",
+                str(Path.home()),
+                "Pliki modeli (*.pth *.pt *.ckpt);;Wszystkie pliki (*.*)",
+            )
+            if file_path:
+                self.model_path_edit.setText(file_path)
+                self.logger.info(f"Wybrano plik modelu: {file_path}")
+        except Exception as e:
+            self.logger.error(f"Błąd podczas wyboru pliku modelu: {str(e)}")
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Błąd",
+                f"Nie można wybrać pliku modelu: {str(e)}",
+            )
+
+    def _update_variant_combo(self, architecture: str):
+        """Aktualizuje listę dostępnych wariantów modelu."""
+        self.variant_combo.clear()
+        variants = {
+            "EfficientNet": ["b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7"],
+            "ResNet": ["18", "34", "50", "101", "152"],
+            "DenseNet": ["121", "169", "201"],
+            "MobileNet": ["v2", "v3_small", "v3_large"],
+        }
+        if architecture in variants:
+            self.variant_combo.addItems(variants[architecture])
+            self.logger.debug(
+                f"Zaktualizowano warianty dla architektury: {architecture}"
+            )
+
+    def _on_architecture_changed(self, architecture: str):
+        """Obsługa zmiany architektury modelu."""
+        self._update_variant_combo(architecture)
+        self.logger.debug(f"Zmieniono architekturę na: {architecture}")
+
+    def _create_augmentation_tab(self) -> QtWidgets.QWidget:
+        """Tworzy zakładkę z parametrami augmentacji."""
+        tab = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout()
+
+        # Augmentation
+        aug_group = QtWidgets.QGroupBox("Augmentation")
+        aug_layout = QtWidgets.QFormLayout()
+
+        # Basic augmentation
+        basic_group = QtWidgets.QGroupBox("Basic")
+        basic_layout = QtWidgets.QFormLayout()
+
+        self.basic_aug_check = QtWidgets.QCheckBox()
+        self.basic_aug_check.setChecked(False)
+        basic_layout.addRow("Use basic augmentation:", self.basic_aug_check)
+
+        # Rotation
+        self.rotation_spin = QtWidgets.QSpinBox()
+        self.rotation_spin.setRange(0, 360)
+        self.rotation_spin.setValue(30)
+        basic_layout.addRow("Rotation:", self.rotation_spin)
+
+        # Brightness
+        self.brightness_spin = QtWidgets.QDoubleSpinBox()
+        self.brightness_spin.setRange(0.0, 1.0)
+        self.brightness_spin.setValue(0.2)
+        self.brightness_spin.setDecimals(2)
+        basic_layout.addRow("Brightness:", self.brightness_spin)
+
+        # Shift
+        self.shift_spin = QtWidgets.QDoubleSpinBox()
+        self.shift_spin.setRange(0.0, 1.0)
+        self.shift_spin.setValue(0.1)
+        self.shift_spin.setDecimals(2)
+        basic_layout.addRow("Shift:", self.shift_spin)
+
+        # Zoom
+        self.zoom_spin = QtWidgets.QDoubleSpinBox()
+        self.zoom_spin.setRange(0.0, 1.0)
+        self.zoom_spin.setValue(0.1)
+        self.zoom_spin.setDecimals(2)
+        basic_layout.addRow("Zoom:", self.zoom_spin)
+
+        # Horizontal flip
+        self.horizontal_flip_check = QtWidgets.QCheckBox()
+        self.horizontal_flip_check.setChecked(True)
+        basic_layout.addRow("Horizontal flip:", self.horizontal_flip_check)
+
+        # Vertical flip
+        self.vertical_flip_check = QtWidgets.QCheckBox()
+        self.vertical_flip_check.setChecked(False)
+        basic_layout.addRow("Vertical flip:", self.vertical_flip_check)
+
+        basic_group.setLayout(basic_layout)
+        aug_layout.addRow(basic_group)
+
+        # Mixup
+        mixup_group = QtWidgets.QGroupBox("Mixup")
+        mixup_layout = QtWidgets.QFormLayout()
+
+        self.mixup_check = QtWidgets.QCheckBox()
+        self.mixup_check.setChecked(False)
+        mixup_layout.addRow("Use Mixup:", self.mixup_check)
+
+        self.mixup_alpha_spin = QtWidgets.QDoubleSpinBox()
+        self.mixup_alpha_spin.setRange(0.0, 1.0)
+        self.mixup_alpha_spin.setValue(0.2)
+        self.mixup_alpha_spin.setDecimals(2)
+        mixup_layout.addRow("Alpha:", self.mixup_alpha_spin)
+
+        mixup_group.setLayout(mixup_layout)
+        aug_layout.addRow(mixup_group)
+
+        # CutMix
+        cutmix_group = QtWidgets.QGroupBox("CutMix")
+        cutmix_layout = QtWidgets.QFormLayout()
+
+        self.cutmix_check = QtWidgets.QCheckBox()
+        self.cutmix_check.setChecked(False)
+        cutmix_layout.addRow("Use CutMix:", self.cutmix_check)
+
+        self.cutmix_alpha_spin = QtWidgets.QDoubleSpinBox()
+        self.cutmix_alpha_spin.setRange(0.0, 1.0)
+        self.cutmix_alpha_spin.setValue(0.2)
+        self.cutmix_alpha_spin.setDecimals(2)
+        cutmix_layout.addRow("Alpha:", self.cutmix_alpha_spin)
+
+        cutmix_group.setLayout(cutmix_layout)
+        aug_layout.addRow(cutmix_group)
+
+        # Advanced augmentation
+        advanced_group = QtWidgets.QGroupBox("Advanced")
+        advanced_layout = QtWidgets.QFormLayout()
+
+        # Contrast
+        self.contrast_spin = QtWidgets.QDoubleSpinBox()
+        self.contrast_spin.setRange(0.0, 1.0)
+        self.contrast_spin.setValue(0.2)
+        self.contrast_spin.setDecimals(2)
+        advanced_layout.addRow("Contrast:", self.contrast_spin)
+
+        # Saturation
+        self.saturation_spin = QtWidgets.QDoubleSpinBox()
+        self.saturation_spin.setRange(0.0, 1.0)
+        self.saturation_spin.setValue(0.2)
+        self.saturation_spin.setDecimals(2)
+        advanced_layout.addRow("Saturation:", self.saturation_spin)
+
+        # Hue
+        self.hue_spin = QtWidgets.QDoubleSpinBox()
+        self.hue_spin.setRange(0.0, 0.5)
+        self.hue_spin.setValue(0.1)
+        self.hue_spin.setDecimals(2)
+        advanced_layout.addRow("Hue:", self.hue_spin)
+
+        # Shear
+        self.shear_spin = QtWidgets.QDoubleSpinBox()
+        self.shear_spin.setRange(0.0, 1.0)
+        self.shear_spin.setValue(0.1)
+        self.shear_spin.setDecimals(2)
+        advanced_layout.addRow("Shear:", self.shear_spin)
+
+        # Channel shift
+        self.channel_shift_spin = QtWidgets.QDoubleSpinBox()
+        self.channel_shift_spin.setRange(0.0, 1.0)
+        self.channel_shift_spin.setValue(0.0)
+        self.channel_shift_spin.setDecimals(2)
+        advanced_layout.addRow("Channel shift:", self.channel_shift_spin)
+
+        advanced_group.setLayout(advanced_layout)
+        aug_layout.addRow(advanced_group)
+
+        # Resize mode
+        self.resize_mode_combo = QtWidgets.QComboBox()
+        self.resize_mode_combo.addItems(["bilinear", "bicubic", "nearest", "area"])
+        aug_layout.addRow("Resize mode:", self.resize_mode_combo)
+
+        # Normalization
+        norm_group = QtWidgets.QGroupBox("Normalization")
+        norm_layout = QtWidgets.QFormLayout()
+
+        # Mean
+        mean_layout = QtWidgets.QHBoxLayout()
+        self.norm_mean_r = QtWidgets.QDoubleSpinBox()
+        self.norm_mean_r.setRange(0.0, 1.0)
+        self.norm_mean_r.setValue(0.485)
+        self.norm_mean_r.setDecimals(3)
+        mean_layout.addWidget(self.norm_mean_r)
+
+        self.norm_mean_g = QtWidgets.QDoubleSpinBox()
+        self.norm_mean_g.setRange(0.0, 1.0)
+        self.norm_mean_g.setValue(0.456)
+        self.norm_mean_g.setDecimals(3)
+        mean_layout.addWidget(self.norm_mean_g)
+
+        self.norm_mean_b = QtWidgets.QDoubleSpinBox()
+        self.norm_mean_b.setRange(0.0, 1.0)
+        self.norm_mean_b.setValue(0.406)
+        self.norm_mean_b.setDecimals(3)
+        mean_layout.addWidget(self.norm_mean_b)
+
+        norm_layout.addRow("Mean (RGB):", mean_layout)
+
+        # Std
+        std_layout = QtWidgets.QHBoxLayout()
+        self.norm_std_r = QtWidgets.QDoubleSpinBox()
+        self.norm_std_r.setRange(0.0, 1.0)
+        self.norm_std_r.setValue(0.229)
+        self.norm_std_r.setDecimals(3)
+        std_layout.addWidget(self.norm_std_r)
+
+        self.norm_std_g = QtWidgets.QDoubleSpinBox()
+        self.norm_std_g.setRange(0.0, 1.0)
+        self.norm_std_g.setValue(0.224)
+        self.norm_std_g.setDecimals(3)
+        std_layout.addWidget(self.norm_std_g)
+
+        self.norm_std_b = QtWidgets.QDoubleSpinBox()
+        self.norm_std_b.setRange(0.0, 1.0)
+        self.norm_std_b.setValue(0.225)
+        self.norm_std_b.setDecimals(3)
+        std_layout.addWidget(self.norm_std_b)
+
+        norm_layout.addRow("Std (RGB):", std_layout)
+
+        norm_group.setLayout(norm_layout)
+        aug_layout.addRow(norm_group)
+
+        aug_group.setLayout(aug_layout)
+        layout.addWidget(aug_group)
+
+        tab.setLayout(layout)
+        return tab
+
+    def _create_preprocessing_tab(self) -> QtWidgets.QWidget:
+        """Tworzy zakładkę z parametrami preprocessingu."""
+        tab = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout()
+        form = QtWidgets.QFormLayout()
+
+        # Normalizacja
+        norm_group = QtWidgets.QGroupBox("Normalizacja")
+        norm_layout = QtWidgets.QFormLayout()
+
+        # Mean
+        mean_layout = QtWidgets.QHBoxLayout()
+        self.norm_mean_r = QtWidgets.QDoubleSpinBox()
+        self.norm_mean_r.setRange(0.0, 1.0)
+        self.norm_mean_r.setValue(0.485)
+        self.norm_mean_r.setDecimals(3)
+        mean_layout.addWidget(self.norm_mean_r)
+
+        self.norm_mean_g = QtWidgets.QDoubleSpinBox()
+        self.norm_mean_g.setRange(0.0, 1.0)
+        self.norm_mean_g.setValue(0.456)
+        self.norm_mean_g.setDecimals(3)
+        mean_layout.addWidget(self.norm_mean_g)
+
+        self.norm_mean_b = QtWidgets.QDoubleSpinBox()
+        self.norm_mean_b.setRange(0.0, 1.0)
+        self.norm_mean_b.setValue(0.406)
+        self.norm_mean_b.setDecimals(3)
+        mean_layout.addWidget(self.norm_mean_b)
+
+        norm_layout.addRow("Mean (RGB):", mean_layout)
+
+        # Std
+        std_layout = QtWidgets.QHBoxLayout()
+        self.norm_std_r = QtWidgets.QDoubleSpinBox()
+        self.norm_std_r.setRange(0.0, 1.0)
+        self.norm_std_r.setValue(0.229)
+        self.norm_std_r.setDecimals(3)
+        std_layout.addWidget(self.norm_std_r)
+
+        self.norm_std_g = QtWidgets.QDoubleSpinBox()
+        self.norm_std_g.setRange(0.0, 1.0)
+        self.norm_std_g.setValue(0.224)
+        self.norm_std_g.setDecimals(3)
+        std_layout.addWidget(self.norm_std_g)
+
+        self.norm_std_b = QtWidgets.QDoubleSpinBox()
+        self.norm_std_b.setRange(0.0, 1.0)
+        self.norm_std_b.setValue(0.225)
+        self.norm_std_b.setDecimals(3)
+        std_layout.addWidget(self.norm_std_b)
+
+        norm_layout.addRow("Std (RGB):", std_layout)
+
+        norm_group.setLayout(norm_layout)
+        form.addRow(norm_group)
+
+        # Resize mode
+        self.resize_mode_combo = QtWidgets.QComboBox()
+        self.resize_mode_combo.addItems(["bilinear", "bicubic", "nearest", "area"])
+        form.addRow("Resize mode:", self.resize_mode_combo)
+
+        # Cache dataset
+        self.cache_dataset_check = QtWidgets.QCheckBox()
+        self.cache_dataset_check.setChecked(False)
+        form.addRow("Cache dataset:", self.cache_dataset_check)
+
+        layout.addLayout(form)
+        tab.setLayout(layout)
+        return tab
+
+    def _create_monitoring_tab(self) -> QtWidgets.QWidget:
+        """Tworzy zakładkę z parametrami monitorowania."""
+        tab = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout()
+        form = QtWidgets.QFormLayout()
+
+        # Metrics
+        metrics_group = QtWidgets.QGroupBox("Metrics")
+        metrics_layout = QtWidgets.QFormLayout()
+
+        self.accuracy_check = QtWidgets.QCheckBox()
+        self.accuracy_check.setChecked(True)
+        metrics_layout.addRow("Accuracy:", self.accuracy_check)
+
+        self.precision_check = QtWidgets.QCheckBox()
+        self.precision_check.setChecked(True)
+        metrics_layout.addRow("Precision:", self.precision_check)
+
+        self.recall_check = QtWidgets.QCheckBox()
+        self.recall_check.setChecked(True)
+        metrics_layout.addRow("Recall:", self.recall_check)
+
+        self.f1_check = QtWidgets.QCheckBox()
+        self.f1_check.setChecked(True)
+        metrics_layout.addRow("F1:", self.f1_check)
+
+        self.topk_check = QtWidgets.QCheckBox()
+        self.topk_check.setChecked(True)
+        metrics_layout.addRow("Top-K accuracy:", self.topk_check)
+
+        self.confusion_matrix_check = QtWidgets.QCheckBox()
+        self.confusion_matrix_check.setChecked(True)
+        metrics_layout.addRow("Confusion matrix:", self.confusion_matrix_check)
+
+        metrics_group.setLayout(metrics_layout)
+        form.addRow(metrics_group)
+
+        # Logging
+        logging_group = QtWidgets.QGroupBox("Logging")
+        logging_layout = QtWidgets.QFormLayout()
+
+        self.use_tensorboard_check = QtWidgets.QCheckBox()
+        self.use_tensorboard_check.setChecked(True)
+        logging_layout.addRow("Use TensorBoard:", self.use_tensorboard_check)
+
+        self.use_wandb_check = QtWidgets.QCheckBox()
+        self.use_wandb_check.setChecked(False)
+        logging_layout.addRow("Use Weights & Biases:", self.use_wandb_check)
+
+        self.use_csv_check = QtWidgets.QCheckBox()
+        self.use_csv_check.setChecked(True)
+        logging_layout.addRow("Save to CSV:", self.use_csv_check)
+
+        self.log_freq_combo = QtWidgets.QComboBox()
+        self.log_freq_combo.addItems(["epoch", "batch"])
+        logging_layout.addRow("Logging frequency:", self.log_freq_combo)
+
+        logging_group.setLayout(logging_layout)
+        form.addRow(logging_group)
+
+        # Early stopping
+        early_stop_group = QtWidgets.QGroupBox("Early stopping")
+        early_stop_layout = QtWidgets.QFormLayout()
+
+        self.patience_spin = QtWidgets.QSpinBox()
+        self.patience_spin.setRange(1, 100)
+        self.patience_spin.setValue(10)
+        early_stop_layout.addRow("Patience:", self.patience_spin)
+
+        self.min_delta_spin = QtWidgets.QDoubleSpinBox()
+        self.min_delta_spin.setRange(0.0, 1.0)
+        self.min_delta_spin.setValue(0.001)
+        self.min_delta_spin.setDecimals(4)
+        early_stop_layout.addRow("Min delta:", self.min_delta_spin)
+
+        self.monitor_combo = QtWidgets.QComboBox()
+        self.monitor_combo.addItems(["val_loss", "val_accuracy"])
+        early_stop_layout.addRow("Monitor:", self.monitor_combo)
+
+        early_stop_group.setLayout(early_stop_layout)
+        form.addRow(early_stop_group)
+
+        # Checkpointing
+        checkpoint_group = QtWidgets.QGroupBox("Checkpointing")
+        checkpoint_layout = QtWidgets.QFormLayout()
+
+        self.best_only_check = QtWidgets.QCheckBox()
+        self.best_only_check.setChecked(True)
+        checkpoint_layout.addRow("Save best only:", self.best_only_check)
+
+        self.save_freq_spin = QtWidgets.QSpinBox()
+        self.save_freq_spin.setRange(1, 100)
+        self.save_freq_spin.setValue(1)
+        checkpoint_layout.addRow("Save frequency:", self.save_freq_spin)
+
+        self.checkpoint_metric_combo = QtWidgets.QComboBox()
+        self.checkpoint_metric_combo.addItems(["val_loss", "val_accuracy"])
+        checkpoint_layout.addRow("Metric:", self.checkpoint_metric_combo)
+
+        checkpoint_group.setLayout(checkpoint_layout)
+        form.addRow(checkpoint_group)
+
+        layout.addLayout(form)
+        tab.setLayout(layout)
+        return tab
+
+    def _create_advanced_tab(self) -> QtWidgets.QWidget:
+        """Tworzy zakładkę z zaawansowanymi parametrami."""
+        tab = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout()
+        form = QtWidgets.QFormLayout()
+
+        # Seed
+        self.seed_spin = QtWidgets.QSpinBox()
+        self.seed_spin.setRange(0, 999999)
+        self.seed_spin.setValue(42)
+        form.addRow("Seed:", self.seed_spin)
+
+        # Deterministic
+        self.deterministic_check = QtWidgets.QCheckBox()
+        self.deterministic_check.setChecked(True)
+        form.addRow("Deterministic:", self.deterministic_check)
+
+        # Class weights
+        self.class_weights_combo = QtWidgets.QComboBox()
+        self.class_weights_combo.addItems(["balanced", "none"])
+        form.addRow("Class weights:", self.class_weights_combo)
+
+        # Sampler
+        self.sampler_combo = QtWidgets.QComboBox()
+        self.sampler_combo.addItems(["weighted_random", "random"])
+        form.addRow("Sampler:", self.sampler_combo)
+
+        # Image channels
+        self.image_channels_spin = QtWidgets.QSpinBox()
+        self.image_channels_spin.setRange(1, 4)
+        self.image_channels_spin.setValue(3)
+        form.addRow("Image channels:", self.image_channels_spin)
+
+        # TTA
+        tta_group = QtWidgets.QGroupBox("Test Time Augmentation")
+        tta_layout = QtWidgets.QFormLayout()
+
+        self.use_tta_check = QtWidgets.QCheckBox()
+        self.use_tta_check.setChecked(False)
+        tta_layout.addRow("Use TTA:", self.use_tta_check)
+
+        self.num_tta_spin = QtWidgets.QSpinBox()
+        self.num_tta_spin.setRange(1, 10)
+        self.num_tta_spin.setValue(5)
+        tta_layout.addRow("Number of augmentations:", self.num_tta_spin)
+
+        tta_group.setLayout(tta_layout)
+        form.addRow(tta_group)
+
+        # ONNX Export
+        self.export_onnx_check = QtWidgets.QCheckBox()
+        self.export_onnx_check.setChecked(False)
+        form.addRow("Export to ONNX:", self.export_onnx_check)
+
+        # Quantization
+        quant_group = QtWidgets.QGroupBox("Quantization")
+        quant_layout = QtWidgets.QFormLayout()
+
+        self.quantization_check = QtWidgets.QCheckBox()
+        self.quantization_check.setChecked(False)
+        quant_layout.addRow("Use quantization:", self.quantization_check)
+
+        self.quantization_precision_combo = QtWidgets.QComboBox()
+        self.quantization_precision_combo.addItems(["int8", "fp16"])
+        quant_layout.addRow("Precision:", self.quantization_precision_combo)
+
+        quant_group.setLayout(quant_layout)
+        form.addRow(quant_group)
+
+        layout.addLayout(form)
+        tab.setLayout(layout)
+        return tab
+
+    def _create_fine_tuning_params_tab(self) -> QtWidgets.QWidget:
+        """Tworzy zakładkę z parametrami fine-tuningu."""
+        tab = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout()
+        form = QtWidgets.QFormLayout()
+
+        # Podstawowe parametry treningu
+        basic_group = QtWidgets.QGroupBox("Podstawowe parametry")
+        basic_layout = QtWidgets.QFormLayout()
+
+        # Liczba epok
+        self.epochs_spin = QtWidgets.QSpinBox()
+        self.epochs_spin.setRange(1, 1000)
+        self.epochs_spin.setValue(100)
+        basic_layout.addRow("Liczba epok:", self.epochs_spin)
+
+        # Rozmiar batcha
+        self.batch_size_spin = QtWidgets.QSpinBox()
+        self.batch_size_spin.setRange(1, 1024)
+        self.batch_size_spin.setValue(32)
+        basic_layout.addRow("Rozmiar batcha:", self.batch_size_spin)
+
+        # Learning rate
+        self.lr_spin = QtWidgets.QDoubleSpinBox()
+        self.lr_spin.setRange(0.000001, 1.0)
+        self.lr_spin.setValue(0.001)
+        self.lr_spin.setDecimals(6)
+        basic_layout.addRow("Learning rate:", self.lr_spin)
+
+        # Optimizer
+        self.optimizer_combo = QtWidgets.QComboBox()
+        self.optimizer_combo.addItems(["Adam", "AdamW", "SGD", "RMSprop"])
+        basic_layout.addRow("Optimizer:", self.optimizer_combo)
+
+        # Scheduler
+        self.scheduler_combo = QtWidgets.QComboBox()
+        self.scheduler_combo.addItems(
+            ["None", "CosineAnnealingLR", "ReduceLROnPlateau", "OneCycleLR"]
+        )
+        basic_layout.addRow("Scheduler:", self.scheduler_combo)
+
+        # Liczba workerów
+        self.num_workers_spin = QtWidgets.QSpinBox()
+        self.num_workers_spin.setRange(0, 32)
+        self.num_workers_spin.setValue(4)
+        basic_layout.addRow("Liczba workerów:", self.num_workers_spin)
+
+        # Warmup epochs
+        self.warmup_epochs_spin = QtWidgets.QSpinBox()
+        self.warmup_epochs_spin.setRange(0, 100)
+        self.warmup_epochs_spin.setValue(5)
+        basic_layout.addRow("Warmup epochs:", self.warmup_epochs_spin)
+
+        basic_group.setLayout(basic_layout)
+        form.addRow(basic_group)
+
+        # Strategia odmrażania warstw
+        unfreeze_group = QtWidgets.QGroupBox("Strategia odmrażania")
+        unfreeze_layout = QtWidgets.QFormLayout()
+
+        self.unfreeze_strategy_combo = QtWidgets.QComboBox()
+        self.unfreeze_strategy_combo.addItems(
+            [
+                self.UNFREEZE_ALL,
+                self.UNFREEZE_GRADUAL_END,
+                self.UNFREEZE_GRADUAL_START,
+                self.UNFREEZE_AFTER_EPOCHS,
+            ]
+        )
+        unfreeze_layout.addRow("Strategia odmrażania:", self.unfreeze_strategy_combo)
+
+        # Liczba epok przed odmrożeniem
+        self.unfreeze_after_epochs_spin = QtWidgets.QSpinBox()
+        self.unfreeze_after_epochs_spin.setRange(1, 100)
+        self.unfreeze_after_epochs_spin.setValue(5)
+        unfreeze_layout.addRow("Odmroź po epokach:", self.unfreeze_after_epochs_spin)
+
+        # Liczba warstw do odmrożenia
+        self.unfreeze_layers_spin = QtWidgets.QSpinBox()
+        self.unfreeze_layers_spin.setRange(1, 100)
+        self.unfreeze_layers_spin.setValue(3)
+        unfreeze_layout.addRow(
+            "Liczba warstw do odmrożenia:", self.unfreeze_layers_spin
+        )
+
+        # Learning rate dla zamrożonych warstw
+        self.frozen_lr_spin = QtWidgets.QDoubleSpinBox()
+        self.frozen_lr_spin.setRange(0.0, 0.1)
+        self.frozen_lr_spin.setValue(0.0001)
+        self.frozen_lr_spin.setDecimals(6)
+        unfreeze_layout.addRow("LR dla zamrożonych warstw:", self.frozen_lr_spin)
+
+        # Learning rate dla odmrożonych warstw
+        self.unfrozen_lr_spin = QtWidgets.QDoubleSpinBox()
+        self.unfrozen_lr_spin.setRange(0.0, 0.1)
+        self.unfrozen_lr_spin.setValue(0.001)
+        self.unfrozen_lr_spin.setDecimals(6)
+        unfreeze_layout.addRow("LR dla odmrożonych warstw:", self.unfrozen_lr_spin)
+
+        unfreeze_group.setLayout(unfreeze_layout)
+        form.addRow(unfreeze_group)
+
+        # Zaawansowane parametry
+        advanced_group = QtWidgets.QGroupBox("Zaawansowane parametry")
+        advanced_layout = QtWidgets.QFormLayout()
+
+        # Gradient accumulation steps
+        self.grad_accum_steps_spin = QtWidgets.QSpinBox()
+        self.grad_accum_steps_spin.setRange(1, 100)
+        self.grad_accum_steps_spin.setValue(1)
+        advanced_layout.addRow(
+            "Gradient accumulation steps:", self.grad_accum_steps_spin
+        )
+
+        # Mixed precision
+        self.mixed_precision_check = QtWidgets.QCheckBox()
+        self.mixed_precision_check.setChecked(True)
+        advanced_layout.addRow("Mixed precision:", self.mixed_precision_check)
+
+        # Gradient clipping
+        self.gradient_clip_spin = QtWidgets.QDoubleSpinBox()
+        self.gradient_clip_spin.setRange(0.0, 10.0)
+        self.gradient_clip_spin.setValue(1.0)
+        self.gradient_clip_spin.setDecimals(2)
+        advanced_layout.addRow("Gradient clipping:", self.gradient_clip_spin)
+
+        advanced_group.setLayout(advanced_layout)
+        form.addRow(advanced_group)
+
+        layout.addLayout(form)
+        tab.setLayout(layout)
+        return tab
+
+    def _create_regularization_tab(self) -> QtWidgets.QWidget:
+        """Tworzy zakładkę z parametrami regularyzacji."""
+        try:
+            self.logger.debug("Tworzenie zakładki regularyzacji")
+            tab = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(tab)
+            form = QtWidgets.QFormLayout()
+
+            # Weight decay
+            self.weight_decay_spin = QtWidgets.QDoubleSpinBox()
+            self.weight_decay_spin.setDecimals(6)
+            self.weight_decay_spin.setRange(0.0, 1.0)
+            self.weight_decay_spin.setSingleStep(0.0001)
+            self.weight_decay_spin.setValue(0.0001)
+            form.addRow("Weight Decay:", self.weight_decay_spin)
+
+            # Gradient clipping
+            self.gradient_clip_spin = QtWidgets.QDoubleSpinBox()
+            self.gradient_clip_spin.setRange(0.0, 10.0)
+            self.gradient_clip_spin.setDecimals(3)
+            self.gradient_clip_spin.setValue(1.0)
+            form.addRow("Gradient Clipping:", self.gradient_clip_spin)
+
+            # Label smoothing
+            self.label_smoothing_spin = QtWidgets.QDoubleSpinBox()
+            self.label_smoothing_spin.setRange(0.0, 0.5)
+            self.label_smoothing_spin.setDecimals(3)
+            self.label_smoothing_spin.setValue(0.1)
+            form.addRow("Label Smoothing:", self.label_smoothing_spin)
+
+            # Drop connect rate
+            self.drop_connect_spin = QtWidgets.QDoubleSpinBox()
+            self.drop_connect_spin.setRange(0.0, 0.5)
+            self.drop_connect_spin.setDecimals(3)
+            self.drop_connect_spin.setValue(0.2)
+            form.addRow("Drop Connect Rate:", self.drop_connect_spin)
+
+            # Dropout rate
+            self.dropout_spin = QtWidgets.QDoubleSpinBox()
+            self.dropout_spin.setRange(0.0, 0.5)
+            self.dropout_spin.setDecimals(3)
+            self.dropout_spin.setValue(0.2)
+            form.addRow("Dropout Rate:", self.dropout_spin)
+
+            # Momentum
+            self.momentum_spin = QtWidgets.QDoubleSpinBox()
+            self.momentum_spin.setRange(0.0, 1.0)
+            self.momentum_spin.setDecimals(3)
+            self.momentum_spin.setValue(0.9)
+            form.addRow("Momentum:", self.momentum_spin)
+
+            # Epsilon
+            self.epsilon_spin = QtWidgets.QDoubleSpinBox()
+            self.epsilon_spin.setRange(1e-8, 1e-3)
+            self.epsilon_spin.setDecimals(8)
+            self.epsilon_spin.setValue(1e-6)
+            form.addRow("Epsilon:", self.epsilon_spin)
+
+            # SWA
+            swa_group = QtWidgets.QGroupBox("Stochastic Weight Averaging")
+            swa_layout = QtWidgets.QFormLayout()
+
+            self.use_swa_check = QtWidgets.QCheckBox("Używaj SWA")
+            self.swa_start_epoch_spin = QtWidgets.QSpinBox()
+            self.swa_start_epoch_spin.setRange(1, 1000)
+            self.swa_start_epoch_spin.setValue(10)
+
+            swa_layout.addRow("", self.use_swa_check)
+            swa_layout.addRow("Epoka rozpoczęcia:", self.swa_start_epoch_spin)
+            swa_group.setLayout(swa_layout)
+
+            # Stochastic Depth
+            stoch_depth_group = QtWidgets.QGroupBox("Stochastic Depth")
+            stoch_depth_layout = QtWidgets.QFormLayout()
+
+            self.use_stoch_depth_check = QtWidgets.QCheckBox("Używaj Stochastic Depth")
+            self.stoch_depth_drop_rate = QtWidgets.QDoubleSpinBox()
+            self.stoch_depth_drop_rate.setRange(0.0, 0.5)
+            self.stoch_depth_drop_rate.setDecimals(3)
+            self.stoch_depth_drop_rate.setValue(0.2)
+            self.stoch_depth_survival_prob = QtWidgets.QDoubleSpinBox()
+            self.stoch_depth_survival_prob.setRange(0.5, 1.0)
+            self.stoch_depth_survival_prob.setDecimals(3)
+            self.stoch_depth_survival_prob.setValue(0.8)
+
+            stoch_depth_layout.addRow("", self.use_stoch_depth_check)
+            stoch_depth_layout.addRow("Drop rate:", self.stoch_depth_drop_rate)
+            stoch_depth_layout.addRow(
+                "Survival probability:", self.stoch_depth_survival_prob
+            )
+            stoch_depth_group.setLayout(stoch_depth_layout)
+
+            # Random Erase
+            random_erase_group = QtWidgets.QGroupBox("Random Erase")
+            random_erase_layout = QtWidgets.QFormLayout()
+
+            self.use_random_erase_check = QtWidgets.QCheckBox("Używaj Random Erase")
+            self.random_erase_prob = QtWidgets.QDoubleSpinBox()
+            self.random_erase_prob.setRange(0.0, 1.0)
+            self.random_erase_prob.setDecimals(3)
+            self.random_erase_prob.setValue(0.25)
+            self.random_erase_mode_combo = QtWidgets.QComboBox()
+            self.random_erase_mode_combo.addItems(["pixel", "block"])
+
+            random_erase_layout.addRow("", self.use_random_erase_check)
+            random_erase_layout.addRow("Probability:", self.random_erase_prob)
+            random_erase_layout.addRow("Mode:", self.random_erase_mode_combo)
+            random_erase_group.setLayout(random_erase_layout)
+
+            layout.addLayout(form)
+            layout.addWidget(swa_group)
+            layout.addWidget(stoch_depth_group)
+            layout.addWidget(random_erase_group)
+            return tab
+
+        except Exception as e:
+            msg = "Błąd podczas tworzenia zakładki"
+            self.logger.error(f"{msg}: {str(e)}", exc_info=True)
+            raise
+
+    def _on_accept(self):
+        """Obsługa dodawania zadania."""
+        try:
+            # Sprawdź wymagane pola
+            if not self.name_edit.text().strip():
+                QtWidgets.QMessageBox.warning(
+                    self, "Błąd", "Wpisz nazwę zadania (pole wymagane)."
+                )
+                return
+            if not self.train_dir_edit.text():
+                QtWidgets.QMessageBox.warning(
+                    self, "Błąd", "Wybierz katalog z danymi treningowymi."
+                )
+                return
+            if not self.val_dir_edit.text():
+                QtWidgets.QMessageBox.warning(
+                    self, "Błąd", "Wybierz katalog z danymi walidacyjnymi."
+                )
+                return
+            if not self.model_path_edit.text():
+                QtWidgets.QMessageBox.warning(
+                    self, "Błąd", "Wybierz plik modelu do doszkalania."
+                )
+                return
+
+            # Przygotuj konfigurację
+            config = {
+                "train_dir": self.train_dir_edit.text(),
+                "val_dir": self.val_dir_edit.text(),
+                "model_path": self.model_path_edit.text(),
+                "model": {
+                    "architecture": self.arch_combo.currentText(),
+                    "variant": self.variant_combo.currentText(),
+                    "input_size": self.input_size_spin.value(),
+                    "num_classes": self.num_classes_spin.value(),
+                    "pretrained": self.pretrained_check.isChecked(),
+                    "pretrained_weights": self.pretrained_weights_combo.currentText(),
+                    "feature_extraction_only": self.feature_extraction_check.isChecked(),
+                },
+                "training": {
+                    "unfreeze_strategy": self.unfreeze_strategy_combo.currentText(),
+                    "unfreeze_after_epochs": self.unfreeze_after_epochs_spin.value(),
+                    "unfreeze_layers": self.unfreeze_layers_spin.value(),
+                    "frozen_lr": self.frozen_lr_spin.value(),
+                    "unfrozen_lr": self.unfrozen_lr_spin.value(),
+                    "gradient_accumulation_steps": self.grad_accum_steps_spin.value(),
+                    "mixed_precision": self.mixed_precision_check.isChecked(),
+                    "gradient_clip": self.gradient_clip_spin.value(),
+                },
+                "regularization": {
+                    "weight_decay": float(self.weight_decay_spin.value()),
+                    "label_smoothing": float(self.label_smoothing_spin.value()),
+                    "dropout_rate": float(self.dropout_spin.value()),
+                    "drop_connect_rate": float(self.drop_connect_spin.value()),
+                    "momentum": float(self.momentum_spin.value()),
+                    "epsilon": float(self.epsilon_spin.value()),
+                    "swa": {
+                        "use": self.use_swa_check.isChecked(),
+                        "start_epoch": int(self.swa_start_epoch_spin.value()),
+                    },
+                },
+                "preprocessing": {
+                    "normalization": {
+                        "mean": [
+                            self.norm_mean_r.value(),
+                            self.norm_mean_g.value(),
+                            self.norm_mean_b.value(),
+                        ],
+                        "std": [
+                            self.norm_std_r.value(),
+                            self.norm_std_g.value(),
+                            self.norm_std_b.value(),
+                        ],
+                    },
+                    "resize_mode": self.resize_mode_combo.currentText(),
+                    "cache_dataset": self.cache_dataset_check.isChecked(),
+                },
+                "monitoring": {
+                    "metrics": {
+                        "accuracy": self.accuracy_check.isChecked(),
+                        "precision": self.precision_check.isChecked(),
+                        "recall": self.recall_check.isChecked(),
+                        "f1": self.f1_check.isChecked(),
+                        "topk": self.topk_check.isChecked(),
+                        "confusion_matrix": self.confusion_matrix_check.isChecked(),
+                    },
+                    "early_stopping": {
+                        "patience": self.patience_spin.value(),
+                        "min_delta": self.min_delta_spin.value(),
+                        "monitor": self.monitor_combo.currentText(),
+                    },
+                    "checkpointing": {
+                        "best_only": self.best_only_check.isChecked(),
+                        "save_frequency": self.save_freq_spin.value(),
+                        "metric": self.checkpoint_metric_combo.currentText(),
+                    },
+                },
+                "advanced": {
+                    "seed": self.seed_spin.value(),
+                    "deterministic": self.deterministic_check.isChecked(),
+                    "class_weights": self.class_weights_combo.currentText(),
+                    "sampler": self.sampler_combo.currentText(),
+                    "image_channels": self.image_channels_spin.value(),
+                    "tta": {
+                        "use": self.use_tta_check.isChecked(),
+                        "num_augmentations": self.num_tta_spin.value(),
+                    },
+                    "export_onnx": self.export_onnx_check.isChecked(),
+                    "quantization": {
+                        "use": self.quantization_check.isChecked(),
+                        "precision": self.quantization_precision_combo.currentText(),
+                    },
+                },
+            }
+
+            self.task_config = {
+                "name": self.name_edit.text().strip(),
+                "type": "fine_tuning",
+                "config": config,
+            }
+            self.accept()
+
+        except Exception as e:
+            self.logger.error(
+                f"Błąd podczas dodawania zadania: {str(e)}", exc_info=True
+            )
+            QtWidgets.QMessageBox.critical(
+                self, "Błąd", f"Nie można dodać zadania: {str(e)}"
+            )
+
+    def _delete_profile(self):
+        """Usuwa wybrany profil."""
+        if not self.current_profile:
+            QtWidgets.QMessageBox.warning(
+                self, "Ostrzeżenie", "Najpierw wybierz profil do usunięcia."
+            )
+            return
+
+        try:
+            profile_name = self.profile_list.currentItem().text()
+            reply = QtWidgets.QMessageBox.question(
+                self,
+                "Potwierdzenie",
+                f"Czy na pewno chcesz usunąć profil {profile_name}?",
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.No,
+            )
+
+            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+                profile_path = self.profiles_dir / f"{profile_name}.json"
+                profile_path.unlink()
+                self._refresh_profile_list()
+                self.current_profile = None
+                QtWidgets.QMessageBox.information(
+                    self, "Sukces", "Profil został pomyślnie usunięty."
+                )
+
+        except Exception as e:
+            self.logger.error(f"Błąd podczas usuwania profilu: {str(e)}", exc_info=True)
+            QtWidgets.QMessageBox.critical(
+                self, "Błąd", f"Nie można usunąć profilu: {str(e)}"
             )

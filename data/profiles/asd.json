@@ -1,23 +1,26 @@
 {
-    "type": "doszkalanie",
-    "info": "Profil dla EfficientNet EfficientNet-B0",
+    "type": "fine_tuning",
+    "info": "Profil dla EfficientNet b0",
     "description": "Profil utworzony przez użytkownika",
-    "data_required": "Standardowe dane treningowe",
+    "data_required": "Standardowe dane do doszkalania",
     "hardware_required": "Standardowy sprzęt",
     "config": {
         "model": {
             "architecture": "EfficientNet",
-            "variant": "EfficientNet-B0",
+            "variant": "b0",
             "input_size": 224,
-            "num_classes": 2
+            "num_classes": 2,
+            "pretrained": true,
+            "pretrained_weights": "imagenet",
+            "feature_extraction_only": false
         },
         "training": {
-            "epochs": 50,
+            "epochs": 100,
             "batch_size": 32,
-            "learning_rate": 0.001,
+            "learning_rate": 1e-06,
             "optimizer": "Adam",
             "scheduler": "None",
-            "num_workers": 16,
+            "num_workers": 4,
             "warmup_epochs": 5,
             "mixed_precision": true
         },
@@ -41,7 +44,7 @@
                 "brightness": 0.2,
                 "shift": 0.1,
                 "zoom": 0.1,
-                "horizontal_flip": false,
+                "horizontal_flip": true,
                 "vertical_flip": false
             },
             "mixup": {
@@ -50,17 +53,17 @@
             },
             "cutmix": {
                 "use": false,
-                "alpha": 1.0
+                "alpha": 0.2
             }
         },
         "monitoring": {
             "metrics": {
-                "accuracy": false,
-                "precision": false,
-                "recall": false,
-                "f1": false,
-                "topk": false,
-                "confusion_matrix": false
+                "accuracy": true,
+                "precision": true,
+                "recall": true,
+                "f1": true,
+                "topk": true,
+                "confusion_matrix": true
             },
             "early_stopping": {
                 "patience": 10,
@@ -68,7 +71,7 @@
                 "monitor": "val_loss"
             },
             "checkpointing": {
-                "best_only": false,
+                "best_only": true,
                 "save_frequency": 1,
                 "metric": "val_loss"
             }
