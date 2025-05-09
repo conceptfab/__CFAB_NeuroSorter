@@ -1,5 +1,5 @@
 {
-    "typ": "doszkalanie",
+    "type": "doszkalanie",
     "info": "Profil dla EfficientNet EfficientNet-B0",
     "description": "Profil utworzony przez użytkownika",
     "data_required": "Standardowe dane treningowe",

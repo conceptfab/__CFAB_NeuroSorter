@@ -85,6 +85,8 @@ class BatchProcessor(QWidget, TabInterface):
         self.control_layout = QHBoxLayout()
         start_btn = QPushButton("Rozpocznij sortowanie")
         start_btn.clicked.connect(self._start_processing)
+        self.sort_selected_btn = QPushButton("Sortuj wybrane kategorie")
+        self.sort_selected_btn.clicked.connect(self._start_processing_selected)
         self.stop_btn = QPushButton("Przerwij sortowanie")
         self.stop_btn.clicked.connect(self._stop_processing)
         self.stop_btn.setEnabled(False)  # Domyślnie wyłączony
@@ -92,6 +94,7 @@ class BatchProcessor(QWidget, TabInterface):
         self.clear_history_btn.clicked.connect(self._clear_history)
         self.status_label = QLabel("Gotowy")
         self.control_layout.addWidget(start_btn)
+        self.control_layout.addWidget(self.sort_selected_btn)
         self.control_layout.addWidget(self.stop_btn)
         self.control_layout.addWidget(self.clear_history_btn)
         self.control_layout.addStretch()
@@ -357,3 +360,49 @@ class BatchProcessor(QWidget, TabInterface):
             self._clear_results()
             self.status_label.setText("Historia wyczyszczona")
             self.logger.info("Historia wyników sortowania została wyczyszczona")
+
+    def _start_processing_selected(self):
+        """Rozpoczyna przetwarzanie plików dla wybranych kategorii."""
+        if not hasattr(self, "input_dir") or not self.input_dir:
+            QMessageBox.warning(
+                self,
+                "Brak katalogu",
+                "Wybierz katalog źródłowy przed rozpoczęciem sortowania.",
+            )
+            return
+        if not hasattr(self, "output_dir") or not self.output_dir:
+            QMessageBox.warning(
+                self,
+                "Brak katalogu",
+                "Wybierz katalog docelowy przed rozpoczęciem sortowania.",
+            )
+            return
+
+        # Sprawdź, czy katalog wejściowy i wyjściowy są różne, jeśli przenosimy
+        if (
+            not self.copy_files_checkbox.isChecked()
+            and self.input_dir == self.output_dir
+        ):
+            QMessageBox.critical(
+                self,
+                "Błąd konfiguracji",
+                "Katalog źródłowy i docelowy muszą być różne, jeśli wybrano "
+                "opcję przenoszenia plików.",
+            )
+            return
+
+        # Sprawdź, czy klasyfikator jest załadowany w obiekcie nadrzędnym
+        if not hasattr(self.parent, "classifier") or not self.parent.classifier:
+            QMessageBox.warning(
+                self,
+                "Brak modelu",
+                "Nie załadowano modelu klasyfikacji. Proszę najpierw załadować model.",
+            )
+            return
+
+        # TODO: Dodać dialog wyboru kategorii
+        QMessageBox.information(
+            self,
+            "Informacja",
+            "Funkcja sortowania wybranych kategorii jest w trakcie implementacji.",
+        )

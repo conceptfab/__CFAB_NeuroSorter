@@ -318,288 +318,176 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 self, "Błąd", f"Nie można otworzyć profilu: {str(e)}"
             )
 
-    def _apply_profile(self, profile_name: str) -> None:
+    def _apply_profile(self):
         """Stosuje wybrany profil konfiguracji."""
-        try:
-            if profile_name == "default":
-                config = {
-                    "model": {
-                        "pretrained": True,
-                        "pretrained_weights": "imagenet",
-                        "feature_extraction_only": False,
-                        "activation": "swish",
-                        "dropout_at_inference": False,
-                        "global_pool": "avg",
-                        "last_layer_activation": "softmax",
-                    },
-                    "training": {
-                        "warmup_lr_init": 0.000001,
-                        "gradient_accumulation_steps": 1,
-                        "validation_split": 0.2,
-                        "evaluation_freq": 1,
-                        "use_ema": False,
-                        "ema_decay": 0.9999,
-                    },
-                    "regularization": {
-                        "swa": {
-                            "use_swa": False,
-                            "start_epoch": 10,
-                        },
-                        "stochastic_depth": {
-                            "use_stochastic_depth": False,
-                            "drop_rate": 0.2,
-                            "survival_probability": 0.8,
-                        },
-                        "random_erase": {
-                            "use_random_erase": False,
-                            "probability": 0.25,
-                            "mode": "pixel",
-                        },
-                    },
-                    "augmentation": {
-                        "contrast": 0.2,
-                        "saturation": 0.2,
-                        "hue": 0.1,
-                        "shear": 0.1,
-                        "channel_shift_range": 0.0,
-                        "resize_mode": "bilinear",
-                        "normalization": {
-                            "mean": [0.485, 0.456, 0.406],
-                            "std": [0.229, 0.224, 0.225],
-                        },
-                    },
-                    "monitoring": {
-                        "metrics": {
-                            "accuracy": True,
-                            "precision": True,
-                            "recall": True,
-                            "f1": True,
-                            "top_k_accuracy": True,
-                            "confusion_matrix": True,
-                            "auc": True,
-                        },
-                        "logging": {
-                            "use_tensorboard": True,
-                            "use_wandb": False,
-                            "save_to_csv": True,
-                            "logging_freq": "epoch",
-                        },
-                        "visualization": {
-                            "use_gradcam": True,
-                            "use_feature_maps": True,
-                            "use_prediction_samples": True,
-                            "num_samples": 10,
-                        },
-                    },
-                    "data": {
-                        "class_weights": "balanced",
-                        "sampler": "weighted_random",
-                        "image_channels": 3,
-                        "cache_dataset": False,
-                    },
-                    "inference": {
-                        "tta": {
-                            "use_tta": False,
-                            "num_augmentations": 5,
-                        },
-                        "export_onnx": False,
-                        "quantization": {
-                            "use_quantization": False,
-                            "precision": "int8",
-                        },
-                    },
-                    "seed": 42,
-                    "deterministic": True,
-                }
-            elif profile_name == "high_accuracy":
-                config = {
-                    "model": {
-                        "pretrained": True,
-                        "pretrained_weights": "imagenet21k",
-                        "feature_extraction_only": False,
-                        "activation": "swish",
-                        "dropout_at_inference": True,
-                        "global_pool": "avg",
-                        "last_layer_activation": "softmax",
-                    },
-                    "training": {
-                        "warmup_lr_init": 0.000001,
-                        "gradient_accumulation_steps": 2,
-                        "validation_split": 0.2,
-                        "evaluation_freq": 1,
-                        "use_ema": True,
-                        "ema_decay": 0.9999,
-                    },
-                    "regularization": {
-                        "swa": {
-                            "use_swa": True,
-                            "start_epoch": 10,
-                        },
-                        "stochastic_depth": {
-                            "use_stochastic_depth": True,
-                            "drop_rate": 0.2,
-                            "survival_probability": 0.8,
-                        },
-                        "random_erase": {
-                            "use_random_erase": True,
-                            "probability": 0.25,
-                            "mode": "pixel",
-                        },
-                    },
-                    "augmentation": {
-                        "contrast": 0.3,
-                        "saturation": 0.3,
-                        "hue": 0.2,
-                        "shear": 0.2,
-                        "channel_shift_range": 0.1,
-                        "resize_mode": "bilinear",
-                        "normalization": {
-                            "mean": [0.485, 0.456, 0.406],
-                            "std": [0.229, 0.224, 0.225],
-                        },
-                    },
-                    "monitoring": {
-                        "metrics": {
-                            "accuracy": True,
-                            "precision": True,
-                            "recall": True,
-                            "f1": True,
-                            "top_k_accuracy": True,
-                            "confusion_matrix": True,
-                            "auc": True,
-                        },
-                        "logging": {
-                            "use_tensorboard": True,
-                            "use_wandb": True,
-                            "save_to_csv": True,
-                            "logging_freq": "batch",
-                        },
-                        "visualization": {
-                            "use_gradcam": True,
-                            "use_feature_maps": True,
-                            "use_prediction_samples": True,
-                            "num_samples": 20,
-                        },
-                    },
-                    "data": {
-                        "class_weights": "balanced",
-                        "sampler": "weighted_random",
-                        "image_channels": 3,
-                        "cache_dataset": True,
-                    },
-                    "inference": {
-                        "tta": {
-                            "use_tta": True,
-                            "num_augmentations": 10,
-                        },
-                        "export_onnx": True,
-                        "quantization": {
-                            "use_quantization": True,
-                            "precision": "int8",
-                        },
-                    },
-                    "seed": 42,
-                    "deterministic": True,
-                }
-            elif profile_name == "fast_training":
-                config = {
-                    "model": {
-                        "pretrained": True,
-                        "pretrained_weights": "imagenet",
-                        "feature_extraction_only": True,
-                        "activation": "relu",
-                        "dropout_at_inference": False,
-                        "global_pool": "avg",
-                        "last_layer_activation": "softmax",
-                    },
-                    "training": {
-                        "warmup_lr_init": 0.0001,
-                        "gradient_accumulation_steps": 1,
-                        "validation_split": 0.1,
-                        "evaluation_freq": 5,
-                        "use_ema": False,
-                        "ema_decay": 0.9999,
-                    },
-                    "regularization": {
-                        "swa": {
-                            "use_swa": False,
-                            "start_epoch": 10,
-                        },
-                        "stochastic_depth": {
-                            "use_stochastic_depth": False,
-                            "drop_rate": 0.2,
-                            "survival_probability": 0.8,
-                        },
-                        "random_erase": {
-                            "use_random_erase": False,
-                            "probability": 0.25,
-                            "mode": "pixel",
-                        },
-                    },
-                    "augmentation": {
-                        "contrast": 0.1,
-                        "saturation": 0.1,
-                        "hue": 0.05,
-                        "shear": 0.05,
-                        "channel_shift_range": 0.0,
-                        "resize_mode": "bilinear",
-                        "normalization": {
-                            "mean": [0.485, 0.456, 0.406],
-                            "std": [0.229, 0.224, 0.225],
-                        },
-                    },
-                    "monitoring": {
-                        "metrics": {
-                            "accuracy": True,
-                            "precision": False,
-                            "recall": False,
-                            "f1": False,
-                            "top_k_accuracy": False,
-                            "confusion_matrix": False,
-                            "auc": False,
-                        },
-                        "logging": {
-                            "use_tensorboard": True,
-                            "use_wandb": False,
-                            "save_to_csv": True,
-                            "logging_freq": "epoch",
-                        },
-                        "visualization": {
-                            "use_gradcam": False,
-                            "use_feature_maps": False,
-                            "use_prediction_samples": True,
-                            "num_samples": 5,
-                        },
-                    },
-                    "data": {
-                        "class_weights": "none",
-                        "sampler": "uniform",
-                        "image_channels": 3,
-                        "cache_dataset": False,
-                    },
-                    "inference": {
-                        "tta": {
-                            "use_tta": False,
-                            "num_augmentations": 5,
-                        },
-                        "export_onnx": False,
-                        "quantization": {
-                            "use_quantization": False,
-                            "precision": "int8",
-                        },
-                    },
-                    "seed": 42,
-                    "deterministic": True,
-                }
-            else:
-                raise ValueError(f"Nieznany profil: {profile_name}")
+        if not self.current_profile:
+            QtWidgets.QMessageBox.warning(
+                self, "Ostrzeżenie", "Najpierw wybierz profil do zastosowania."
+            )
+            return
 
-            self._load_config(config)
+        try:
+            config = self.current_profile.get("config", {})
+
+            # Model
+            if "model" in config:
+                model_config = config["model"]
+                self.pretrained_check.setChecked(model_config.get("pretrained", True))
+                self.pretrained_weights_combo.setCurrentText(
+                    model_config.get("pretrained_weights", "imagenet")
+                )
+                self.feature_extraction_check.setChecked(
+                    model_config.get("feature_extraction_only", False)
+                )
+                self.activation_combo.setCurrentText(
+                    model_config.get("activation", "swish")
+                )
+                self.dropout_at_inference_check.setChecked(
+                    model_config.get("dropout_at_inference", False)
+                )
+                self.global_pool_combo.setCurrentText(
+                    model_config.get("global_pool", "avg")
+                )
+                self.last_layer_activation_combo.setCurrentText(
+                    model_config.get("last_layer_activation", "softmax")
+                )
+
+            # Training
+            if "training" in config:
+                training_config = config["training"]
+                self.warmup_lr_init_spin.setValue(
+                    training_config.get("warmup_lr_init", 0.000001)
+                )
+                self.grad_accum_steps_spin.setValue(
+                    training_config.get("gradient_accumulation_steps", 1)
+                )
+                self.validation_split_spin.setValue(
+                    training_config.get("validation_split", 0.2)
+                )
+                self.eval_freq_spin.setValue(training_config.get("evaluation_freq", 1))
+                self.use_ema_check.setChecked(training_config.get("use_ema", False))
+                self.ema_decay_spin.setValue(training_config.get("ema_decay", 0.9999))
+
+                # Parametry treningu
+                self.epochs_spin.setValue(training_config.get("epochs", 100))
+                self.batch_size_spin.setValue(training_config.get("batch_size", 32))
+                self.lr_spin.setValue(training_config.get("learning_rate", 0.001))
+                self.optimizer_combo.setCurrentText(
+                    training_config.get("optimizer", "Adam")
+                )
+                self.scheduler_combo.setCurrentText(
+                    training_config.get("scheduler", "None")
+                )
+                self.num_workers_spin.setValue(training_config.get("num_workers", 4))
+                self.warmup_epochs_spin.setValue(
+                    training_config.get("warmup_epochs", 5)
+                )
+
+            # Regularization
+            if "regularization" in config:
+                reg_config = config["regularization"]
+                self.weight_decay_spin.setValue(reg_config.get("weight_decay", 0.0001))
+                self.gradient_clip_spin.setValue(reg_config.get("gradient_clip", 1.0))
+                self.label_smoothing_spin.setValue(
+                    reg_config.get("label_smoothing", 0.1)
+                )
+                self.drop_connect_spin.setValue(
+                    reg_config.get("drop_connect_rate", 0.2)
+                )
+                self.dropout_spin.setValue(reg_config.get("dropout_rate", 0.2))
+                self.momentum_spin.setValue(reg_config.get("momentum", 0.9))
+                self.epsilon_spin.setValue(reg_config.get("epsilon", 1e-6))
+
+                # SWA
+                swa_config = reg_config.get("swa", {})
+                self.use_swa_check.setChecked(swa_config.get("use", False))
+                self.swa_start_epoch_spin.setValue(swa_config.get("start_epoch", 10))
+
+                # Stochastic Depth
+                stoch_depth_config = reg_config.get("stochastic_depth", {})
+                self.use_stoch_depth_check.setChecked(
+                    stoch_depth_config.get("use_stochastic_depth", False)
+                )
+                self.stoch_depth_drop_rate.setValue(
+                    stoch_depth_config.get("drop_rate", 0.2)
+                )
+                self.stoch_depth_survival_prob.setValue(
+                    stoch_depth_config.get("survival_probability", 0.8)
+                )
+
+                # Random Erase
+                random_erase_config = reg_config.get("random_erase", {})
+                self.use_random_erase_check.setChecked(
+                    random_erase_config.get("use_random_erase", False)
+                )
+                self.random_erase_prob.setValue(
+                    random_erase_config.get("probability", 0.25)
+                )
+                self.random_erase_mode.setCurrentText(
+                    random_erase_config.get("mode", "pixel")
+                )
+
+            # Augmentation
+            if "augmentation" in config:
+                aug_config = config["augmentation"]
+                self.contrast_spin.setValue(aug_config.get("contrast", 0.2))
+                self.saturation_spin.setValue(aug_config.get("saturation", 0.2))
+                self.hue_spin.setValue(aug_config.get("hue", 0.1))
+                self.shear_spin.setValue(aug_config.get("shear", 0.1))
+                self.channel_shift_spin.setValue(
+                    aug_config.get("channel_shift_range", 0.0)
+                )
+                self.resize_mode_combo.setCurrentText(
+                    aug_config.get("resize_mode", "bilinear")
+                )
+
+                # Normalization
+                norm_config = aug_config.get("normalization", {})
+                mean = norm_config.get("mean", [0.485, 0.456, 0.406])
+                std = norm_config.get("std", [0.229, 0.224, 0.225])
+                self.norm_mean_r.setValue(mean[0])
+                self.norm_mean_g.setValue(mean[1])
+                self.norm_mean_b.setValue(mean[2])
+                self.norm_std_r.setValue(std[0])
+                self.norm_std_g.setValue(std[1])
+                self.norm_std_b.setValue(std[2])
+
+            # Monitoring
+            if "monitoring" in config:
+                monitor_config = config["monitoring"]
+                metrics_config = monitor_config.get("metrics", {})
+                self.accuracy_check.setChecked(metrics_config.get("accuracy", True))
+                self.precision_check.setChecked(metrics_config.get("precision", True))
+                self.recall_check.setChecked(metrics_config.get("recall", True))
+                self.f1_check.setChecked(metrics_config.get("f1", True))
+                self.topk_check.setChecked(metrics_config.get("top_k_accuracy", True))
+                self.confusion_matrix_check.setChecked(
+                    metrics_config.get("confusion_matrix", True)
+                )
+                self.auc_check.setChecked(metrics_config.get("auc", True))
+
+                # Logging
+                logging_config = monitor_config.get("logging", {})
+                self.use_tensorboard_check.setChecked(
+                    logging_config.get("use_tensorboard", True)
+                )
+                self.use_wandb_check.setChecked(logging_config.get("use_wandb", False))
+                self.use_csv_check.setChecked(logging_config.get("save_to_csv", True))
+                self.log_freq_combo.setCurrentText(
+                    logging_config.get("logging_freq", "epoch")
+                )
+
+            QtWidgets.QMessageBox.information(
+                self, "Sukces", "Profil został pomyślnie zastosowany."
+            )
 
         except Exception as e:
-            msg = "Błąd podczas stosowania profilu"
-            self.logger.error(f"{msg}: {str(e)}", exc_info=True)
-            QtWidgets.QMessageBox.critical(self, "Błąd", f"{msg}: {str(e)}")
+            self.logger.error(
+                f"Błąd podczas stosowania profilu: {str(e)}", exc_info=True
+            )
+            QtWidgets.QMessageBox.critical(
+                self, "Błąd", f"Nie można zastosować profilu: {str(e)}"
+            )
 
     def _clone_profile(self):
         """Klonuje wybrany profil."""
@@ -1567,10 +1455,14 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
     def _validate_config(self, config: Dict[str, Any]) -> Tuple[bool, str]:
         """Waliduje konfigurację przed zapisem."""
         try:
+            self.logger.info("=== WALIDACJA KONFIGURACJI ===")
+            self.logger.info(f"Typ zadania: {config.get('type', 'NIEUSTAWIONY')}")
+
             # Sprawdź wymagane pola
             required_fields = ["name", "type", "status", "created_at", "config"]
             for field in required_fields:
                 if field not in config:
+                    self.logger.error(f"Brak wymaganego pola: {field}")
                     return False, f"Brak wymaganego pola: {field}"
 
             # Sprawdź pola w config
@@ -1578,16 +1470,23 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             required_config_fields = ["train_dir", "data_dir", "model"]
             for field in required_config_fields:
                 if field not in config_fields:
+                    self.logger.error(f"Brak wymaganego pola w config: {field}")
                     return False, f"Brak wymaganego pola w config: {field}"
 
             # Sprawdź model_path dla doszkalania
             if config["type"] == "doszkalanie":
+                self.logger.info("Sprawdzanie konfiguracji doszkalania")
                 if "model_path" not in config_fields["model"]:
+                    self.logger.error(
+                        "Brak ścieżki do modelu w konfiguracji doszkalania"
+                    )
                     return False, "Brak ścieżki do modelu w konfiguracji doszkalania"
 
+            self.logger.info("Walidacja zakończona sukcesem")
             return True, ""
 
         except Exception as e:
+            self.logger.error(f"Błąd walidacji: {str(e)}", exc_info=True)
             return False, f"Błąd walidacji: {str(e)}"
 
     def _check_task_exists(self, task_name: str) -> bool:
@@ -1598,6 +1497,8 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
     def _on_accept(self):
         """Obsługa akceptacji konfiguracji."""
         try:
+            self.logger.info("=== ROZPOCZYNAM ZAPIS KONFIGURACJI ===")
+
             # Walidacja katalogu treningowego
             train_dir = self.train_dir_edit.text()
             if not train_dir.strip():
@@ -1624,6 +1525,8 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             )
             task_name = f"{model_name}_{timestamp}"
 
+            self.logger.info(f"Tworzenie zadania: {task_name}")
+
             # Sprawdź czy zadanie już istnieje
             if self._check_task_exists(task_name):
                 QtWidgets.QMessageBox.warning(
@@ -1635,7 +1538,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
             config = {
                 "name": task_name,
-                "type": "doszkalanie",
+                "type": "doszkalanie",  # Ustawiamy typ zadania
                 "status": "Nowy",
                 "priority": 0,
                 "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -1742,20 +1645,27 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 },
             }
 
+            self.logger.info(f"Typ zadania przed walidacją: {config['type']}")
+
             # Walidacja konfiguracji
             is_valid, error_msg = self._validate_config(config)
             if not is_valid:
+                self.logger.error(f"Błąd walidacji: {error_msg}")
                 QtWidgets.QMessageBox.critical(self, "Błąd walidacji", error_msg)
                 return
 
             self.task_config = config
+            self.logger.info(f"Typ zadania po walidacji: {self.task_config['type']}")
 
             # Zapisz konfigurację do pliku
             task_file = os.path.join("data", "tasks", f"{task_name}.json")
             os.makedirs(os.path.dirname(task_file), exist_ok=True)
+
+            self.logger.info(f"Zapisuję konfigurację do pliku: {task_file}")
             with open(task_file, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=4)
 
+            self.logger.info("Konfiguracja została pomyślnie zapisana")
             self.accept()
 
         except Exception as e:

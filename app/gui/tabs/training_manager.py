@@ -177,7 +177,13 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                     )
 
                     # Typ zadania
-                    task_type = task_data.get("typ", "trening")
+                    if "type" not in task_data:
+                        self.parent.logger.error(
+                            f"Brak klucza 'type' w zadaniu {task_file}"
+                        )
+                        task_type = "Nieznany"
+                    else:
+                        task_type = task_data["type"]
                     self.tasks_table.setItem(
                         row, 1, QtWidgets.QTableWidgetItem(task_type)
                     )

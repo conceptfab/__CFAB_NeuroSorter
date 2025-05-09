@@ -256,7 +256,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             try:
                 with open(profile_file, "r", encoding="utf-8") as f:
                     profile_data = json.load(f)
-                    if profile_data.get("typ") == "trening":
+                    if profile_data.get("type") == "trening":
                         self.profile_list.addItem(profile_file.stem)
             except Exception as e:
                 self.logger.error(
@@ -487,7 +487,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 new_profile = self.current_profile.copy()
                 new_profile["info"] = f"Klon profilu {current_name}"
                 new_profile["description"] = f"Klon profilu {current_name}"
-                new_profile["typ"] = "trening"  # Upewniamy się, że typ jest ustawiony
+                new_profile["type"] = "trening"  # Upewniamy się, że typ jest ustawiony
 
                 new_path = self.profiles_dir / f"{new_name}.json"
                 with open(new_path, "w", encoding="utf-8") as f:
@@ -520,7 +520,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             if ok and name:
                 profile_data = {
-                    "typ": "trening",
+                    "type": "trening",
                     "info": (
                         f"Profil dla {self.arch_combo.currentText()} "
                         f"{self.variant_combo.currentText()}"
@@ -1346,7 +1346,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             self.task_config = {
                 "name": task_name,
-                "typ": "trening",
+                "type": "trening",
                 "status": "Nowy",
                 "priority": 0,
                 "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
