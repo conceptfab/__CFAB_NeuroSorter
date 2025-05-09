@@ -49,27 +49,82 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         # Dodaj etykietę informacji o profilu sprzętowym
         profile_layout = QtWidgets.QHBoxLayout()
 
-        # Lewa kolumna - informacje o profilu
-        profile_info_panel = QtWidgets.QWidget()
-        profile_info_layout = QtWidgets.QVBoxLayout(profile_info_panel)
-        profile_info_layout.setContentsMargins(0, 0, 0, 0)
+        # Lewa kolumna - panel dodawania zadania
+        left_panel = QtWidgets.QWidget()
+        left_layout = QtWidgets.QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Nagłówek sekcji dodawania zadania
+        add_task_header = QtWidgets.QLabel("DODAJ NOWE ZADANIE TRENINGOWE")
+        add_task_header.setStyleSheet(
+            "font-weight: bold; color: #CCCCCC; "
+            "font-size: 11px; padding-bottom: 4px;"
+        )
+        add_task_header.setFixedHeight(20)  # Ustaw stałą wysokość
+        left_layout.addWidget(add_task_header)
+
+        # Kontener na elementy w jednej linii
+        controls_container = QtWidgets.QWidget()
+        controls_layout = QtWidgets.QHBoxLayout(controls_container)
+        controls_layout.setContentsMargins(0, 0, 0, 0)
+        controls_layout.setSpacing(8)
+
+        # Wybór typu zadania
+        task_type_label = QtWidgets.QLabel("Typ zadania:")
+        task_type_label.setFixedWidth(120)
+        task_type_label.setStyleSheet("font-size: 13px;")  # Zwiększamy rozmiar czcionki
+        self.task_type_combo = QtWidgets.QComboBox()
+        self.task_type_combo.addItems(
+            ["Trening nowego modelu", "Doszkalanie istniejącego modelu"]
+        )
+
+        # Przycisk dodania zadania
+        self.add_task_btn = QtWidgets.QPushButton("Dodaj zadanie do kolejki")
+        self.add_task_btn.setFixedHeight(24)
+        self.add_task_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                padding: 5px;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #0D47A1;
+            }
+        """
+        )
+
+        # Dodaj wszystkie elementy do layoutu poziomego
+        controls_layout.addWidget(task_type_label)
+        controls_layout.addWidget(self.task_type_combo)
+        controls_layout.addWidget(self.add_task_btn)
+        controls_layout.addStretch(1)  # Dodaj rozciągnięcie na końcu
+
+        # Dodaj kontener do głównego layoutu
+        left_layout.addWidget(controls_container)
+
+        # Prawa kolumna - informacje o profilu i optymalizacji
+        right_panel = QtWidgets.QWidget()
+        right_layout = QtWidgets.QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(0, 0, 0, 0)
 
         # Nagłówek sekcji
-        optimization_header = QtWidgets.QLabel("OPTYMALIZACJA TRAININGU")
+        optimization_header = QtWidgets.QLabel("OPTYMALIZACJA TRENINGU")
         optimization_header.setStyleSheet(
             "font-weight: bold; color: #CCCCCC; "
             "font-size: 11px; padding-bottom: 4px;"
         )
-        profile_info_layout.addWidget(optimization_header)
+        optimization_header.setFixedHeight(20)  # Ustaw stałą wysokość
+        right_layout.addWidget(optimization_header)
 
         self.profile_info_label = QtWidgets.QLabel("Status profilu: Nieznany")
         self.profile_info_label.setStyleSheet("color: #CCCCCC; padding: 4px;")
-        profile_info_layout.addWidget(self.profile_info_label)
-
-        # Prawa kolumna - przyciski i opcje
-        profile_controls_panel = QtWidgets.QWidget()
-        profile_controls_layout = QtWidgets.QVBoxLayout(profile_controls_panel)
-        profile_controls_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.addWidget(self.profile_info_label)
 
         # Checkbox optymalizacji
         self.use_optimization_checkbox = QtWidgets.QCheckBox(
@@ -80,20 +135,18 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             "Automatycznie dobiera parametry trainingu "
             "na podstawie profilu sprzętowego"
         )
-        profile_controls_layout.addWidget(self.use_optimization_checkbox)
+        right_layout.addWidget(self.use_optimization_checkbox)
 
         # Przycisk profilowania
         self.run_profiler_btn = QtWidgets.QPushButton("Uruchom profilowanie sprzętu")
         self.run_profiler_btn.setFixedHeight(24)
         self.run_profiler_btn.clicked.connect(self._run_profiler)
-        profile_controls_layout.addWidget(self.run_profiler_btn)
+        right_layout.addWidget(self.run_profiler_btn)
 
         # Dodaj obie kolumny do głównego layoutu
-        profile_layout.addWidget(profile_info_panel)
-        profile_layout.addWidget(profile_controls_panel)
+        profile_layout.addWidget(left_panel)
+        profile_layout.addWidget(right_panel)
         layout.addLayout(profile_layout)
-
-        self._create_add_task_panel(layout)
 
         # === Początek zmian: Dodanie QTabWidget ===
         self.tabs = QtWidgets.QTabWidget()
@@ -112,15 +165,6 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             self.tabs, 1
         )  # Dodajemy QTabWidget do głównego layoutu, rozciągalny
         # === Koniec zmian: Dodanie QTabWidget ===
-
-        # Stara implementacja (przed QTabWidget) - zakomentowana lub usunięta
-        # # Panel wizualizacji trainingu
-        # self.training_visualization = TrainingVisualization()
-        # layout.addWidget(self.training_visualization)
-        #
-        # # Panel kolejki zadań trainingowych (skalowalny)
-        # queue_panel = self._create_queue_panel_widget()
-        # layout.addWidget(queue_panel, 1)  # <- skalowalny na wysokość
 
     def connect_signals(self):
         """Łączy sygnały z odpowiednimi slotami."""
@@ -214,6 +258,23 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                     run_btn = QtWidgets.QPushButton("Uruchom")
                     run_btn.setFixedWidth(100)
                     run_btn.setFixedHeight(20)
+                    run_btn.setStyleSheet(
+                        """
+                        QPushButton {
+                            background-color: #4CAF50;
+                            color: white;
+                            border: none;
+                            padding: 5px;
+                            border-radius: 3px;
+                        }
+                        QPushButton:hover {
+                            background-color: #388E3C;
+                        }
+                        QPushButton:pressed {
+                            background-color: #1B5E20;
+                        }
+                    """
+                    )
                     run_btn.clicked.connect(
                         lambda checked, file=task_file: self._run_task_from_queue(file)
                     )
@@ -230,6 +291,23 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                     delete_btn = QtWidgets.QPushButton("Usuń")
                     delete_btn.setFixedWidth(80)
                     delete_btn.setFixedHeight(20)
+                    delete_btn.setStyleSheet(
+                        """
+                        QPushButton {
+                            background-color: #F44336;
+                            color: white;
+                            border: none;
+                            padding: 5px;
+                            border-radius: 3px;
+                        }
+                        QPushButton:hover {
+                            background-color: #D32F2F;
+                        }
+                        QPushButton:pressed {
+                            background-color: #B71C1C;
+                        }
+                    """
+                    )
                     delete_btn.clicked.connect(
                         lambda checked, file=task_file: self._delete_task_from_queue(
                             file
@@ -294,58 +372,18 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                 else:
                     new_width = int(width * 1.6)
                 self.tasks_table.setColumnWidth(col, new_width)
-            # Zmniejsz kolumnę 'Akcje' (ostatnia) do odpowiedniej szerokości
+
+            # Ustaw kolumnę 'Akcje' (ostatnia) na rozciąganie
             last_col = self.tasks_table.columnCount() - 1
-            self.tasks_table.setColumnWidth(last_col, 250)
-            header.setStretchLastSection(False)
+            header.setSectionResizeMode(
+                last_col, QtWidgets.QHeaderView.ResizeMode.Stretch
+            )
+            header.setStretchLastSection(True)
 
         except Exception as e:
             self.parent.logger.error(
                 f"Błąd podczas odświeżania kolejki zadań: {str(e)}"
             )
-
-    def _create_add_task_panel(self, parent_layout):
-        """Tworzy panel dodawania nowego zadania trainingowego."""
-        add_task_panel = QtWidgets.QWidget()
-        add_task_layout = QtWidgets.QVBoxLayout(add_task_panel)
-        add_task_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Nagłówek sekcji
-        add_task_header = QtWidgets.QLabel("DODAJ NOWE ZADANIE TRAININGOWE")
-        add_task_header.setStyleSheet(
-            "font-weight: bold; color: #CCCCCC; "
-            "font-size: 11px; padding-bottom: 4px;"
-        )
-        add_task_layout.addWidget(add_task_header)
-
-        # Kontener na elementy w jednej linii
-        controls_container = QtWidgets.QWidget()
-        controls_layout = QtWidgets.QHBoxLayout(controls_container)
-        controls_layout.setContentsMargins(0, 0, 0, 0)
-        controls_layout.setSpacing(8)
-
-        # Wybór typu zadania
-        task_type_label = QtWidgets.QLabel("Typ zadania:")
-        task_type_label.setFixedWidth(120)
-        self.task_type_combo = QtWidgets.QComboBox()
-        self.task_type_combo.addItems(
-            ["Trening nowego modelu", "Doszkalanie istniejącego modelu"]
-        )
-
-        # Przycisk dodania zadania
-        self.add_task_btn = QtWidgets.QPushButton("Dodaj zadanie do kolejki")
-        self.add_task_btn.setFixedHeight(24)
-
-        # Dodaj wszystkie elementy do layoutu poziomego
-        controls_layout.addWidget(task_type_label)
-        controls_layout.addWidget(self.task_type_combo)
-        controls_layout.addWidget(self.add_task_btn)
-        controls_layout.addStretch(1)  # Dodaj rozciągnięcie na końcu
-
-        # Dodaj kontener do głównego layoutu
-        add_task_layout.addWidget(controls_container)
-
-        parent_layout.addWidget(add_task_panel)
 
     def _create_queue_panel_widget(self):
         """Tworzy i zwraca panel kolejki zadań trainingowych jako widget."""
@@ -451,7 +489,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
 
         except Exception as e:
             QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie udało się dodać zadania trainingowego: {str(e)}"
+                self, "Błąd", f"Nie udało się dodać zadania treningowego: {str(e)}"
             )
 
     def _clear_task_queue(self):
@@ -500,7 +538,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             )
 
     def _training_task_started(self, task_name, task_type):
-        """Obsługa rozpoczęcia zadania trainingowego."""
+        """Obsługa rozpoczęcia zadania treningowego."""
         # Logowanie
         self.parent.logger.info(f"Rozpoczęto zadanie {task_type}: {task_name}")
 
@@ -600,7 +638,7 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             self.parent.logger.error(traceback.format_exc())
 
     def _training_task_completed(self, task_name, result):
-        """Obsługuje zakończenie zadania trainingowego."""
+        """Obsługuje zakończenie zadania treningowego."""
         try:
             self.parent.logger.info(
                 f"Rozpoczynam obsługę zakończenia zadania: {task_name}"
