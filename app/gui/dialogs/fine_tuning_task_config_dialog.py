@@ -32,11 +32,17 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.profiles_dir.mkdir(exist_ok=True)
         self.current_profile = None
 
-        # Inicjalizacja elementów interfejsu
+        # Inicjalizacja wszystkich kontrolek
+        self._init_controls()
+
+        # Inicjalizacja interfejsu
+        self._init_ui()
+
+    def _init_controls(self):
+        """Inicjalizacja wszystkich kontrolek."""
+        # Metrics
         self.auc_check = QtWidgets.QCheckBox()
         self.auc_check.setChecked(True)
-
-        # Inicjalizacja kontrolek monitorowania
         self.accuracy_check = QtWidgets.QCheckBox()
         self.accuracy_check.setChecked(True)
         self.precision_check = QtWidgets.QCheckBox()
@@ -65,6 +71,11 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.use_gradcam_check.setChecked(True)
         self.use_feature_maps_check = QtWidgets.QCheckBox()
         self.use_feature_maps_check.setChecked(True)
+        self.use_pred_samples_check = QtWidgets.QCheckBox()
+        self.use_pred_samples_check.setChecked(True)
+        self.num_samples_spin = QtWidgets.QSpinBox()
+        self.num_samples_spin.setRange(1, 100)
+        self.num_samples_spin.setValue(10)
 
         # Early stopping
         self.patience_spin = QtWidgets.QSpinBox()
@@ -90,7 +101,44 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             ["val_loss", "val_accuracy", "val_f1", "val_precision", "val_recall"]
         )
 
-        self._init_ui()
+        # Normalization controls - używane w wielu miejscach
+        self.norm_mean_r = QtWidgets.QDoubleSpinBox()
+        self.norm_mean_r.setRange(0.0, 1.0)
+        self.norm_mean_r.setValue(0.485)
+        self.norm_mean_r.setDecimals(3)
+
+        self.norm_mean_g = QtWidgets.QDoubleSpinBox()
+        self.norm_mean_g.setRange(0.0, 1.0)
+        self.norm_mean_g.setValue(0.456)
+        self.norm_mean_g.setDecimals(3)
+
+        self.norm_mean_b = QtWidgets.QDoubleSpinBox()
+        self.norm_mean_b.setRange(0.0, 1.0)
+        self.norm_mean_b.setValue(0.406)
+        self.norm_mean_b.setDecimals(3)
+
+        self.norm_std_r = QtWidgets.QDoubleSpinBox()
+        self.norm_std_r.setRange(0.0, 1.0)
+        self.norm_std_r.setValue(0.229)
+        self.norm_std_r.setDecimals(3)
+
+        self.norm_std_g = QtWidgets.QDoubleSpinBox()
+        self.norm_std_g.setRange(0.0, 1.0)
+        self.norm_std_g.setValue(0.224)
+        self.norm_std_g.setDecimals(3)
+
+        self.norm_std_b = QtWidgets.QDoubleSpinBox()
+        self.norm_std_b.setRange(0.0, 1.0)
+        self.norm_std_b.setValue(0.225)
+        self.norm_std_b.setDecimals(3)
+
+        # Resize mode
+        self.resize_mode_combo = QtWidgets.QComboBox()
+        self.resize_mode_combo.addItems(["bilinear", "bicubic", "nearest", "area"])
+
+        # Cache dataset
+        self.cache_dataset_check = QtWidgets.QCheckBox()
+        self.cache_dataset_check.setChecked(False)
 
     def _setup_logging(self):
         """Konfiguracja logowania dla okna dialogowego."""
@@ -917,6 +965,10 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
     def _load_config(self, config: Dict[str, Any]) -> None:
         """Ładuje konfigurację do interfejsu."""
         try:
+            # Blokujemy sygnały podczas wczytywania konfiguracji, aby uniknąć
+            # wyzwalania zbędnych aktualizacji UI
+            self.blockSignals(True)
+
             # Model
             model_config = config.get("model", {})
 
@@ -935,9 +987,18 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # 1. Aktualizacja parametrów modelu
             if "architecture" in model_config:
                 # Najpierw ustawiamy architekturę
-                self.arch_combo.setCurrentText(model_config["architecture"])
-                # To wywołanie zaktualizuje listę wariantów
-                self._update_variant_combo(model_config["architecture"])
+                architecture = model_config["architecture"]
+                idx = self.arch_combo.findText(architecture)
+                if idx >= 0:
+                    self.arch_combo.blockSignals(True)
+                    self.arch_combo.setCurrentIndex(idx)
+                    self.arch_combo.blockSignals(False)
+                    # To wywołanie zaktualizuje listę wariantów
+                    self._update_variant_combo(architecture)
+                else:
+                    self.logger.warning(
+                        f"Architektura {architecture} nie jest dostępna"
+                    )
 
             # Teraz ustawiamy wariant, po aktualizacji listy wariantów
             if "variant" in model_config:
@@ -945,7 +1006,9 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 # Jeśli wariant jest dostępny w aktualnej liście, ustaw go
                 idx = self.variant_combo.findText(variant)
                 if idx >= 0:
+                    self.variant_combo.blockSignals(True)
                     self.variant_combo.setCurrentIndex(idx)
+                    self.variant_combo.blockSignals(False)
                     self.logger.info(f"Ustawiono wariant: {variant}")
                 else:
                     self.logger.warning(
@@ -1198,12 +1261,15 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # Aktualizacja zależnych kontrolek
             self._update_dependent_controls()
 
-            # Na koniec aktualizujemy stan UI
+            # Na koniec metody odblokujemy sygnały i ręcznie wywołamy aktualizację UI
+            self.blockSignals(False)
             self._update_ui_state()
-
             self.logger.info("Konfiguracja modelu została pomyślnie załadowana")
 
         except Exception as e:
+            self.blockSignals(
+                False
+            )  # Upewnij się, że sygnały zostaną odblokowane nawet w przypadku błędu
             msg = "Błąd podczas ładowania konfiguracji"
             self.logger.error(f"{msg}: {str(e)}", exc_info=True)
             QtWidgets.QMessageBox.critical(self, "Błąd", f"{msg}: {str(e)}")
@@ -1324,15 +1390,23 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                                     f"Ustawiono nazwę zadania: {task_name}"
                                 )
 
+                            # Najpierw dodaj blokowanie sygnałów na całym oknie
+                            self.blockSignals(True)
+
                             # Użyj metody _load_config do załadowania całej konfiguracji
+                            # Ta metoda już ma blockSignals wewnątrz
                             self._load_config(config)
 
-                            # Dodaj tę linię, aby zaktualizować kontrolki zależne
+                            # Ręcznie zaktualizuj kontrolki zależne
+                            self.blockSignals(False)
                             self._update_dependent_controls()
+                            self._update_ui_state()
 
                             self.logger.info("Zastosowano konfigurację modelu")
 
                     except Exception as e:
+                        # Upewnij się, że sygnały zostaną odblokowane w przypadku błędu
+                        self.blockSignals(False)
                         self.logger.error(
                             f"Błąd podczas wczytywania konfiguracji: {str(e)}"
                         )
@@ -1352,6 +1426,8 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                     )
 
         except Exception as e:
+            # Upewnij się, że sygnały zostaną odblokowane w przypadku błędu
+            self.blockSignals(False)
             self.logger.error(f"Błąd podczas wyboru pliku modelu: {str(e)}")
             QtWidgets.QMessageBox.critical(
                 self,
