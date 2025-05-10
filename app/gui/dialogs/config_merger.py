@@ -55,9 +55,9 @@ def merge_configs(
     merged_config = default_profile.copy()
     merged_config["config"] = update_values(default_profile["config"], extracted_config)
 
-    # Generowanie nazwy pliku wyjściowego
-    output_filename = generate_output_filename(merged_config["config"])
-    output_path = str(Path(output_path).parent / output_filename)
+    # Poniższe linie zostaną usunięte lub zakomentowane, aby użyć output_path przekazanego do funkcji
+    # output_filename = generate_output_filename(merged_config["config"])
+    # output_path = str(Path(output_path).parent / output_filename)
 
     # Zapisanie wyniku
     output_dir = Path(output_path).parent

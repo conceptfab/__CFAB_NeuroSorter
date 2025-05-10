@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "date": "2025-05-10T14:34:13.170377",
+        "image_path": "F:/_set_B/__dane_treningowe/arm_chair/320204.55b57043910ea.jpg",
+        "class_name": "arm_chair",
+        "confidence": 0.50830078125
+    },
+    {
+        "date": "2025-05-10T14:34:17.489617",
+        "image_path": "F:/_set_B/__dane_treningowe/arm_chair/1364862.59cb51dd51f15.jpg",
+        "class_name": "arm_chair",
+        "confidence": 0.89990234375
+    }
+]

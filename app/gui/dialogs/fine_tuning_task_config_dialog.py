@@ -2656,30 +2656,105 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                     return
 
                 # Ścieżki do plików
-                default_profile_path = "data/profiles/default_profile.json"
-                extracted_config_path = "data/profiles/extracted_config.json"
-                output_path = f"data/profiles/{name.strip()}.json"
+                default_profile_path = self.profiles_dir / "default_profile.json"
+                extracted_config_path = self.profiles_dir / "extracted_config.json"
+                # Użyj self.profiles_dir do tworzenia ścieżki
+                output_path = str(self.profiles_dir / f"{name.strip()}.json")
+                temp_base_profile_path = self.profiles_dir / "temp_base_profile.json"
 
-                # Zapisz wczytaną konfigurację do pliku tymczasowego
-                with open(extracted_config_path, "w", encoding="utf-8") as f:
-                    json.dump(self.config, f, indent=4, ensure_ascii=False)
+                try:
+                    # Wczytaj domyślny profil
+                    with open(default_profile_path, "r", encoding="utf-8") as f:
+                        profile_data = json.load(f)
 
-                # Użyj funkcji merge_configs do połączenia konfiguracji
-                from app.gui.dialogs.config_merger import merge_configs
+                    # Zaktualizuj 'info' i 'description'
+                    profile_data["info"] = name.strip()
+                    # Upewnij się, że self.config i odpowiednie klucze istnieją
+                    model_details_cfg = self.config.get("model", {})
+                    arch = model_details_cfg.get("architecture", "N/A")
+                    variant = model_details_cfg.get("variant", "N/A")
+                    base_model_filename = (
+                        Path(self.model_path_edit.text()).name
+                        if self.model_path_edit.text()
+                        else "N/A"
+                    )
+                    profile_data["description"] = (
+                        f"Profil z konfiguracji dla modelu: {arch} {variant} "
+                        f"(plik bazowy: {base_model_filename})"
+                    )
 
-                merge_configs(default_profile_path, extracted_config_path, output_path)
+                    # Zapisz zmodyfikowany profil do pliku tymczasowego
+                    with open(temp_base_profile_path, "w", encoding="utf-8") as f:
+                        json.dump(profile_data, f, indent=4, ensure_ascii=False)
+
+                    # Zapisz wczytaną konfigurację (self.config) do pliku tymczasowego extracted_config.json
+                    with open(extracted_config_path, "w", encoding="utf-8") as f:
+                        json.dump(self.config, f, indent=4, ensure_ascii=False)
+
+                    # Użyj funkcji merge_configs do połączenia konfiguracji
+                    from app.gui.dialogs.config_merger import merge_configs
+
+                    self.logger.info(
+                        f"Przekazuję do merge_configs - temp_base: {temp_base_profile_path}, "
+                        f"extracted_config: {extracted_config_path}, output: {output_path}"
+                    )
+
+                    # Użyj str() dla ścieżek Path, jeśli merge_configs tego oczekuje
+                    merge_configs(
+                        str(temp_base_profile_path),
+                        str(extracted_config_path),
+                        output_path,
+                    )
+
+                    QtWidgets.QMessageBox.information(
+                        self,
+                        "Sukces",
+                        f"Profil '{name.strip()}' został pomyślnie utworzony i zapisany.",
+                    )
+                    self.logger.info(
+                        f"Utworzono nowy profil '{name.strip()}' z konfiguracji modelu."
+                    )
+
+                except FileNotFoundError:
+                    self.logger.error(
+                        f"Nie znaleziono pliku default_profile.json pod ścieżką: "
+                        f"{default_profile_path}"
+                    )
+                    QtWidgets.QMessageBox.critical(
+                        self,
+                        "Błąd",
+                        "Nie znaleziono pliku default_profile.json. "
+                        "Skontaktuj się z administratorem.",
+                    )
+                    return
+                except Exception as e_merge:
+                    self.logger.error(
+                        f"Błąd podczas procesu tworzenia profilu (merge lub zapis): "
+                        f"{str(e_merge)}",
+                        exc_info=True,
+                    )
+                    QtWidgets.QMessageBox.critical(
+                        self, "Błąd", f"Nie można utworzyć profilu: {str(e_merge)}"
+                    )
+                    return
+
+                finally:
+                    # Usuń pliki tymczasowe
+                    if temp_base_profile_path.exists():
+                        os.remove(temp_base_profile_path)
+                        self.logger.info(
+                            f"Usunięto tymczasowy plik: {temp_base_profile_path}"
+                        )
+                    if (
+                        extracted_config_path.exists()
+                    ):  # Sprawdzenie, czy extracted_config_path jest Path
+                        os.remove(extracted_config_path)
+                        self.logger.info(
+                            f"Usunięto tymczasowy plik: {extracted_config_path}"
+                        )
 
                 # Odśwież listę profili
                 self._refresh_profile_list()
-
-                QtWidgets.QMessageBox.information(
-                    self,
-                    "Sukces",
-                    f"Profil '{name.strip()}' został pomyślnie utworzony i zapisany.",
-                )
-                self.logger.info(
-                    f"Utworzono nowy profil '{name.strip()}' z konfiguracji modelu."
-                )
 
         except Exception as e:
             self.logger.error(

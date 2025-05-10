@@ -103,6 +103,7 @@ class ImageClassifierTab(QWidget, TabInterface):
         self.classification_history = []
         self.history_file = os.path.join("data", "classification_history.json")
         self.batch_thread = None
+        self.setAcceptDrops(True)  # Umożliwia drag and drop dla całej zakładki
         self.setup_ui()
         self.connect_signals()
         self.load_classification_history()
@@ -132,7 +133,8 @@ class ImageClassifierTab(QWidget, TabInterface):
         self.image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_preview.setMinimumHeight(200)
         self.image_preview.setStyleSheet(
-            "background-color: #1C1C1C; " "border: 1px solid #3F3F46; color: #AAA;"
+            "background-color: #1C1C1C; "
+            "border: 1px solid #3F3F46; color: #AAA;"
         )
         left_layout.addWidget(self.image_preview, 1)
 
@@ -265,6 +267,39 @@ class ImageClassifierTab(QWidget, TabInterface):
                 self.current_image_path = None
                 self.image_preview.setText("Wybierz obraz do klasyfikacji")
                 self.image_preview.setPixmap(QPixmap())
+
+    def dragEnterEvent(self, event):
+        """Obsługuje zdarzenie wejścia przeciąganego obiektu."""
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        """Obsługuje zdarzenie upuszczenia obiektu."""
+        if event.mimeData().hasUrls():
+            event.setDropAction(Qt.DropAction.CopyAction)
+            # Pobierz pierwszą ścieżkę pliku (zakładamy pojedynczy plik)
+            url = event.mimeData().urls()[0]
+            file_path = url.toLocalFile()
+
+            # Sprawdź, czy plik jest obrazem (opcjonalne, ale zalecane)
+            # Możesz dodać bardziej zaawansowaną walidację typów plików
+            if file_path.lower().endswith(
+                ('.png', '.jpg', '.jpeg', '.bmp', '.gif')
+            ):
+                self.current_image_path = file_path
+                self._show_image_preview(file_path)
+                self._classify_image()  # Automatyczna klasyfikacja
+                event.acceptProposedAction()
+            else:
+                QMessageBox.warning(
+                    self, "Błąd",
+                    "Upuszczony plik nie jest obsługiwanym obrazem."
+                )
+                event.ignore()
+        else:
+            event.ignore()
 
     def _select_image(self):
         """Wybiera obraz do klasyfikacji i wyświetla jego podgląd."""
@@ -466,7 +501,9 @@ class ImageClassifierTab(QWidget, TabInterface):
         self.history_thread = ClassificationHistoryThread(self.history_file)
         self.history_thread.history_loaded.connect(self._display_history)
         self.history_thread.error_occurred.connect(
-            lambda msg: self.parent.logger.info(f"Błąd wczytywania historii: {msg}")
+            lambda msg: self.parent.logger.info(
+                f"Błąd wczytywania historii: {msg}"
+            )
         )
         self.history_thread.start()
 

@@ -50,7 +50,7 @@
     "epsilon": 0.001,
     "warmup_epochs": 5,
     "last_verify_dir": "F:/_set_A",
-    "last_model": "18_EfficientNet-B0_1klas_0.00acc_10epok_2025-05-10_01-22.pt",
+    "last_model": "18_EfficientNet-B2_33klas_0.00acc_10epok_2025-05-10_14-28.pt",
     "last_batch_input_dir": "D:/_set_D",
     "last_batch_output_dir": "F:/_sort_files",
     "last_single_image_dir": "F:/______training_database_V2/animal"
