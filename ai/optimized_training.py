@@ -18,11 +18,6 @@ from sklearn.metrics import (
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
-from app.utils.file_validator import (
-    print_validation_report,
-    validate_training_structure,
-)
-
 from .preprocessing import (
     get_augmentation_transforms,
     get_default_transforms,
@@ -57,20 +52,12 @@ def train_model_optimized(
     """
     Trenuje model na podanym zbiorze danych z wykorzystaniem optymalnych parametrów sprzętowych.
     """
-    print("\n=== INICJALIZACJA OPTYMALIZOWANEGO TRENINGU ===")
-    print(f"Data rozpoczęcia: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-
-    # Walidacja struktury katalogów i plików
-    print("\n=== WALIDACJA DANYCH TRENINGOWYCH ===")
-    print_validation_report(train_dir, val_dir)
-
-    is_valid, error_msg = validate_training_structure(train_dir, val_dir)
-    if not is_valid:
-        raise ValueError(f"Błąd walidacji danych: {error_msg}")
+    # print("\n=== INICJALIZACJA OPTYMALIZOWANEGO TRENINGU ===")
+    # print(f"Data rozpoczęcia: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     # Inicjalizacja profilera jeśli nie podano
     if profiler is None:
-        print("Profiler nie został podany, tworzę nowy...")
+        # print("Profiler nie został podany, tworzę nowy...")
         from app.utils.profiler import HardwareProfiler
 
         profiler = HardwareProfiler()
@@ -78,35 +65,35 @@ def train_model_optimized(
     # Załaduj profil sprzętowy
     hardware_profile = profiler.load_profile()
     if hardware_profile:
-        print("Załadowano profil sprzętowy z optymalnymi parametrami")
+        # print("Załadowano profil sprzętowy z optymalnymi parametrami")
         pass
     else:
-        print("Nie znaleziono profilu sprzętowego, generuję nowy...")
+        # print("Nie znaleziono profilu sprzętowego, generuję nowy...")
         hardware_profile = profiler.generate_recommendations()
-        print("Utworzono nowy profil sprzętowy")
+        # print("Utworzono nowy profil sprzętowy")
 
     # Ustaw urządzenie
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Urządzenie treningu: {device}")
+    # print(f"Urządzenie treningu: {device}")
 
     # Ustaw optymalny rozmiar batcha jeśli nie został podany
     if batch_size is None:
         batch_size = hardware_profile.get("recommended_batch_size", 32)
-        print(f"Użyto optymalnego rozmiaru batcha z profilera: {batch_size}")
+        # print(f"Użyto optymalnego rozmiaru batcha z profilera: {batch_size}")
 
     # Ustaw optymalną liczbę workerów
-    print("DEBUG: TYMCZASOWE USTAWIANIE num_workers NA 0 DLA TESTU!")
+    # print("DEBUG: TYMCZASOWE USTAWIANIE num_workers NA 0 DLA TESTU!")
     recommended_workers = 0  # <--- USTAW NA 0 DLA TESTU
 
     # Ustaw mixed precision
     use_mixed_precision = hardware_profile.get("use_mixed_precision", False)
     if use_mixed_precision and torch.cuda.is_available():
-        print("Używam mixed precision (zalecane przez profiler)")
+        # print("Używam mixed precision (zalecane przez profiler)")
         pass
     else:
         use_mixed_precision = False
-        print("Mixed precision wyłączone (brak GPU lub niezalecane przez profiler)")
+        # print("Mixed precision wyłączone (brak GPU lub niezalecane przez profiler)")
 
     # Inicjalizacja historii treningu
     history = {
@@ -135,7 +122,7 @@ def train_model_optimized(
     # Przygotuj model
     try:
         model = model.to(device)
-        print(f"Model przeniesiony na urządzenie: {device}")
+        # print(f"Model przeniesiony na urządzenie: {device}")
     except Exception as e:
         print(f"Błąd podczas przenoszenia modelu na urządzenie: {e}")
         raise
@@ -144,15 +131,15 @@ def train_model_optimized(
     train_transform = None
     if augmentation_mode == "basic":
         train_transform = get_augmentation_transforms()
-        print("Użyto podstawowej augmentacji danych")
+        # print("Użyto podstawowej augmentacji danych")
     elif augmentation_mode == "extended":
         train_transform = get_extended_augmentation_transforms(
             params=augmentation_params
         )
-        print("Użyto rozszerzonej augmentacji danych z parametrami")
+        # print("Użyto rozszerzonej augmentacji danych z parametrami")
     else:
         train_transform = get_default_transforms()
-        print("Użyto standardowych transformacji bez augmentacji")
+        # print("Użyto standardowych transformacji bez augmentacji")
 
     val_transform = get_default_transforms()
 
@@ -164,7 +151,7 @@ def train_model_optimized(
         class_names = {}
         for idx, class_name in enumerate(train_dataset.classes):
             class_names[str(idx)] = class_name
-            print(f"  - ID {idx}: {class_name}")
+            # print(f"  - ID {idx}: {class_name}")
 
         # Przypisanie class_names do modelu
         if hasattr(model, "class_names"):
@@ -202,7 +189,7 @@ def train_model_optimized(
 
     # Konfiguracja optymalizatora
     if freeze_backbone:
-        print("Zamrażanie głównej części modelu...")
+        # print("Zamrażanie głównej części modelu...")
         if hasattr(model, "fc"):
             for param in model.parameters():
                 param.requires_grad = False
@@ -234,10 +221,10 @@ def train_model_optimized(
     # Konfiguracja kryterium straty
     if label_smoothing > 0:
         criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
-        print(f"Użyto CrossEntropyLoss z label smoothing: {label_smoothing}")
+        # print(f"Użyto CrossEntropyLoss z label smoothing: {label_smoothing}")
     else:
         criterion = nn.CrossEntropyLoss()
-        print("Użyto standardowego CrossEntropyLoss")
+        # print("Użyto standardowego CrossEntropyLoss")
 
     # Konfiguracja schedulera
     scheduler = configure_scheduler(optimizer, lr_scheduler_type, num_epochs, patience)
@@ -246,23 +233,21 @@ def train_model_optimized(
     scaler = None
     if use_mixed_precision and torch.cuda.is_available():
         scaler = torch.amp.GradScaler()
-        print("Włączono mixed precision z GradScaler")
+        # print("Włączono mixed precision z GradScaler")
 
-    print("\n=== ROZPOCZYNAM TRENING ===")
+    # print("\n=== ROZPOCZYNAM TRENING ===")
 
     # Główna pętla treningu
-    print(
-        f"DEBUG optimized_training: Rozpoczynam pętlę po epokach. Liczba epok: {num_epochs}"
-    )
+    # print(f"DEBUG optimized_training: Rozpoczynam pętlę po epokach. Liczba epok: {num_epochs}")
     for epoch in range(num_epochs):
-        print(f"DEBUG optimized_training: Początek epoki {epoch + 1}/{num_epochs}")
+        # print(f"DEBUG optimized_training: Początek epoki {epoch + 1}/{num_epochs}")
         # Sprawdź, czy przerwano trening
         if should_stop_callback and should_stop_callback():
             print(f"\n!!! Trening przerwany na epoce {epoch+1} przez użytkownika !!!")
             break
 
         epoch_start_time = time.time()
-        print(f"\n=== EPOKA {epoch+1}/{num_epochs} ===")
+        # print(f"\n=== EPOKA {epoch+1}/{num_epochs} ===")
 
         model.train()
         train_loss = 0.0
@@ -272,69 +257,51 @@ def train_model_optimized(
 
         # Trening na batchu
         try:
-            print(
-                f"DEBUG optimized_training: Rozpoczynam pętlę po batchach. Liczba batchy (len(train_loader)): {len(train_loader)}"
-            )
+            # print(f"DEBUG optimized_training: Rozpoczynam pętlę po batchach. Liczba batchy (len(train_loader)): {len(train_loader)}")
             for batch_idx, (inputs, targets) in enumerate(train_loader):
-                print(f"DEBUG Batch {batch_idx + 1}: POCZĄTEK PĘTLI BATCH")
+                # print(f"DEBUG Batch {batch_idx + 1}: POCZĄTEK PĘTLI BATCH")
 
-                print(
-                    f"DEBUG Batch {batch_idx + 1}: Przenoszenie danych na urządzenie..."
-                )
+                # print(f"DEBUG Batch {batch_idx + 1}: Przenoszenie danych na urządzenie...")
                 inputs, targets = inputs.to(device), targets.to(device)
-                print(
-                    f"DEBUG Batch {batch_idx + 1}: Dane przeniesione. Typ inputs: {type(inputs)}, Typ targets: {type(targets)}"
-                )
+                # print(f"DEBUG Batch {batch_idx + 1}: Dane przeniesione. Typ inputs: {type(inputs)}, Typ targets: {type(targets)}")
 
-                print(f"DEBUG Batch {batch_idx + 1}: Zerowanie gradientów...")
+                # print(f"DEBUG Batch {batch_idx + 1}: Zerowanie gradientów...")
                 optimizer.zero_grad()
-                print(f"DEBUG Batch {batch_idx + 1}: Gradienty wyzerowane.")
+                # print(f"DEBUG Batch {batch_idx + 1}: Gradienty wyzerowane.")
 
                 if use_mixed_precision and scaler is not None:
-                    print(
-                        f"DEBUG Batch {batch_idx + 1}: Używam mixed precision. Forward pass z autocast..."
-                    )
+                    # print(f"DEBUG Batch {batch_idx + 1}: Używam mixed precision. Forward pass z autocast...")
                     with torch.amp.autocast(
                         device_type=device.type if device else "cuda"
                     ):
                         outputs = model(inputs)
                         loss = criterion(outputs, targets)
-                    print(
-                        f"DEBUG Batch {batch_idx + 1}: Forward pass (mixed precision) zakończony. Strata: {loss.item()}"
-                    )
+                    # print(f"DEBUG Batch {batch_idx + 1}: Forward pass (mixed precision) zakończony. Strata: {loss.item()}")
 
-                    print(
-                        f"DEBUG Batch {batch_idx + 1}: Scaler.scale(loss).backward()..."
-                    )
+                    # print(f"DEBUG Batch {batch_idx + 1}: Scaler.scale(loss).backward()...")
                     scaler.scale(loss).backward()
-                    print(
-                        f"DEBUG Batch {batch_idx + 1}: Scaler.scale(loss).backward() zakończone."
-                    )
+                    # print(f"DEBUG Batch {batch_idx + 1}: Scaler.scale(loss).backward() zakończone.")
 
-                    print(f"DEBUG Batch {batch_idx + 1}: Scaler.step(optimizer)...")
+                    # print(f"DEBUG Batch {batch_idx + 1}: Scaler.step(optimizer)...")
                     scaler.step(optimizer)
-                    print(
-                        f"DEBUG Batch {batch_idx + 1}: Scaler.step(optimizer) zakończone."
-                    )
+                    # print(f"DEBUG Batch {batch_idx + 1}: Scaler.step(optimizer) zakończone.")
 
-                    print(f"DEBUG Batch {batch_idx + 1}: Scaler.update()...")
+                    # print(f"DEBUG Batch {batch_idx + 1}: Scaler.update()...")
                     scaler.update()
-                    print(f"DEBUG Batch {batch_idx + 1}: Scaler.update() zakończone.")
+                    # print(f"DEBUG Batch {batch_idx + 1}: Scaler.update() zakończone.")
                 else:
-                    print(f"DEBUG Batch {batch_idx + 1}: Standardowy forward pass...")
+                    # print(f"DEBUG Batch {batch_idx + 1}: Standardowy forward pass...")
                     outputs = model(inputs)
                     loss = criterion(outputs, targets)
-                    print(
-                        f"DEBUG Batch {batch_idx + 1}: Standardowy forward pass zakończony. Strata: {loss.item()}"
-                    )
+                    # print(f"DEBUG Batch {batch_idx + 1}: Standardowy forward pass zakończony. Strata: {loss.item()}")
 
-                    print(f"DEBUG Batch {batch_idx + 1}: loss.backward()...")
+                    # print(f"DEBUG Batch {batch_idx + 1}: loss.backward()...")
                     loss.backward()
-                    print(f"DEBUG Batch {batch_idx + 1}: loss.backward() zakończone.")
+                    # print(f"DEBUG Batch {batch_idx + 1}: loss.backward() zakończone.")
 
-                    print(f"DEBUG Batch {batch_idx + 1}: optimizer.step()...")
+                    # print(f"DEBUG Batch {batch_idx + 1}: optimizer.step()...")
                     optimizer.step()
-                    print(f"DEBUG Batch {batch_idx + 1}: optimizer.step() zakończone.")
+                    # print(f"DEBUG Batch {batch_idx + 1}: optimizer.step() zakończone.")
 
                 # Oblicz dokładność
                 _, predicted = outputs.max(1)
@@ -346,15 +313,13 @@ def train_model_optimized(
                 # Debug - wyświetl wartości dla każdego batcha
                 batch_loss = loss.item()
                 batch_acc = predicted.eq(targets).sum().item() / targets.size(0)
-                print(f"\nDEBUG Batch {batch_idx + 1}/{len(train_loader)}:")
-                print(f"Strata: {batch_loss:.4f}")
-                print(f"Dokładność: {batch_acc:.4f}")
-                print(f"DEBUG Batch {batch_idx + 1}: Zakończono przetwarzanie.")
+                # print(f"\nDEBUG Batch {batch_idx + 1}/{len(train_loader)}:")
+                # print(f"Strata: {batch_loss:.4f}")
+                # print(f"Dokładność: {batch_acc:.4f}")
+                # print(f"DEBUG Batch {batch_idx + 1}: Zakończono przetwarzanie.")
 
             # Koniec pętli po batchach
-            print(
-                f"DEBUG optimized_training: Pętla po batchach dla epoki {epoch + 1} zakończona normalnie."
-            )
+            # print(f"DEBUG optimized_training: Pętla po batchach dla epoki {epoch + 1} zakończona normalnie.")
 
         except Exception as e_batch:
             print(
@@ -373,9 +338,9 @@ def train_model_optimized(
             train_correct / train_total if train_total > 0 else 0
         )  # Zabezpieczenie przed dzieleniem przez zero
 
-        print(f"\nDEBUG Epoka {epoch + 1}/{num_epochs}:")
-        print(f"Średnia strata: {epoch_loss:.4f}")
-        print(f"Średnia dokładność: {epoch_acc:.4f}")
+        # print(f"\nDEBUG Epoka {epoch + 1}/{num_epochs}:")
+        # print(f"Średnia strata: {epoch_loss:.4f}")
+        # print(f"Średnia dokładność: {epoch_acc:.4f}")
 
         # Walidacja
         val_loss = None
@@ -454,10 +419,10 @@ def train_model_optimized(
                     history["best_epoch"] = epoch
                     history["best_val_loss"] = best_val_loss
                     counter = 0
-                    print("✓ Nowa najlepsza strata walidacyjna!")
+                    # print("✓ Nowa najlepsza strata walidacyjna!")
                 else:
                     counter += 1
-                    print(f"✗ Brak poprawy ({counter}/{patience})")
+                    # print(f"✗ Brak poprawy ({counter}/{patience})")
                     if counter >= patience:
                         print(f"Early stopping na epoce {epoch+1}")
                         break
@@ -470,7 +435,7 @@ def train_model_optimized(
 
                 current_lr = optimizer.param_groups[0]["lr"]
                 history["learning_rates"].append(current_lr)
-                print(f"Aktualny learning rate: {current_lr:.6f}")
+                # print(f"Aktualny learning rate: {current_lr:.6f}")
 
         epoch_time = time.time() - epoch_start_time
         history["epoch_times"].append(epoch_time)

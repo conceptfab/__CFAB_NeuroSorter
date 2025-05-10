@@ -18,11 +18,6 @@ from sklearn.metrics import (
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
-from app.utils.file_validator import (
-    print_validation_report,
-    validate_training_structure,
-)
-
 from .classifier import ImageClassifier
 from .preprocessing import get_augmentation_transforms, get_default_transforms
 
@@ -216,13 +211,17 @@ def fine_tune_model(
     print(f"Learning rate: {learning_rate}")
     print(f"Zamrożenie warstw: {freeze_ratio*100:.0f}%")
 
-    # Walidacja struktury katalogów i plików
-    print("\n=== WALIDACJA DANYCH TRENINGOWYCH ===")
-    print_validation_report(train_dir, val_dir)
-
-    is_valid, error_msg = validate_training_structure(train_dir, val_dir)
-    if not is_valid:
-        raise ValueError(f"Błąd walidacji danych: {error_msg}")
+    # Sprawdź strukturę katalogów
+    if not verify_directory_structure(train_dir):
+        raise ValueError(
+            f"Nieprawidłowa struktura katalogów w {train_dir}. "
+            "Dozwolona jest tylko struktura płaska: kategoria/obrazy"
+        )
+    if val_dir and not verify_directory_structure(val_dir):
+        raise ValueError(
+            f"Nieprawidłowa struktura katalogów w {val_dir}. "
+            "Dozwolona jest tylko struktura płaska: kategoria/obrazy"
+        )
 
     # Sprawdź urządzenie
     if device is None:
