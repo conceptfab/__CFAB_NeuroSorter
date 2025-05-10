@@ -56,6 +56,18 @@ def handle_nan_data(data):
     return data
 
 
+def handle_nan_in_plots(data):
+    """
+    Funkcja pomocnicza do obsługi wartości NaN w danych do wykresu.
+    """
+    # import numpy as np # np jest już zaimportowane globalnie
+    if isinstance(data, np.ndarray) and np.isnan(data).any():
+        # Zastąp wartości NaN przez medianę z danych
+        median_val = np.nanmedian(data)
+        return np.nan_to_num(data, nan=median_val)
+    return data
+
+
 def verify_directory_structure(directory):
     """
     Sprawdza czy struktura katalogów jest płaska (kategoria/obrazy).
@@ -1113,16 +1125,37 @@ def fine_tune_model(
                     and fisher_diagonal
                     and original_params
                 ):
-                    ewc_lambda = ewc_config.get("lambda", 100.0)
-                    ewc_loss_val = 0  # Zmieniono nazwę zmiennej, aby uniknąć konfliktu
+                    # Pobranie parametrów z konfiguracji
+                    ewc_lambda = ewc_config.get(
+                        "lambda", 5000.0
+                    )  # Zmieniona wartość domyślna
+                    adaptive_lambda = ewc_config.get(
+                        "adaptive_lambda", True
+                    )  # Nowy parametr
+
+                    # Dynamiczna lambda, jeśli włączona
+                    if adaptive_lambda:
+                        # Zwiększamy Lambda w miarę postępu treningu, aby wzmocnić ochronę wiedzy
+                        current_ewc_lambda = ewc_lambda * (
+                            1 + epoch / (num_epochs * 0.5)
+                        )
+                    else:
+                        current_ewc_lambda = ewc_lambda
+
+                    # Obliczanie komponentu straty EWC
+                    ewc_loss_val = 0
                     for name, param in model.named_parameters():
                         if name in fisher_diagonal and name in original_params:
                             diff = (param - original_params[name]) ** 2
                             ewc_loss_val += torch.sum(fisher_diagonal[name] * diff)
-                    loss += ewc_lambda * ewc_loss_val
+
+                    # Dodanie do całkowitej straty
+                    loss += current_ewc_lambda * ewc_loss_val
+
+                    # Logowanie
                     if batch_idx % 10 == 0:
                         print(
-                            f"  EWC loss component: {ewc_loss_val.item():.6f}, Lambda: {ewc_lambda}"
+                            f"EWC loss component: {ewc_loss_val.item():.6f}, Lambda: {current_ewc_lambda}"
                         )
 
             # Backward pass i krok optymalizatora
@@ -1935,7 +1968,7 @@ def print_directory_structure(directory, indent=""):
 # DODANA FUNKCJA DISTILLATION LOSS
 def distillation_loss(student_outputs, labels, teacher_outputs, temperature, alpha):
     """
-    Oblicza stratę dla destylacji wiedzy.
+    Ulepszona funkcja obliczania straty dla destylacji wiedzy.
     :param student_outputs: Logity z modelu ucznia.
     :param labels: Prawdziwe etykiety (twarde).
     :param teacher_outputs: Logity z modelu nauczyciela.
@@ -1946,12 +1979,19 @@ def distillation_loss(student_outputs, labels, teacher_outputs, temperature, alp
     # Standardowa strata na twardych etykietach
     hard_loss = F.cross_entropy(student_outputs, labels)
 
-    # Strata na miękkich etykietach (KL Divergence)
-    soft_loss = nn.KLDivLoss(reduction="batchmean")(
-        F.log_softmax(student_outputs / temperature, dim=1),
-        F.softmax(teacher_outputs / temperature, dim=1),
-    ) * (
-        temperature * temperature
-    )  # Skalowanie gradientu
+    # ZMIANA: Lepsza implementacja straty na miękkich etykietach
+    # Najpierw normalizujemy logity temperaturą
+    student_logits = student_outputs / temperature
+    teacher_logits = teacher_outputs / temperature
 
+    # Obliczamy prawdopodobieństwa
+    student_probs = F.log_softmax(student_logits, dim=1)
+    teacher_probs = F.softmax(teacher_logits, dim=1)
+
+    # Użycie KL-Divergence dla miękkich etykiet
+    soft_loss = F.kl_div(student_probs, teacher_probs, reduction="batchmean") * (
+        temperature**2
+    )
+
+    # Całkowita strata jako ważona suma
     return alpha * hard_loss + (1.0 - alpha) * soft_loss

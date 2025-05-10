@@ -234,13 +234,19 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.ewc_check.setChecked(True)
 
         self.ewc_lambda_spin = QtWidgets.QDoubleSpinBox()
-        self.ewc_lambda_spin.setRange(10.0, 1000.0)
-        self.ewc_lambda_spin.setValue(100.0)
+        self.ewc_lambda_spin.setRange(
+            100.0, 10000.0
+        )  # ZMIANA: Zwiększenie zakresu Lambda
+        self.ewc_lambda_spin.setValue(
+            5000.0
+        )  # ZMIANA: Zwiększenie domyślnej wartości Lambda
         self.ewc_lambda_spin.setDecimals(1)
+        self.ewc_lambda_spin.setToolTip(
+            "Współczynnik lambda dla EWC. Wyższe wartości oznaczają silniejszą ochronę poprzedniej wiedzy."
+        )
 
         self.fisher_sample_size_spin = QtWidgets.QSpinBox()
         self.fisher_sample_size_spin.setRange(50, 1000)
-        self.fisher_sample_size_spin.setValue(200)
 
         self.layer_freezing_combo = QtWidgets.QComboBox()
         self.layer_freezing_combo.addItems(["gradual", "selective", "progressive"])
@@ -287,6 +293,16 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.quantization_precision_combo = QtWidgets.QComboBox()
         self.quantization_precision_combo.addItems(["int8", "float16", "float32"])
         self.quantization_precision_combo.setCurrentText("int8")
+
+        # Optymalizacja parametrów EWC
+        self.adaptive_ewc_lambda_check = QtWidgets.QCheckBox("Adaptacyjna Lambda")
+        self.adaptive_ewc_lambda_check.setChecked(True)
+        self.adaptive_ewc_lambda_check.setToolTip(
+            "Jeśli zaznaczone, Lambda będzie dynamicznie zwiększana podczas treningu."
+        )
+
+        # Dodaj do layoutu
+        ewc_layout = QtWidgets.QHBoxLayout()
 
     def _setup_logging(self):
         """Konfiguracja logowania dla okna dialogowego."""
@@ -2073,6 +2089,11 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         forgetting_group.setLayout(forgetting_layout)
         layout.addWidget(forgetting_group)
 
+        # Dodanie nowej kontrolki do układu
+        forgetting_layout.addRow(
+            "Adaptacyjna Lambda EWC:", self.adaptive_ewc_lambda_check
+        )
+
         tab.setLayout(layout)
         return tab
 
@@ -2626,6 +2647,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                             "use": self.ewc_check.isChecked(),
                             "lambda": self.ewc_lambda_spin.value(),
                             "fisher_sample_size": self.fisher_sample_size_spin.value(),
+                            "adaptive_lambda": self.adaptive_ewc_lambda_check.isChecked(),
                         },
                         "layer_freezing": {
                             "strategy": self.layer_freezing_combo.currentText(),

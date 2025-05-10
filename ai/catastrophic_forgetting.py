@@ -192,72 +192,83 @@ def generate_synthetic_samples(
     return synthetic_samples
 
 
-def compute_fisher_information(
-    model: nn.Module,
-    data_loader: torch.utils.data.DataLoader,
-    num_samples: int,
-    device: Optional[torch.device] = None,
-) -> Dict[str, torch.Tensor]:
+def compute_fisher_information(model, data_loader, device=None, num_samples=200):
     """
-    Oblicza diagonalną macierz informacji Fishera dla parametrów modelu.
+    Oblicza diagonalę macierzy Fishera dla wszystkich parametrów modelu.
     
     Args:
-        model: Model do obliczenia informacji Fishera
-        data_loader: DataLoader z przykładami
-        num_samples: Liczba próbek do użycia
-        device: Urządzenie do obliczeń (CPU/GPU)
-        
+        model: Model do obliczenia macierzy Fishera
+        data_loader: DataLoader z danymi
+        device: Urządzenie (CPU/GPU)
+        num_samples: Liczba próbek do obliczenia macierzy Fishera
+    
     Returns:
-        Słownik z diagonalną macierzą informacji Fishera dla każdego parametru
+        dict: Diagonala macierzy Fishera dla każdego parametru
     """
+    # Ustawienie urządzenia
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # Inicjalizuj słownik Fisher dla każdego parametru
-    fisher = {}
-    for name, param in model.named_parameters():
-        if param.requires_grad:
-            fisher[name] = torch.zeros_like(param)
-    
-    # Ustaw model w tryb ewaluacji podczas zbierania danych
+    # Przełączenie modelu w tryb ewaluacji
     model.eval()
     
+    # Przygotowanie słownika na diagonalę macierzy Fishera
+    fisher_diagonal = {}
+    for name, param in model.named_parameters():
+        fisher_diagonal[name] = torch.zeros_like(param)
+    
+    # Licznik próbek
     sample_count = 0
     
-    criterion = torch.nn.CrossEntropyLoss()
-    
-    # Przejdź przez dane i oblicz diagonalną macierz Fishera
+    # Iteracja po batchu danych
     for inputs, targets in data_loader:
+        # Sprawdź czy osiągnięto limit próbek
         if sample_count >= num_samples:
             break
             
-        inputs, targets = inputs.to(device), targets.to(device)
+        # Liczba próbek w bieżącym batchu
         batch_size = inputs.size(0)
         
-        # Przetwórz tylko tyle próbek, ile potrzeba
-        actual_batch_size = min(batch_size, num_samples - sample_count)
-        if actual_batch_size < batch_size:
-            inputs = inputs[:actual_batch_size]
-            targets = targets[:actual_batch_size]
+        # Nie przekraczamy limitu próbek
+        samples_to_process = min(batch_size, num_samples - sample_count)
+        if samples_to_process <= 0:
+            break
+            
+        # Wycinamy odpowiednią liczbę próbek z batcha
+        inputs = inputs[:samples_to_process]
+        targets = targets[:samples_to_process]
         
-        # Dla każdej próbki oblicz gradient log-prawdopodobieństwa
-        for i in range(actual_batch_size):
+        inputs, targets = inputs.to(device), targets.to(device)
+        
+        # Forward pass
+        log_probs = torch.log_softmax(model(inputs), dim=1)
+        
+        # Iteracja po próbkach
+        for i in range(samples_to_process):
+            # Filtruj nieprawidłowe etykiety (np. etykiety -1 używane do oznaczenia ignorowanych klas)
+            if targets[i] < 0:
+                continue
+                
+            # Obliczenie pochodnej logarytmu prawdopodobieństwa dla prawdziwej klasy
+            log_prob = log_probs[i, targets[i]]
+            
+            # Zerowanie gradientów
             model.zero_grad()
             
-            # Forward pass dla pojedynczej próbki
-            output = model(inputs[i:i+1])
-            
-            # Oblicz stratę dla poprawnej klasy
-            log_prob = criterion(output, targets[i:i+1])
-            
             # Backward pass
-            log_prob.backward()
+            log_prob.backward(retain_graph=(i < samples_to_process-1))
             
-            # Dodaj kwadraty gradientów do macierzy Fishera
+            # Aktualizacja diagonali macierzy Fishera
             for name, param in model.named_parameters():
-                if param.requires_grad and param.grad is not None:
-                    fisher[name] += param.grad.pow(2) / num_samples
-            
-            sample_count += 1
+                if param.grad is not None:
+                    fisher_diagonal[name] += param.grad.data ** 2 / samples_to_process
+        
+        # Aktualizacja licznika próbek
+        sample_count += samples_to_process
     
-    return fisher
+    # Normalizacja przez liczbę próbek
+    if sample_count > 0:
+        for name in fisher_diagonal:
+            fisher_diagonal[name] /= sample_count
+    
+    return fisher_diagonal

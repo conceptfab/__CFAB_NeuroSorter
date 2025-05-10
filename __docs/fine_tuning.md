@@ -1,3 +1,4 @@
+Przeanalizuj te pliki pod kątem fine-tuningu modeli, sprawdz czy konfiguracja jest optymalna by ten proces prowadzić, zależy mi na tym by doszkalany model nie zapinał informacji tylko stawał się coraz lepszy. Ważne też jest monitorowa nie procesu za pomocą wykresu by móc ulepszać proces
 to jest scieżka fine-tuningu:
 panel ustawien - fine_tuning_task_config_dialog.py -> przygotowuje profil zadania
 profil zadania - b2_classes_fine_tuning_5.json - zawiera inforamcje dla pliku wykonawczego

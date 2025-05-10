@@ -172,8 +172,9 @@
         },
         "ewc_regularization": {
           "use": true,
-          "lambda": 120.0,
-          "fisher_sample_size": 200
+          "lambda": 5000.0,
+          "fisher_sample_size": 200,
+          "adaptive_lambda": true
         },
         "layer_freezing": {
           "strategy": "gradual",

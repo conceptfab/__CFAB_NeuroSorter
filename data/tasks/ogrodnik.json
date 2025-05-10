@@ -169,20 +169,20 @@
             }
         }
     },
-    "training_time": 95.8,
-    "training_time_str": "0:01:35",
-    "status": "Zakończony",
-    "train_accuracy": 56.118143459915615,
-    "train_loss": 3.0591330528259277,
+    "training_time": 91.18,
+    "training_time_str": "0:01:31",
+    "status": "W trakcie",
+    "train_accuracy": 56.962025316455694,
+    "train_loss": 2.409593105316162,
     "validation_accuracy": 0.0,
     "validation_loss": 0.0,
     "model_filename": "",
     "accuracy": 0.0,
     "epochs_trained": 0,
-    "progress": 100,
-    "current_epoch": 5,
+    "progress": 40,
+    "current_epoch": 2,
     "total_epochs": 5,
-    "train_acc": 56.118143459915615,
-    "val_loss": 2.8901609579722085,
-    "val_acc": 26.666666666666668
+    "train_acc": 60.47819971870605,
+    "val_loss": 2.067429522673289,
+    "val_acc": 65.0
 }
