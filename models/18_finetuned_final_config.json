@@ -1,0 +1,10 @@
+{
+    "model_type": "18",
+    "num_classes": 3,
+    "class_names": {
+        "0": "indoor_plant",
+        "1": "outdoor_plant",
+        "2": "tree"
+    },
+    "metadata": {}
+}

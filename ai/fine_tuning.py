@@ -886,16 +886,16 @@ def fine_tune_model(
                     try:
                         val_metrics["top3"] = (
                             top_k_accuracy_score(
-                                y_true, y_prob, k=min(3, k_values), normalize=True
+                                y_true, y_prob, k=min(3, new_num_classes-1), normalize=True
                             )
-                            if k_values >= 3
+                            if k_values >= 3 and new_num_classes > 3
                             else 0.0
                         )
                         val_metrics["top5"] = (
                             top_k_accuracy_score(
-                                y_true, y_prob, k=min(5, k_values), normalize=True
+                                y_true, y_prob, k=min(5, new_num_classes-1), normalize=True
                             )
-                            if k_values >= 5
+                            if k_values >= 5 and new_num_classes > 5
                             else 0.0
                         )
                     except Exception as e:
