@@ -59,7 +59,9 @@ class HelpTab(QWidget, TabInterface):
                 os.path.dirname(
                     os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
                 ),
-                "doc.html",
+                "resources",
+                "help",
+                "index.html",
             )
             if os.path.exists(doc_path):
                 self.web_view.load(QUrl.fromLocalFile(doc_path))

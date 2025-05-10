@@ -44,7 +44,7 @@ def main():
     # --- Ekran powitalny ---
     splash = None  # Zainicjuj jako None
     try:
-        splash_path = os.path.join("app", "img", "splash.jpg")
+        splash_path = os.path.join("resources", "img", "splash.jpg")
         splash_pix = QPixmap(splash_path)
         # Sprawdź, czy obraz został poprawnie załadowany
         if not splash_pix.isNull():

@@ -403,7 +403,7 @@ class DataSplitterApp(QWidget):
         self.processing_thread = None
         self.files_list = []
 
-        icon_path = Path("app/img/icon.png")  # Użyj Path dla spójności
+        icon_path = Path("resources/img/icon.png")  # Użyj Path dla spójności
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
         else:
@@ -820,6 +820,7 @@ class DataSplitterApp(QWidget):
         # Stan validation_check jest zarządzany przez update_files_limit...
         self.update_files_limit_and_validation_based_on_selection()  # Przywróć stan kontrolek
         self.processing_thread = None
+        self.files_list = []
 
     def processing_error(self, error_message):
         self.log_message(f"BŁĄD WĄTKU: {error_message}")

@@ -122,7 +122,7 @@ class MainWindow(QMainWindow):
                 os.path.dirname(
                     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 ),
-                "app",
+                "resources",
                 "img",
                 "icon.png",
             )
