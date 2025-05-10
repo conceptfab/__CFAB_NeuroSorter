@@ -1,4 +1,5 @@
 usuwac plik extract_config
+drag end drop
 Zatrzymaj bieżace zadanie przycisk nie dziala
 Progress bar przy tuningu nie działa
 skaler poprawic - opcje skalowania

@@ -2669,6 +2669,14 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
                 merge_configs(default_profile_path, extracted_config_path, output_path)
 
+                # Usuń tymczasowy plik extracted_config.json
+                try:
+                    os.remove(extracted_config_path)
+                except Exception as e:
+                    self.logger.warning(
+                        f"Nie udało się usunąć tymczasowego pliku {extracted_config_path}: {str(e)}"
+                    )
+
                 # Odśwież listę profili
                 self._refresh_profile_list()
 

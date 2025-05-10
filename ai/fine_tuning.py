@@ -39,12 +39,13 @@ def handle_nan_data(data):
     return data
 
 
-def verify_directory_structure(directory):
+def verify_directory_structure(directory, allow_empty=False):
     """
     Sprawdza czy struktura katalogów jest płaska (kategoria/obrazy).
 
     Args:
         directory: Ścieżka do katalogu z danymi
+        allow_empty: Czy zezwalać na puste katalogi kategorii
 
     Returns:
         bool: True jeśli struktura jest poprawna, False w przeciwnym razie
@@ -60,9 +61,10 @@ def verify_directory_structure(directory):
 
         # Sprawdzamy czy są pliki obrazów
         has_images = any(
-            f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp")) for f in files
+            f.lower().endswith((".jpg", ".webp", ".jpeg", ".png", ".bmp"))
+            for f in files
         )
-        if not has_images:
+        if not has_images and not allow_empty:
             return False
 
     return True
