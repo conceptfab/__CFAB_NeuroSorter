@@ -73,7 +73,7 @@ class ModelManager(QWidget, TabInterface):
                 "Data utworzenia",
                 "Dokładność",
                 "Rozmiar (MB)",
-                "Kategorie modelu",
+                "Status",
                 "Czas treningu",
                 "Architektura modelu",
                 "Wariant modelu",

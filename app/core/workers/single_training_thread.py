@@ -520,6 +520,7 @@ class SingleTrainingThread(QThread):
                 freeze_ratio=freeze_ratio,
                 progress_callback=progress_callback,
                 should_stop_callback=lambda: self._stopped,
+                task_name=task_name,
             )
 
             training_time = time.time() - start_time

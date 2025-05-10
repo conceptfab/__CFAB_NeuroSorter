@@ -150,9 +150,9 @@
     "training_time_str": "0:00:00",
     "status": "Zakończony",
     "train_accuracy": 0.834733893557423,
-    "train_loss": 0.5885465533837028,
-    "validation_accuracy": 0.8870056497175142,
-    "validation_loss": 0.5750986387332281,
+    "train_loss": 0.6056634265443553,
+    "validation_accuracy": 0.8926553672316384,
+    "validation_loss": 0.585057333111763,
     "model_filename": "",
     "accuracy": 0.0,
     "epochs_trained": 0,
@@ -160,6 +160,6 @@
     "current_epoch": 5,
     "total_epochs": 5,
     "train_acc": 0.834733893557423,
-    "val_loss": 0.5750986387332281,
-    "val_acc": 0.8870056497175142
+    "val_loss": 0.585057333111763,
+    "val_acc": 0.8926553672316384
 }

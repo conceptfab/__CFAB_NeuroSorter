@@ -1,5 +1,7 @@
+import json
 import os
 import time
+from copy import deepcopy
 from datetime import datetime
 
 import numpy as np
@@ -115,9 +117,6 @@ def verify_model_config(model_path, class_names):
     Returns:
         bool: True jeśli konfiguracja jest zgodna, False w przeciwnym razie
     """
-    import json
-    import os
-
     # Sprawdź czy istnieje plik config.json
     config_path = os.path.join(os.path.dirname(model_path), "config.json")
     if not os.path.exists(config_path):
@@ -162,7 +161,7 @@ def fine_tune_model(
     batch_size=16,
     learning_rate=0.0001,  # Niższy learning rate dla fine-tuningu
     freeze_ratio=0.8,  # Zamrażamy 80% warstw bazowych
-    output_dir="./models",
+    output_dir="./data/models",  # Zmieniono domyślną ścieżkę z "./models" na "./data/models"
     optimizer_type="adamw",
     scheduler_type="plateau",
     device=None,
@@ -173,6 +172,7 @@ def fine_tune_model(
     warmup_epochs=1,
     use_mixup=False,
     use_mixed_precision=True,
+    task_name=None,  # Dodano parametr task_name do identyfikacji zadania
 ):
     """
     Przeprowadza fine-tuning istniejącego modelu na nowym zbiorze danych.
@@ -196,6 +196,7 @@ def fine_tune_model(
         warmup_epochs: Liczba epok z powolnym wzrostem learning rate
         use_mixup: Czy używać techniki mixup dla augmentacji
         use_mixed_precision: Czy używać mieszanej precyzji (float16/float32)
+        task_name: Nazwa zadania
 
     Returns:
         Tuple: (ścieżka do zapisanego modelu, historia treningu, szczegóły modelu)
@@ -231,6 +232,21 @@ def fine_tune_model(
     # 1. Załaduj bazowy model
     print("\nŁadowanie modelu bazowego...")
     base_classifier = ImageClassifier(weights_path=base_model_path)
+
+    # Wczytaj oryginalny plik config modelu bazowego
+    original_config = {}
+    base_config_path = os.path.splitext(base_model_path)[0] + "_config.json"
+    if os.path.exists(base_config_path):
+        try:
+            with open(base_config_path, "r") as f:
+                original_config = json.load(f)
+                print(f"Wczytano oryginalny plik konfiguracyjny: {base_config_path}")
+        except Exception as e:
+            print(f"Nie udało się wczytać oryginalnego pliku konfiguracyjnego: {e}")
+    else:
+        print(
+            f"Nie znaleziono oryginalnego pliku konfiguracyjnego. Tworzona jest nowa konfiguracja."
+        )
 
     # Weryfikuj konfigurację modelu
     verify_model_config(base_model_path, base_classifier.class_names)
@@ -886,14 +902,20 @@ def fine_tune_model(
                     try:
                         val_metrics["top3"] = (
                             top_k_accuracy_score(
-                                y_true, y_prob, k=min(3, new_num_classes-1), normalize=True
+                                y_true,
+                                y_prob,
+                                k=min(3, new_num_classes - 1),
+                                normalize=True,
                             )
                             if k_values >= 3 and new_num_classes > 3
                             else 0.0
                         )
                         val_metrics["top5"] = (
                             top_k_accuracy_score(
-                                y_true, y_prob, k=min(5, new_num_classes-1), normalize=True
+                                y_true,
+                                y_prob,
+                                k=min(5, new_num_classes - 1),
+                                normalize=True,
                             )
                             if k_values >= 5 and new_num_classes > 5
                             else 0.0
@@ -999,9 +1021,13 @@ def fine_tune_model(
 
                 # Zapisz najlepszy model
                 os.makedirs(output_dir, exist_ok=True)
-                best_model_path = os.path.join(
-                    output_dir, f"{model_type}_finetuned_best.pt"
-                )
+
+                # Utwórz nazwę modelu na podstawie architektury i nazwy zadania
+                model_variant = ""
+                if task_name:
+                    model_variant = f"_{task_name}"
+                model_filename = f"{model_type}{model_variant}_finetuned_best.pt"
+                best_model_path = os.path.join(output_dir, model_filename)
 
                 # Utwórz nowy klasyfikator z dostosowanym modelem
                 best_classifier = ImageClassifier(
@@ -1010,8 +1036,66 @@ def fine_tune_model(
                 best_classifier.model = model
                 best_classifier.class_names = new_class_names
 
-                # Zapisz model
-                best_classifier.save(best_model_path)
+                # Przygotuj historię fine-tuningu
+                trained_categories = list(new_class_names.values())
+                base_model_filename = os.path.basename(base_model_path)
+
+                # Sprawdź, czy model już ma historię fine-tuningu
+                finetuning_history = {}
+                config_path = os.path.splitext(best_model_path)[0] + "_config.json"
+                if os.path.exists(config_path):
+                    try:
+                        with open(config_path, "r") as f:
+                            existing_config = json.load(f)
+                            if (
+                                "metadata" in existing_config
+                                and "finetuning_history" in existing_config["metadata"]
+                            ):
+                                finetuning_history = existing_config["metadata"][
+                                    "finetuning_history"
+                                ]
+                    except Exception as e:
+                        print(
+                            f"Nie udało się odczytać istniejącej historii fine-tuningu: {e}"
+                        )
+
+                # Określ numer sesji fine-tuningu
+                session_nums = [
+                    int(k.split("_")[-1])
+                    for k in finetuning_history.keys()
+                    if k.startswith("fine_tuning_session_")
+                ]
+                next_session_num = max(session_nums) + 1 if session_nums else 1
+                session_key = f"fine_tuning_session_{next_session_num}"
+
+                # Dodaj nową sesję
+                finetuning_history[session_key] = {
+                    "trained_categories": trained_categories,
+                    "timestamp": datetime.now().strftime("%Y-%m-%d_%H-%M"),
+                    "base_model": base_model_filename,
+                }
+
+                # Dodaj szczegóły treningu
+                training_details = {
+                    "learning_rate": learning_rate,
+                    "batch_size": batch_size,
+                    "num_epochs": num_epochs,
+                    "freeze_ratio": freeze_ratio,
+                    "optimizer_type": optimizer_type,
+                    "scheduler_type": scheduler_type,
+                }
+
+                # Zapisz model z rozszerzoną konfiguracją
+                metadata = {
+                    "finetuning_history": finetuning_history,
+                    "training_details": training_details,
+                }
+                if task_name:
+                    metadata["task_name"] = task_name
+
+                best_classifier.save_with_original_config(
+                    best_model_path, original_config, metadata
+                )
                 print(f"✓ Zapisano najlepszy model: {best_model_path}")
             else:
                 counter += 1
@@ -1080,7 +1164,13 @@ def fine_tune_model(
     # 17. Zapisz końcowy model
     print("\n=== ZAPISYWANIE KOŃCOWEGO MODELU ===")
     os.makedirs(output_dir, exist_ok=True)
-    final_model_path = os.path.join(output_dir, f"{model_type}_finetuned_final.pt")
+
+    # Utwórz nazwę modelu na podstawie architektury i nazwy zadania
+    model_variant = ""
+    if task_name:
+        model_variant = f"_{task_name}"
+    model_filename = f"{model_type}{model_variant}_finetuned_final.pt"
+    final_model_path = os.path.join(output_dir, model_filename)
 
     # Utwórz nowy klasyfikator z dostosowanym modelem
     final_classifier = ImageClassifier(
@@ -1089,9 +1179,76 @@ def fine_tune_model(
     final_classifier.model = model
     final_classifier.class_names = new_class_names
 
-    # Zapisz model
-    final_classifier.save(final_model_path)
+    # Przygotuj historię fine-tuningu
+    trained_categories = list(new_class_names.values())
+    base_model_filename = os.path.basename(base_model_path)
+
+    # Sprawdź, czy model już ma historię fine-tuningu
+    finetuning_history = {}
+    config_path = os.path.splitext(final_model_path)[0] + "_config.json"
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r") as f:
+                existing_config = json.load(f)
+                if (
+                    "metadata" in existing_config
+                    and "finetuning_history" in existing_config["metadata"]
+                ):
+                    finetuning_history = existing_config["metadata"][
+                        "finetuning_history"
+                    ]
+        except Exception as e:
+            print(f"Nie udało się odczytać istniejącej historii fine-tuningu: {e}")
+
+    # Określ numer sesji fine-tuningu
+    session_nums = [
+        int(k.split("_")[-1])
+        for k in finetuning_history.keys()
+        if k.startswith("fine_tuning_session_")
+    ]
+    next_session_num = max(session_nums) + 1 if session_nums else 1
+    session_key = f"fine_tuning_session_{next_session_num}"
+
+    # Dodaj nową sesję
+    finetuning_history[session_key] = {
+        "trained_categories": trained_categories,
+        "timestamp": datetime.now().strftime("%Y-%m-%d_%H-%M"),
+        "base_model": base_model_filename,
+    }
+
+    # Dodaj szczegóły treningu
+    training_details = {
+        "learning_rate": learning_rate,
+        "batch_size": batch_size,
+        "num_epochs": num_epochs,
+        "freeze_ratio": freeze_ratio,
+        "optimizer_type": optimizer_type,
+        "scheduler_type": scheduler_type,
+    }
+
+    # Zapisz model z rozszerzoną konfiguracją
+    metadata = {
+        "finetuning_history": finetuning_history,
+        "training_details": training_details,
+    }
+    if task_name:
+        metadata["task_name"] = task_name
+
+    final_classifier.save_with_original_config(final_model_path, original_config, metadata)
     print(f"Zapisano końcowy model: {final_model_path}")
+
+    # Usuń plik *best.pt jeśli istnieje
+    if os.path.exists(best_model_path):
+        try:
+            os.remove(best_model_path)
+            print(f"Usunięto plik najlepszego modelu: {best_model_path}")
+            # Usuń również plik konfiguracyjny dla najlepszego modelu
+            best_config_path = os.path.splitext(best_model_path)[0] + "_config.json"
+            if os.path.exists(best_config_path):
+                os.remove(best_config_path)
+                print(f"Usunięto plik konfiguracyjny najlepszego modelu: {best_config_path}")
+        except Exception as e:
+            print(f"Nie udało się usunąć pliku najlepszego modelu: {e}")
 
     # 18. Podsumowanie fine-tuningu
     print("\n=== PODSUMOWANIE FINE-TUNINGU ===")

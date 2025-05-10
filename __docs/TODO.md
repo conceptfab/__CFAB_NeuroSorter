@@ -1,4 +1,5 @@
 TODO 0.4
+- fine-tuning dopracowac
 - mapa projektu
 - poprawa startu,
 - poprawa ustawien

@@ -441,7 +441,7 @@ class ImageClassifier:
         """Zapisywanie modelu z metadanymi"""
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
-        # Zapisz model
+        # Przygotuj podstawowy słownik checkpoint
         checkpoint = {
             "model_type": self.model_type,
             "num_classes": self.num_classes,
@@ -449,9 +449,12 @@ class ImageClassifier:
             "class_names": self.class_names,
         }
 
+        # Obsługa metadanych
         if metadata:
-            checkpoint["metadata"] = metadata
+            # Kopiuj metadane, aby uniknąć modyfikacji oryginału
+            checkpoint["metadata"] = metadata.copy()
 
+        # Zapisz model
         torch.save(checkpoint, save_path)
 
         # Zapisz też konfigurację w formacie JSON dla łatwiejszego odczytu
@@ -460,9 +463,76 @@ class ImageClassifier:
             "model_type": self.model_type,
             "num_classes": self.num_classes,
             "class_names": self.class_names,
-            "metadata": metadata or {},
         }
 
+        # Dodaj metadane do konfiguracji
+        if metadata:
+            config["metadata"] = metadata.copy()
+
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=4)
+
+        return save_path, config_path
+
+    def save_with_original_config(self, save_path, original_config, metadata=None):
+        """
+        Zapisywanie modelu z zachowaniem KOMPLETNEJ oryginalnej struktury pliku config
+        i dodaniem nowych metadanych.
+
+        Args:
+            save_path: Ścieżka zapisu modelu
+            original_config: Oryginalny plik konfiguracyjny do rozszerzenia
+            metadata: Nowe metadane do dodania
+
+        Returns:
+            Tuple: (ścieżka_modelu, ścieżka_konfiguracji)
+        """
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+        # Przygotuj podstawowy słownik checkpoint
+        checkpoint = {
+            "model_type": self.model_type,
+            "num_classes": self.num_classes,
+            "model_state_dict": self.model.state_dict(),
+            "class_names": self.class_names,
+        }
+
+        # Kopiujemy wszystkie oryginalne metadane
+        if "metadata" in original_config:
+            if metadata is None:
+                metadata = {}
+
+            # Kopiujemy wszystkie oryginalne metadane oprócz tych, które będziemy aktualizować
+            for key, value in original_config["metadata"].items():
+                if key not in metadata and key != "finetuning_history":
+                    metadata[key] = value
+
+        # Dodajemy metadane do checkpointu
+        if metadata:
+            checkpoint["metadata"] = metadata
+
+        # Zapisz model
+        torch.save(checkpoint, save_path)
+
+        # Przygotuj plik konfiguracyjny bazujący na oryginalnym
+        # WAŻNE: Kopiujemy WSZYSTKO z oryginalnego pliku
+        config = original_config.copy()
+
+        # Aktualizuj tylko te pola, które faktycznie się zmieniły
+        config["model_type"] = self.model_type
+        config["num_classes"] = self.num_classes
+        config["class_names"] = self.class_names
+
+        # Dodaj lub aktualizuj metadane, zachowując resztę oryginalnych danych
+        if not "metadata" in config:
+            config["metadata"] = {}
+
+        if metadata:
+            for key, value in metadata.items():
+                config["metadata"][key] = value
+
+        # Zapisz kompletny plik konfiguracyjny
+        config_path = os.path.splitext(save_path)[0] + "_config.json"
         with open(config_path, "w") as f:
             json.dump(config, f, indent=4)
 
