@@ -1,134 +1,62 @@
 [
     {
-        "class_name": "outdoor_plant",
-        "confidence": 0.6162109375,
-        "date": "2025-05-10T17:19:33.904735",
-        "image_path": "F:/______training_database_V2/bed/24.52683b8127ae5.jpg"
+        "date": "2025-05-10T20:06:53.211529",
+        "image_path": "F:/______training_database_V2/food/0001.jpg",
+        "class_name": "food",
+        "confidence": 0.43310546875
     },
     {
-        "class_name": "indoor_plant",
-        "confidence": 0.8701171875,
-        "date": "2025-05-10T17:19:39.212871",
-        "image_path": "F:/______training_database_V2/bed/226617.552d0f29a4537.jpg"
+        "date": "2025-05-10T20:06:56.617776",
+        "image_path": "F:/______training_database_V2/food/01.jpg",
+        "class_name": "decoration",
+        "confidence": 0.51171875
     },
     {
-        "class_name": "animal",
-        "confidence": 0.67333984375,
-        "date": "2025-05-10T18:20:49.987480",
-        "image_path": "F:/______training_database_V2/bed/178857.54c0f8a86cb19 1.jpg"
+        "date": "2025-05-10T20:07:01.339807",
+        "image_path": "F:/______training_database_V2/food/02.jpg",
+        "class_name": "food",
+        "confidence": 0.90966796875
     },
     {
-        "class_name": "animal",
-        "confidence": 0.93701171875,
-        "date": "2025-05-10T18:21:00.354100",
-        "image_path": "F:/______training_database_V2/animal/73204.5304fbb771471.jpg"
+        "date": "2025-05-10T20:07:05.954725",
+        "image_path": "F:/______training_database_V2/food/cgaxis_models_71_10.jpg",
+        "class_name": "food",
+        "confidence": 0.96630859375
     },
     {
-        "class_name": "animal",
-        "confidence": 0.9287109375,
-        "date": "2025-05-10T18:21:04.093089",
-        "image_path": "F:/______training_database_V2/animal/Baby Emperor Penguin ( Juvenile ).thumb.jpeg"
+        "date": "2025-05-10T20:07:08.328132",
+        "image_path": "F:/______training_database_V2/food/Bar Set.jpg",
+        "class_name": "decoration",
+        "confidence": 0.77734375
     },
     {
-        "class_name": "animal",
-        "confidence": 0.119873046875,
-        "date": "2025-05-10T18:21:08.476369",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/9020.526896a205ff8.jpg"
+        "date": "2025-05-10T20:07:18.739520",
+        "image_path": "F:/______training_database_V2/food/cgaxis_models_71_25.jpg",
+        "class_name": "food",
+        "confidence": 0.96044921875
     },
     {
-        "class_name": "animal",
-        "confidence": 0.5947265625,
-        "date": "2025-05-10T18:21:22.503204",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/2574200.5d9cf9ac407bf 1_copy_1.jpg"
+        "date": "2025-05-10T20:07:21.253746",
+        "image_path": "F:/______training_database_V2/food/cgaxis_models_73_09.jpg",
+        "class_name": "food",
+        "confidence": 0.92236328125
     },
     {
-        "date": "2025-05-10T18:34:16.146327",
-        "image_path": "F:/______training_database_V2/animal/73204.5304fbb771471.jpg",
-        "class_name": "animal",
-        "confidence": 0.96728515625
+        "date": "2025-05-10T20:07:29.332801",
+        "image_path": "F:/______training_database_V2/food/Conservation .jpg",
+        "class_name": "food",
+        "confidence": 0.468994140625
     },
     {
-        "date": "2025-05-10T18:34:18.726161",
-        "image_path": "F:/______training_database_V2/animal/Bengal Tiger ANIMATED XGEN.jpg",
-        "class_name": "animal",
-        "confidence": 0.95458984375
+        "date": "2025-05-10T20:07:37.249780",
+        "image_path": "F:/______training_database_V2/food/Food-Drink_Food_Poppy-Seed-Roll_01.png",
+        "class_name": "food",
+        "confidence": 0.50439453125
     },
     {
-        "date": "2025-05-10T18:34:22.973240",
-        "image_path": "F:/______training_database_V2/car/1924_Alfa_Romeo_P2.jpg",
-        "class_name": "car",
-        "confidence": 0.499755859375
-    },
-    {
-        "date": "2025-05-10T18:34:25.042137",
-        "image_path": "F:/______training_database_V2/car/173633.54a6989abd8b9.jpg",
-        "class_name": "animal",
-        "confidence": 0.7890625
-    },
-    {
-        "date": "2025-05-10T18:34:29.425321",
-        "image_path": "F:/______training_database_V2/car/1818350.5ac234805b89a.jpg",
-        "class_name": "car",
-        "confidence": 0.478759765625
-    },
-    {
-        "date": "2025-05-10T18:34:31.631687",
-        "image_path": "F:/______training_database_V2/car/1336818.59ba4eb4ded20.jpg",
-        "class_name": "animal",
-        "confidence": 0.53369140625
-    },
-    {
-        "date": "2025-05-10T18:34:33.939732",
-        "image_path": "F:/______training_database_V2/car/83948.5332d84e08429.jpg",
-        "class_name": "animal",
-        "confidence": 0.498779296875
-    },
-    {
-        "date": "2025-05-10T18:34:38.112309",
-        "image_path": "F:/______training_database_V2/car/2632066.5de93f288c3d8.jpg",
-        "class_name": "car",
-        "confidence": 0.458251953125
-    },
-    {
-        "date": "2025-05-10T18:34:42.517913",
-        "image_path": "F:/______training_database_V2/car/2547361.5d7a9af04256a.jpg",
-        "class_name": "car",
-        "confidence": 0.7998046875
-    },
-    {
-        "date": "2025-05-10T18:34:49.718283",
-        "image_path": "F:/______training_database_V2/vehicle/3D Taco Foodtruck PBR model.jpg",
-        "class_name": "animal",
-        "confidence": 0.69482421875
-    },
-    {
-        "date": "2025-05-10T18:34:52.904781",
-        "image_path": "F:/______training_database_V2/vehicle/261912.5562cce87124f 1.jpg",
-        "class_name": "animal",
-        "confidence": 0.8525390625
-    },
-    {
-        "date": "2025-05-10T18:34:55.724891",
-        "image_path": "F:/______training_database_V2/vehicle/11505.52698ec03c239.jpg",
-        "class_name": "animal",
-        "confidence": 0.75390625
-    },
-    {
-        "date": "2025-05-10T18:34:58.447262",
-        "image_path": "F:/______training_database_V2/vehicle/4297773.62bc8bf6bf1f1.jpg",
-        "class_name": "animal",
-        "confidence": 0.64013671875
-    },
-    {
-        "date": "2025-05-10T18:35:05.192136",
-        "image_path": "F:/______training_database_V2/tree/3D trees https___p.turbosquid.com_ts-thumb_z3_l91ZUv_1bkL5QE0_trees_l_2_jpg_1545920640_1920x1080_fit_q87_577f3c37cf92a0bfad6eb2e0d839ef9732ad7e91_trees_l_2.jpg.jpg",
-        "class_name": "bathroom",
-        "confidence": 0.93505859375
-    },
-    {
-        "date": "2025-05-10T18:35:07.906059",
-        "image_path": "F:/______training_database_V2/tree/515291.56fd95283e571.jpg",
-        "class_name": "bathroom",
-        "confidence": 0.69140625
+        "date": "2025-05-10T20:07:41.185835",
+        "image_path": "F:/______training_database_V2/food/Food-Drink_Food_Pomegranate_01_fixed.png",
+        "class_name": "food",
+        "confidence": 0.63818359375
     }
 ]

@@ -4,16 +4,21 @@ from PIL import Image
 from torchvision.transforms import AutoAugment, AutoAugmentPolicy, TrivialAugmentWide
 
 
-def get_default_transforms(image_size=(224, 224)):
+def get_default_transforms(config=None):
     """
     Zwraca standardowe przekształcenia dla obrazów używane w treningu.
 
     Args:
-        image_size: Krotka (szerokość, wysokość)
+        config (dict, optional): Słownik konfiguracyjny. Może zawierać klucz 'image_size'
+                                 (krotka (szerokość, wysokość)). Domyślnie None.
 
     Returns:
         Obiekt transforms.Compose z przekształceniami
     """
+    image_size = (224, 224)  # Domyślny rozmiar
+    if config and "image_size" in config:
+        image_size = tuple(config["image_size"])
+
     return transforms.Compose(
         [
             transforms.Resize(image_size),
@@ -23,16 +28,24 @@ def get_default_transforms(image_size=(224, 224)):
     )
 
 
-def get_augmentation_transforms(image_size=(224, 224)):
+def get_augmentation_transforms(config=None):
     """
     Zwraca przekształcenia z augmentacją danych dla treningu.
+    Uwaga: Wiele parametrów augmentacji (np. rotacja, ColorJitter) jest tutaj
+    ustawionych na stałe. Dla pełnej konfiguracji zobacz get_extended_augmentation_transforms.
 
     Args:
-        image_size: Krotka (szerokość, wysokość)
+        config (dict, optional): Słownik konfiguracyjny. Może zawierać klucz 'image_size'
+                                 (krotka (szerokość, wysokość)). Domyślnie None.
+
 
     Returns:
         Obiekt transforms.Compose z przekształceniami
     """
+    image_size = (224, 224)  # Domyślny rozmiar
+    if config and "image_size" in config:
+        image_size = tuple(config["image_size"])
+
     return transforms.Compose(
         [
             transforms.RandomResizedCrop(image_size, scale=(0.6, 1.0)),

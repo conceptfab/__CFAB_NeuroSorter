@@ -1,3 +1,4 @@
+import functools
 import json
 import os
 import shutil
@@ -8,6 +9,7 @@ from datetime import datetime
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from sklearn.metrics import (
     balanced_accuracy_score,
@@ -30,6 +32,19 @@ from .catastrophic_forgetting import (
 )
 from .classifier import ImageClassifier
 from .preprocessing import get_augmentation_transforms, get_default_transforms
+
+
+# Funkcja pomocnicza dla target_transform przy obliczaniu macierzy Fishera
+def _target_transform_for_fisher(target_idx, valid_base_class_indices_str_set):
+    """
+    Transformuje indeksy klas.
+    Zwraca target_idx, jeśli jego reprezentacja jako string znajduje się
+    w zbiorze valid_base_class_indices_str_set. W przeciwnym razie zwraca -1.
+    """
+    target_str = str(target_idx)
+    if target_str in valid_base_class_indices_str_set:
+        return int(target_idx)
+    return -1
 
 
 def handle_nan_data(data):
@@ -412,6 +427,9 @@ def fine_tune_model(
     knowledge_distillation_config=None,
     ewc_config=None,
     layer_freezing_config=None,
+    # DODANE NOWE PARAMETRY
+    augmentation_params=None,
+    preprocessing_params=None,
 ):
     """
     Przeprowadza fine-tuning istniejącego modelu na nowym zbiorze danych.
@@ -443,10 +461,17 @@ def fine_tune_model(
         knowledge_distillation_config: Konfiguracja knowledge distillation
         ewc_config: Konfiguracja EWC
         layer_freezing_config: Konfiguracja zamrażania warstw
+        augmentation_params: Parametry augmentacji
+        preprocessing_params: Parametry preprocessingu
 
     Returns:
         Tuple: (ścieżka do zapisanego modelu, historia treningu, szczegóły modelu)
     """
+    # Jawne ustawienie urządzenia, jeśli nie zostało podane
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Używane urządzenie: {device}")
+
     print("\n=== INICJALIZACJA FINE-TUNINGU ===")
     print(f"Data rozpoczęcia: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     start_training_time = time.time()
@@ -537,8 +562,11 @@ def fine_tune_model(
         print(
             "Tworzenie kopii modelu bazowego do technik zapobiegających zapominaniu..."
         )
-        original_model = deepcopy(base_classifier.model)
-        original_model.eval()  # Zamroź oryginał w trybie ewaluacji
+        original_model_for_forgetting = deepcopy(base_classifier.model)
+        original_model_for_forgetting.eval()  # Zamroź oryginał w trybie ewaluacji
+        original_model_for_forgetting.to(
+            device
+        )  # Upewnij się, że jest na właściwym urządzeniu
 
     # Weryfikuj konfigurację modelu
     verify_model_config(base_model_path, base_classifier.class_names)
@@ -599,12 +627,131 @@ def fine_tune_model(
     new_num_classes = len(new_class_names)
 
     # ZMIANA: Zachowaj wszystkie oryginalne klasy i dodaj nowe, zamiast nadpisywać
-    if new_num_classes != original_num_classes:
-        print(f"Liczba klas: {original_num_classes} -> {new_num_classes}")
-        # Zmodyfikowany kod dostosowania ostatniej warstwy
-        # [zmodyfikowany istniejący kod dostosowania warstwy wyjściowej, zachowujący wszystkie klasy]
+    # --- POCZĄTEK MODYFIKACJI: Adaptacja warstwy klasyfikacyjnej ---
+    if new_num_classes != original_num_classes or (
+        prevent_forgetting and preserve_original_classes
+    ):
+        print(
+            f"Dostosowywanie warstwy klasyfikacyjnej. Stare klasy: {original_num_classes}, Nowe klasy: {new_num_classes}"
+        )
+
+        last_layer_name = None
+        last_layer = None
+
+        # Próba identyfikacji ostatniej warstwy nn.Linear
+        for name, module in model.named_modules():
+            if isinstance(module, nn.Linear):
+                last_layer_name = name
+                last_layer = module
+
+        if last_layer is None:
+            print(
+                "OSTRZEŻENIE: Nie udało się automatycznie zidentyfikować ostatniej warstwy nn.Linear. Adaptacja może nie zadziałać poprawnie."
+            )
+            # W tym miejscu można by dodać bardziej specyficzną logikę, jeśli znamy nazwy warstw (np. fc, classifier)
+            # Na przykład:
+            # if hasattr(model, 'fc') and isinstance(model.fc, nn.Linear):
+            #     last_layer_name = 'fc'
+            #     last_layer = model.fc
+            # elif hasattr(model, 'classifier') and isinstance(model.classifier, nn.Linear):
+            #    # itd. dla różnych typowych nazw
+            #    ...
+
+        if last_layer is not None:
+            old_in_features = last_layer.in_features
+            old_out_features = (
+                last_layer.out_features
+            )  # Powinno być równe original_num_classes
+
+            print(
+                f"  Znaleziona ostatnia warstwa liniowa: '{last_layer_name}' o wymiarach ({old_in_features}, {old_out_features})"
+            )
+
+            # Utwórz nową warstwę liniową
+            new_fc = nn.Linear(old_in_features, new_num_classes)
+            new_fc.to(device)  # Przenieś nową warstwę na odpowiednie urządzenie
+
+            if prevent_forgetting and preserve_original_classes:
+                print(
+                    "  Zachowywanie wag dla oryginalnych klas i inicjalizacja nowych..."
+                )
+                # Stwórz mapowanie: nazwa_klasy -> stary_indeks_w_tensorze
+                old_class_name_to_idx = {
+                    name: int(idx_str)
+                    for idx_str, name in base_classifier.class_names.items()
+                }
+
+                # Stwórz mapowanie: nazwa_klasy -> nowy_indeks_w_tensorze
+                # new_class_names to {nowy_id_str: nazwa_klasy}
+                new_idx_to_name = {
+                    int(idx_str): name for idx_str, name in new_class_names.items()
+                }
+                # new_class_name_to_idx = {name: int(idx_str) for idx_str, name in new_class_names.items()} # Nie jest bezpośrednio używane, ale może być przydatne
+
+                with torch.no_grad():
+                    for new_idx_int, new_name in new_idx_to_name.items():
+                        if new_name in old_class_name_to_idx:
+                            old_idx_int = old_class_name_to_idx[new_name]
+                            # Sprawdzenie, czy stary indeks jest w zakresie wag oryginalnej warstwy
+                            if old_idx_int < last_layer.weight.size(
+                                0
+                            ) and old_idx_int < last_layer.bias.size(0):
+                                new_fc.weight.data[new_idx_int] = (
+                                    last_layer.weight.data[old_idx_int]
+                                )
+                                new_fc.bias.data[new_idx_int] = last_layer.bias.data[
+                                    old_idx_int
+                                ]
+                                print(
+                                    f"    -> Skopiowano wagi dla klasy '{new_name}' (stary idx: {old_idx_int} -> nowy idx: {new_idx_int})"
+                                )
+                            else:
+                                print(
+                                    f"    OSTRZEŻENIE: Stary indeks {old_idx_int} dla klasy '{new_name}' poza zakresem oryginalnej warstwy. Inicjalizuję losowo."
+                                )
+                                # Wagi dla tej klasy pozostaną losowo zainicjalizowane przez nn.Linear
+                        else:
+                            print(
+                                f"    -> Klasa '{new_name}' (nowy idx: {new_idx_int}) jest nowa. Wagi zainicjalizowane losowo."
+                            )
+            else:
+                print(
+                    "  Inicjalizacja nowej warstwy klasyfikacyjnej od zera (losowe wagi)."
+                )
+                # Wagi są już losowo inicjalizowane przez nn.Linear
+
+            # Zastąp starą warstwę nową
+            # To jest nieco skomplikowane, jeśli last_layer_name zawiera kropki (np. "features.18.classifier")
+            components = last_layer_name.split(".")
+            current_module = model
+            for comp in components[:-1]:
+                if hasattr(current_module, comp):
+                    current_module = getattr(current_module, comp)
+                else:  # Jeśli to np. element Sequential bez nazwy, tylko indeks
+                    current_module = current_module[int(comp)]
+
+            setattr(current_module, components[-1], new_fc)
+            # Zaktualizuj liczbę klas w głównym obiekcie modelu, jeśli posiada taki atrybut
+            if hasattr(model, "num_classes"):
+                model.num_classes = new_num_classes
+            base_classifier.num_classes = (
+                new_num_classes  # Oraz w naszym wrapperze Classifier
+            )
+            print(
+                f"  Zastąpiono warstwę '{last_layer_name}' nową warstwą o wymiarach ({old_in_features}, {new_num_classes})"
+            )
+        else:
+            print(
+                "OSTRZEŻENIE: Nie można było dostosować ostatniej warstwy. Model może nie działać poprawnie."
+            )
+    # --- KONIEC MODYFIKACJI ---
 
     # Implementacja technik zapobiegających zapominaniu
+    # USUNIĘTO BŁĘDNE RESETOWANIE original_model_for_forgetting
+    rehearsal_data = None  # INICJALIZACJA
+    fisher_diagonal = None  # INICJALIZACJA
+    original_params = {}  # INICJALIZACJA
+
     if prevent_forgetting:
         # Domyślna konfiguracja dla EWC, jeśli nie została przekazana
         if ewc_config is None:
@@ -631,7 +778,10 @@ def fine_tune_model(
                     int(idx) for idx in base_classifier.class_names.keys()
                 ]
                 rehearsal_data = generate_synthetic_samples(
-                    original_model, original_classes, samples_per_class, device
+                    original_model_for_forgetting,
+                    original_classes,
+                    samples_per_class,
+                    device,
                 )
             else:
                 # Tutaj należałoby zaimplementować pobieranie oryginalnych próbek
@@ -646,11 +796,16 @@ def fine_tune_model(
 
             # Przygotuj data loader dla oryginalnych klas
             print("Przygotowywanie data loadera dla oryginalnych klas...")
+            # Pobieramy zbiór kluczy (ID jako stringi) klas z modelu bazowego
+            base_class_keys_set = set(base_classifier.class_names.keys())
+
             original_dataset = datasets.ImageFolder(
-                train_dir,
+                train_dir,  # UWAGA: Może wymagać przefiltrowania danych tylko do klas bazowych
                 transform=get_default_transforms(),
-                target_transform=lambda x: (
-                    int(x) if x in base_classifier.class_names else -1
+                # Używamy functools.partial zamiast lambdy
+                target_transform=functools.partial(
+                    _target_transform_for_fisher,
+                    valid_base_class_indices_str_set=base_class_keys_set,
                 ),
             )
             data_loader_for_original_classes = DataLoader(
@@ -664,18 +819,21 @@ def fine_tune_model(
             # Oblicz macierz Fishera dla oryginalnego modelu
             print(f"Obliczanie macierzy Fishera dla {fisher_sample_size} próbek...")
             fisher_diagonal = compute_fisher_information(
-                original_model, data_loader_for_original_classes, device
+                original_model_for_forgetting,
+                data_loader_for_original_classes,
+                device=device,
+                num_samples=fisher_sample_size,  # Dodano num_samples
             )
             print("✓ Macierz Fishera obliczona pomyślnie")
 
         # 3. Zapisz oryginalne parametry modelu dla EWC
         original_params = {}
         if ewc_config and ewc_config.get("use", False):
-            print("Zapisywanie oryginalnych parametrów modelu...")
-            for name, param in original_model.named_parameters():
+            print("Zapisywanie oryginalnych parametrów modelu (dla EWC)...")
+            for name, param in original_model_for_forgetting.named_parameters():
                 if param.requires_grad:
                     original_params[name] = param.data.clone()
-            print("✓ Parametry zapisane")
+            print("✓ Parametry (dla EWC) zapisane")
 
     # 6. Zmodyfikuj strategie zamrażania warstw
     if prevent_forgetting and layer_freezing_config:
@@ -725,8 +883,9 @@ def fine_tune_model(
             # Dla progressive odmrażania zaimplementujemy logikę w pętli treningowej
 
     # 7. Przygotuj transformacje danych
-    train_transform = get_augmentation_transforms()
-    val_transform = get_default_transforms()
+    # ZMIANA: Przekazanie konfiguracji do funkcji transformujących
+    train_transform = get_augmentation_transforms(config=augmentation_params)
+    val_transform = get_default_transforms(config=preprocessing_params)
 
     # 8. Załaduj dane
     print("\nŁadowanie danych...")
@@ -816,16 +975,23 @@ def fine_tune_model(
     print(f"Wybrano CrossEntropyLoss (label_smoothing={label_smoothing})")
 
     # 12. Inicjalizacja dla mieszanej precyzji
-    if use_mixed_precision and torch.cuda.is_available():
+    scaler = None
+    if use_mixed_precision and device.type == "cuda":
+        if not torch.cuda.is_available():
+            print(
+                "OSTRZEŻENIE: use_mixed_precision=True i device=cuda, ale torch.cuda.is_available() jest False. Sprawdź konfigurację CUDA."
+            )
         scaler = torch.amp.GradScaler()
-        print("Włączono mieszaną precyzję (mixed precision training)")
+        print("Włączono CUDA mixed precision (autocast + GradScaler).")
+    elif use_mixed_precision and device.type == "cpu":
+        print(
+            "Włączono CPU mixed precision (autocast dla bfloat16, jeśli wspierane). GradScaler nie jest używany."
+        )
     else:
-        scaler = None
-        print("Mieszana precyzja wyłączona")
+        print("Mieszana precyzja wyłączona lub nieobsługiwana na tym urządzeniu.")
 
     # 13. Przejdź do trybu treningu
-    model.train()
-    model = model.to(device)
+    model.train()  # Model już powinien być na urządzeniu po wcześniejszym model.to(device)
 
     # 14. Inicjalizacja historii treningu
     history = {
@@ -875,7 +1041,7 @@ def fine_tune_model(
             break
 
         epoch_start_time = time.time()
-        print(f"\n--- Epoka {epoch+1}/{num_epochs} ---")
+        print(f"\n--- Epoka {epoch+1}/{num_epochs} --- पाण्डेय")
 
         # Progressive unfreezing - odmrażanie kolejnych warstw w każdej epoce
         if (
@@ -897,6 +1063,7 @@ def fine_tune_model(
 
         # Trening
         model.train()
+        # Resetowanie liczników dla każdej epoki
         train_loss = 0.0
         train_correct = 0
         train_total = 0
@@ -917,97 +1084,68 @@ def fine_tune_model(
                 targets = torch.cat([targets, rehearsal_targets], dim=0)
 
             # Forward pass
-            optimizer.zero_grad()
+            optimizer.zero_grad(
+                set_to_none=True
+            )  # Użyj set_to_none=True dla potencjalnej optymalizacji pamięci
 
-            if use_mixed_precision:
-                with torch.amp.autocast(device_type="cuda"):
-                    outputs = model(inputs)
+            # Określ, czy autocast powinien być aktywny
+            enable_autocast = use_mixed_precision and device.type in ["cuda", "cpu"]
 
-                    # Dodaj Knowledge Distillation
-                    if (
-                        prevent_forgetting
-                        and knowledge_distillation_config
-                        and knowledge_distillation_config.get("use", False)
-                    ):
-                        # Wykonaj forward pass przez oryginały model
-                        with torch.no_grad():
-                            teacher_outputs = original_model(inputs)
-
-                        # Użyj niestandardowego kryterium straty z knowledge distillation
-                        loss = distillation_loss(outputs, targets, teacher_outputs)
-                    else:
-                        loss = criterion(outputs, targets)
-
-                    # Dodaj EWC regularization do straty
-                    if (
-                        prevent_forgetting
-                        and ewc_config
-                        and ewc_config.get("use", False)
-                        and fisher_diagonal
-                    ):
-                        ewc_lambda = ewc_config.get("lambda", 100.0)
-
-                        # Dodaj regularyzację EWC do straty
-                        ewc_loss = 0
-                        for name, param in model.named_parameters():
-                            if name in fisher_diagonal and name in original_params:
-                                # Oblicz kwadrat różnicy między aktualnymi parametrami a oryginalnymi
-                                diff = (param - original_params[name]) ** 2
-                                # Pomnóż przez ważoność parametru (macierz Fishera)
-                                ewc_loss += torch.sum(fisher_diagonal[name] * diff)
-
-                        # Dodaj ważoną stratę EWC do głównej straty
-                        loss += ewc_lambda * ewc_loss
-
-                        if batch_idx % 10 == 0:  # Wyświetlaj co 10 batchy
-                            print(
-                                f"  EWC loss: {ewc_loss.item():.6f}, Lambda: {ewc_lambda}"
-                            )
-                    else:
-                        loss = criterion(outputs, targets)
-
-                # Backward pass z mixed precision
-                scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
-            else:
-                outputs = model(inputs)
+            with torch.amp.autocast(device_type=device.type, enabled=enable_autocast):
+                outputs = model(inputs)  # Linia ~946, gdzie występuje błąd
 
                 # Dodaj Knowledge Distillation
                 if (
                     prevent_forgetting
                     and knowledge_distillation_config
                     and knowledge_distillation_config.get("use", False)
+                    and original_model_for_forgetting
+                    is not None  # ZMIANA: Użycie original_model_for_forgetting i sprawdzenie
                 ):
-                    # Wykonaj forward pass przez oryginały model
                     with torch.no_grad():
-                        teacher_outputs = original_model(inputs)
+                        teacher_outputs = original_model_for_forgetting(
+                            inputs
+                        )  # ZMIANA: Użycie original_model_for_forgetting
 
-                    # Użyj niestandardowego kryterium straty z knowledge distillation
-                    loss = distillation_loss(outputs, targets, teacher_outputs)
+                    # ZMIANA: Pobranie parametrów KD i wywołanie nowej funkcji straty
+                    temp = knowledge_distillation_config.get("temperature", 2.0)
+                    alpha_kd = knowledge_distillation_config.get("alpha", 0.5)
+
+                    loss = distillation_loss(
+                        outputs, targets, teacher_outputs, temp, alpha_kd
+                    )
+                    if batch_idx % 10 == 0:
+                        print(
+                            f"  KD loss component active. Temp: {temp}, Alpha: {alpha_kd}"
+                        )
                 else:
                     loss = criterion(outputs, targets)
 
-                # Dodaj EWC regularization do straty
                 if (
                     prevent_forgetting
                     and ewc_config
                     and ewc_config.get("use", False)
                     and fisher_diagonal
+                    and original_params
                 ):
                     ewc_lambda = ewc_config.get("lambda", 100.0)
-
-                    # Dodaj regularyzację EWC do straty
-                    ewc_loss = 0
+                    ewc_loss_val = 0  # Zmieniono nazwę zmiennej, aby uniknąć konfliktu
                     for name, param in model.named_parameters():
-                        if name in fisher_diagonal:
-                            ewc_loss += torch.sum(
-                                fisher_diagonal[name]
-                                * (param - original_model.state_dict()[name]).pow(2)
-                            )
-                    loss += ewc_lambda * ewc_loss
+                        if name in fisher_diagonal and name in original_params:
+                            diff = (param - original_params[name]) ** 2
+                            ewc_loss_val += torch.sum(fisher_diagonal[name] * diff)
+                    loss += ewc_lambda * ewc_loss_val
+                    if batch_idx % 10 == 0:
+                        print(
+                            f"  EWC loss component: {ewc_loss_val.item():.6f}, Lambda: {ewc_lambda}"
+                        )
 
-                # Standardowy backward pass
+            # Backward pass i krok optymalizatora
+            if scaler:  # scaler istnieje tylko dla CUDA mixed precision
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:  # Standardowy backward pass dla CPU mixed precision lub braku mixed precision
                 loss.backward()
                 optimizer.step()
 
@@ -1028,10 +1166,14 @@ def fine_tune_model(
                     progress_callback(
                         epoch + 1,
                         num_epochs,
-                        train_loss,
-                        train_acc,
-                        val_loss if val_loader else 0,
-                        val_acc if val_loader else 0,
+                        train_loss
+                        / (batch_idx + 1),  # Przekaż bieżącą średnią stratę treningową
+                        train_acc,  # Przekaż bieżącą dokładność treningową
+                        # Na tym etapie metryki walidacyjne nie są jeszcze znane dla bieżącej epoki,
+                        # więc przekazujemy 0 lub None, albo ostatnio znane, jeśli tego chcemy.
+                        # Dla uproszczenia, teraz przekażemy 0.
+                        0,  # val_loss
+                        0,  # val_acc
                         0,  # top3
                         0,  # top5
                         0,  # precision
@@ -1040,7 +1182,9 @@ def fine_tune_model(
                         0,  # auc
                     )
                 except Exception as e:
-                    print(f"Błąd podczas wywołania progress_callback: {str(e)}")
+                    print(
+                        f"Błąd podczas wywołania progress_callback w pętli batch: {str(e)}"
+                    )
 
             # Sprawdź czy należy przerwać trening
             if should_stop_callback and should_stop_callback():
@@ -1182,36 +1326,45 @@ def fine_tune_model(
         if val_loader:
             print(f"  Val loss:   {val_loss:.4f}")
             print(f"  Val acc:    {val_acc:.2%}")
-            print(f"  Val F1:     {val_metrics['f1']:.4f}")
-            if val_metrics["top3"] is not None:
-                print(f"  Val top-3:  {val_metrics['top3']:.2%}")
+            print(
+                f"  Val F1:     {val_metrics.get('f1', 0):.4f}"
+            )  # Użyj .get() dla bezpieczeństwa
+            if val_metrics.get("top3") is not None:
+                print(f"  Val top-3:  {val_metrics.get('top3', 0):.2%}")
+            if val_metrics.get("top5") is not None:  # Dodano wyświetlanie top5
+                print(f"  Val top-5:  {val_metrics.get('top5', 0):.2%}")
 
         # Wywołaj callback z postępem jeśli istnieje
         if progress_callback:
             try:
-                top3 = val_metrics.get("top3", 0) if val_loader else 0
-                top5 = val_metrics.get("top5", 0) if val_loader else 0
-                precision = val_metrics.get("precision", 0) if val_loader else 0
-                recall = val_metrics.get("recall", 0) if val_loader else 0
-                f1 = val_metrics.get("f1", 0) if val_loader else 0
-                auc = val_metrics.get("auc", 0) if val_loader else 0
+                # Pobierz wartości z val_metrics, używając .get() z domyślną wartością 0
+                val_loss_cb = val_metrics.get("loss", 0) if val_loader else 0
+                val_acc_cb = val_metrics.get("acc", 0) if val_loader else 0
+                top3_cb = val_metrics.get("top3", 0) if val_loader else 0
+                top5_cb = val_metrics.get("top5", 0) if val_loader else 0
+                precision_cb = val_metrics.get("precision", 0) if val_loader else 0
+                recall_cb = val_metrics.get("recall", 0) if val_loader else 0
+                f1_cb = val_metrics.get("f1", 0) if val_loader else 0
+                auc_cb = val_metrics.get("auc", 0) if val_loader else 0
 
                 progress_callback(
                     epoch + 1,
                     num_epochs,
-                    train_loss,
-                    train_acc,
-                    val_loss if val_loader else 0,
-                    val_acc if val_loader else 0,
-                    top3,
-                    top5,
-                    precision,
-                    recall,
-                    f1,
-                    auc,
+                    train_loss,  # Średnia strata treningowa dla epoki
+                    train_acc,  # Dokładność treningowa dla epoki
+                    val_loss_cb,
+                    val_acc_cb,
+                    top3_cb,
+                    top5_cb,
+                    precision_cb,
+                    recall_cb,
+                    f1_cb,
+                    auc_cb,
                 )
             except Exception as e:
-                print(f"Błąd podczas wywołania progress_callback: {str(e)}")
+                print(
+                    f"Błąd podczas wywołania progress_callback na końcu epoki: {str(e)}"
+                )
 
         # Czyszczenie pamięci GPU
         if torch.cuda.is_available():
@@ -1803,3 +1956,28 @@ def print_directory_structure(directory, indent=""):
     print(
         f"\nŁącznie znaleziono {total_files} obrazów w {len(os.listdir(directory))} katalogach"
     )
+
+
+# DODANA FUNKCJA DISTILLATION LOSS
+def distillation_loss(student_outputs, labels, teacher_outputs, temperature, alpha):
+    """
+    Oblicza stratę dla destylacji wiedzy.
+    :param student_outputs: Logity z modelu ucznia.
+    :param labels: Prawdziwe etykiety (twarde).
+    :param teacher_outputs: Logity z modelu nauczyciela.
+    :param temperature: Temperatura do zmiękczania prawdopodobieństw.
+    :param alpha: Współczynnik wagi między stratą destylacji a stratą na twardych etykietach.
+    :return: Całkowita strata.
+    """
+    # Standardowa strata na twardych etykietach
+    hard_loss = F.cross_entropy(student_outputs, labels)
+
+    # Strata na miękkich etykietach (KL Divergence)
+    soft_loss = nn.KLDivLoss(reduction="batchmean")(
+        F.log_softmax(student_outputs / temperature, dim=1),
+        F.softmax(teacher_outputs / temperature, dim=1),
+    ) * (
+        temperature * temperature
+    )  # Skalowanie gradientu
+
+    return alpha * hard_loss + (1.0 - alpha) * soft_loss

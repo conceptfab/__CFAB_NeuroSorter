@@ -1,0 +1,188 @@
+{
+    "name": "ogrodnik",
+    "type": "fine_tuning",
+    "config": {
+        "base_model": "F:/__CFAB_NeuroSorter/data/models/base_A.pt",
+        "train_dir": "F:/__Set_gardener/__dane_treningowe",
+        "val_dir": "F:/__Set_gardener/__dane_walidacyjne",
+        "model": {
+            "architecture": "EfficientNet",
+            "variant": "b2",
+            "input_size": 260,
+            "num_classes": 3
+        },
+        "training": {
+            "epochs": 100,
+            "batch_size": 48,
+            "learning_rate": 0.0002,
+            "optimizer": "AdamW",
+            "scheduler": "None",
+            "num_workers": 4,
+            "warmup_epochs": 5,
+            "warmup_lr_init": 1e-06,
+            "mixed_precision": true,
+            "gradient_accumulation_steps": 2,
+            "gradient_clip": 1.0,
+            "validation_split": 0.2,
+            "evaluation_freq": 1,
+            "use_ema": false,
+            "ema_decay": 0.9999,
+            "unfreeze_strategy": "unfreeze_all",
+            "unfreeze_after_epochs": 5,
+            "unfreeze_layers": 15,
+            "frozen_lr": 0.0,
+            "unfrozen_lr": 0.0
+        },
+        "regularization": {
+            "weight_decay": 0.00015,
+            "gradient_clip": 1.0,
+            "label_smoothing": 0.1,
+            "drop_connect_rate": 0.2,
+            "dropout_rate": 0.3,
+            "momentum": 0.9,
+            "epsilon": 1e-06,
+            "swa": {
+                "use": true,
+                "start_epoch": 80
+            }
+        },
+        "augmentation": {
+            "basic": {
+                "use": true,
+                "rotation": 20,
+                "brightness": 0.2,
+                "shift": 0.1,
+                "zoom": 0.15,
+                "horizontal_flip": true,
+                "vertical_flip": false
+            },
+            "mixup": {
+                "use": true,
+                "alpha": 0.3
+            },
+            "cutmix": {
+                "use": true,
+                "alpha": 0.4
+            },
+            "autoaugment": {
+                "use": false
+            },
+            "randaugment": {
+                "use": true,
+                "n": 2,
+                "m": 7
+            },
+            "advanced": {
+                "contrast": 0.2,
+                "saturation": 0.2,
+                "hue": 0.1,
+                "shear": 0.1,
+                "channel_shift": 0.0
+            }
+        },
+        "preprocessing": {
+            "normalization": {
+                "mean": [
+                    0.485,
+                    0.456,
+                    0.406
+                ],
+                "std": [
+                    0.229,
+                    0.224,
+                    0.225
+                ]
+            },
+            "resize_mode": "bilinear",
+            "cache_dataset": false
+        },
+        "monitoring": {
+            "metrics": {
+                "accuracy": true,
+                "precision": true,
+                "recall": true,
+                "f1": true,
+                "topk": true,
+                "confusion_matrix": true,
+                "auc": true
+            },
+            "logging": {
+                "use_tensorboard": true,
+                "use_wandb": false,
+                "save_to_csv": true,
+                "logging_freq": "epoch"
+            },
+            "visualization": {
+                "use_gradcam": true,
+                "use_feature_maps": true,
+                "use_pred_samples": true,
+                "num_samples": 10
+            },
+            "early_stopping": {
+                "patience": 15,
+                "min_delta": 0.0005,
+                "monitor": "val_loss"
+            },
+            "checkpointing": {
+                "best_only": true,
+                "save_frequency": 1,
+                "metric": "val_loss"
+            }
+        },
+        "advanced": {
+            "seed": 42,
+            "deterministic": false,
+            "class_weights": "none",
+            "sampler": "none",
+            "image_channels": 3,
+            "tta": {
+                "use": false,
+                "num_augmentations": 5
+            },
+            "export_onnx": false,
+            "quantization": {
+                "use": false,
+                "precision": "int8"
+            },
+            "catastrophic_forgetting_prevention": {
+                "enable": true,
+                "preserve_original_classes": true,
+                "rehearsal": {
+                    "use": true,
+                    "samples_per_class": 25,
+                    "synthetic_samples": true
+                },
+                "knowledge_distillation": {
+                    "use": true,
+                    "temperature": 2.0,
+                    "alpha": 0.4
+                },
+                "ewc_regularization": {
+                    "use": true,
+                    "lambda": 120.0,
+                    "fisher_sample_size": 200
+                },
+                "layer_freezing": {
+                    "strategy": "gradual",
+                    "freeze_ratio": 0.7
+                }
+            }
+        }
+    },
+    "training_time": 101.18,
+    "training_time_str": "0:01:41",
+    "status": "Zakończony",
+    "train_accuracy": 58.36849507735584,
+    "train_loss": 3.0739470772121265,
+    "validation_accuracy": 0.0,
+    "validation_loss": 0.0,
+    "model_filename": "",
+    "accuracy": 0.0,
+    "epochs_trained": 0,
+    "progress": 100,
+    "current_epoch": 5,
+    "total_epochs": 5,
+    "train_acc": 58.36849507735584,
+    "val_loss": 2.860475500424703,
+    "val_acc": 28.333333333333332
+}
