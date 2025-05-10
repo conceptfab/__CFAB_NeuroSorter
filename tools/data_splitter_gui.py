@@ -1,10 +1,29 @@
-import json
-import random
-import shutil
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+# Dodaj ścieżkę główną projektu do sys.path, aby umożliwić importy względne
+# przy bezpośrednim uruchamianiu skryptu.
+# Zakładamy, że ten plik znajduje się w app/utils/file_tools/
+# więc musimy cofnąć się o 3 poziomy, aby dotrzeć do korzenia projektu.
+project_root = Path(__file__).resolve().parents[3]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+import json
+import logging
+import random
+import shutil
+from datetime import datetime
+
+from PyQt6.QtCore import (
+    QObject,
+    QRunnable,
+    Qt,
+    QThread,
+    QThreadPool,
+    pyqtSignal,
+    pyqtSlot,
+)
 from PyQt6.QtGui import QColor, QFont, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
@@ -29,36 +48,100 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from app.utils.file_tools.config import config
+
+# Konfiguracja logowania
+logger = logging.getLogger("DataSplitter")
+
+
+def setup_logger():
+    try:
+        log_file = (
+            Path("logs")
+            / f"data_splitter_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        )
+        log_file.parent.mkdir(exist_ok=True)
+        logger.info(f"Tworzenie pliku logów: {log_file}")
+
+        logger.setLevel(logging.DEBUG)
+
+        # Handler pliku
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.DEBUG)
+
+        # Handler konsoli
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+
+        # Format
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        file_handler.setFormatter(formatter)
+        console_handler.setFormatter(formatter)
+
+        # Dodaj handlery
+        logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
+
+        logger.info("Logger został poprawnie skonfigurowany")
+        return logger
+    except Exception as e:
+        print(f"Błąd podczas konfiguracji loggera: {e}")
+        raise
+
+
+setup_logger()
+logger.info("Inicjalizacja aplikacji DataSplitter")
+
 # --- Konfiguracja ---
-TRAIN_FOLDER_NAME = "__dane_treningowe"
-VALID_FOLDER_NAME = "__dane_walidacyjne"
-DEFAULT_TRAIN_SPLIT_PERCENT = 80
-DEFAULT_FILES_PER_CATEGORY = 100  # Używane gdy nie można określić inaczej
-ALLOWED_IMAGE_EXTENSIONS = (
-    ".png",
-    ".webp",
-    ".jpg",
-    ".jpeg",
-    ".bmp",
-    ".gif",
-    ".tiff",
-    ".tif",
-)
+try:
+    TRAIN_FOLDER_NAME = config.get("folders", "train_folder_name")
+    VALID_FOLDER_NAME = config.get("folders", "valid_folder_name")
+    DEFAULT_TRAIN_SPLIT_PERCENT = config.get("defaults", "train_split_percent")
+    DEFAULT_FILES_PER_CATEGORY = config.get("defaults", "files_per_category")
+    ALLOWED_IMAGE_EXTENSIONS = tuple(
+        config.get("extensions", "allowed_image_extensions")
+    )
+    logger.info("Konfiguracja została wczytana pomyślnie")
+except Exception as e:
+    logger.error(f"Błąd podczas wczytywania konfiguracji: {e}")
+    raise
 
 # --- Style ---
-PRIMARY_COLOR = "#007ACC"
-BACKGROUND = "#1E1E1E"
-SURFACE = "#252526"
-BORDER_COLOR = "#3F3F46"
-TEXT_COLOR = "#CCCCCC"
-HIGHLIGHT_COLOR = "#FF0000"
+try:
+    PRIMARY_COLOR = config.get("ui", "colors")["primary_color"]
+    BACKGROUND = config.get("ui", "colors")["background"]
+    SURFACE = config.get("ui", "colors")["surface"]
+    BORDER_COLOR = config.get("ui", "colors")["border_color"]
+    TEXT_COLOR = config.get("ui", "colors")["text_color"]
+    HIGHLIGHT_COLOR = config.get("ui", "colors")["highlight_color"]
+    logger.info("Style UI zostały wczytane pomyślnie")
+except Exception as e:
+    logger.error(f"Błąd podczas wczytywania stylów UI: {e}")
+    raise
 
 
-# --- Wątek roboczy do przetwarzania danych ---
-class Worker(QThread):
-    progress_updated = pyqtSignal(int, str)
-    finished = pyqtSignal(str)
-    error_occurred = pyqtSignal(str)
+class DataSplitterError(Exception):
+    """Bazowa klasa dla wyjątków w aplikacji Data Splitter"""
+
+    pass
+
+
+class ConfigurationError(DataSplitterError):
+    """Błędy związane z konfiguracją (ścieżki, wartości, etc.)"""
+
+    pass
+
+
+class ProcessingError(DataSplitterError):
+    """Błędy występujące podczas przetwarzania plików"""
+
+    pass
+
+
+class FileSplitter:
+    """Klasa odpowiedzialna za logikę podziału plików."""
 
     def __init__(
         self,
@@ -67,21 +150,22 @@ class Worker(QThread):
         split_mode,
         split_value,
         use_validation=True,
-        selected_categories=None,  # NOWY ARGUMENT
+        selected_categories=None,
     ):
-        super().__init__()
+        logger.info("Inicjalizacja FileSplitter")
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
         self.split_mode = split_mode
         self.split_value = split_value
         self.use_validation = use_validation
         self.selected_categories = selected_categories if selected_categories else []
-        self.is_cancelled = False
         self.stats = {"train": {}, "valid": {}}
         self.json_report = {}
-        # Do raportu w trybie "files"
         self.min_files_in_selection_for_report = 0
         self.folders_with_min_for_report = []
+        logger.info(
+            f"FileSplitter zainicjalizowany: tryb={split_mode}, wartość={split_value}, walidacja={use_validation}"
+        )
 
     def get_min_files_in_selected_categories_for_processing(self):
         if not self.input_dir or not self.selected_categories:
@@ -105,18 +189,31 @@ class Worker(QThread):
                 elif count == min_files_val and min_files_val != float("inf"):
                     folders_with_min.append(category_name)
 
-        if min_files_val == float("inf"):  # Żadne wybrane kategorie nie miały plików
+        if min_files_val == float("inf"):
             return 0, []
         return min_files_val, folders_with_min
 
-    def run(self):
+    def process_files(self, progress_callback=None, cancel_check=None):
+        """
+        Główna metoda procesująca pliki z obsługą postępu
+
+        :param progress_callback: funkcja wywoływana do aktualizacji postępu (value, message)
+        :param cancel_check: funkcja sprawdzająca czy operacja została anulowana
+        :return: (status_string, error_message)
+        """
         try:
-            self.progress_updated.emit(0, "Rozpoczynanie przetwarzania...")
+            logger.info("Rozpoczynam przetwarzanie plików")
+            if progress_callback:
+                progress_callback(0, "Rozpoczynanie przetwarzania...")
+
             if not self.input_dir.is_dir():
+                logger.error(f"Folder wejściowy nie istnieje: {self.input_dir}")
                 raise ValueError(f"Folder wejściowy nie istnieje: {self.input_dir}")
             if not self.output_dir.exists():
+                logger.info(f"Tworzenie folderu wyjściowego: {self.output_dir}")
                 self.output_dir.mkdir(parents=True, exist_ok=True)
             elif not self.output_dir.is_dir():
+                logger.error(f"Ścieżka wyjściowa nie jest folderem: {self.output_dir}")
                 raise ValueError(
                     f"Ścieżka wyjściowa istnieje, ale nie jest folderem: {self.output_dir}"
                 )
@@ -127,9 +224,15 @@ class Worker(QThread):
             )
 
             if train_base_path.exists():
-                shutil.rmtree(train_base_path)  # Czyszczenie
+                logger.info(
+                    f"Usuwanie istniejącego folderu treningowego: {train_base_path}"
+                )
+                shutil.rmtree(train_base_path)
             if valid_base_path and valid_base_path.exists():
-                shutil.rmtree(valid_base_path)  # Czyszczenie
+                logger.info(
+                    f"Usuwanie istniejącego folderu walidacyjnego: {valid_base_path}"
+                )
+                shutil.rmtree(valid_base_path)
 
             train_base_path.mkdir(parents=True, exist_ok=True)
             if valid_base_path:
@@ -137,11 +240,11 @@ class Worker(QThread):
 
             subfolders_to_process = []
             total_files_to_process = 0
-            self.progress_updated.emit(
-                5, "Skanowanie wybranych folderów wejściowych..."
-            )
+            if progress_callback:
+                progress_callback(5, "Skanowanie wybranych folderów wejściowych...")
 
             if not self.selected_categories:
+                logger.error("Nie wybrano żadnych kategorii do przetworzenia")
                 raise ValueError("Nie wybrano żadnych kategorii do przetworzenia.")
 
             for category_name in self.selected_categories:
@@ -163,25 +266,37 @@ class Worker(QThread):
                             "train": [],
                             "valid": [],
                         }
-                    else:
-                        self.progress_updated.emit(
-                            0,
-                            f"Info: Wybrana kategoria '{category_name}' jest pusta lub nie zawiera obrazów.",
+                        logger.info(
+                            f"Znaleziono {len(files_in_subdir)} plików w kategorii {category_name}"
                         )
+                    else:
+                        logger.warning(
+                            f"Kategoria '{category_name}' jest pusta lub nie zawiera obrazów"
+                        )
+                        if progress_callback:
+                            progress_callback(
+                                0,
+                                f"Info: Wybrana kategoria '{category_name}' jest pusta lub nie zawiera obrazów.",
+                            )
 
             if not subfolders_to_process:
+                logger.error("Nie znaleziono plików w wybranych kategoriach")
                 raise ValueError(
                     "Nie znaleziono żadnych plików obrazów w wybranych i niepustych podfolderach."
                 )
 
-            self.progress_updated.emit(
-                10,
-                f"Znaleziono {total_files_to_process} plików w {len(subfolders_to_process)} wybranych podkategoriach.",
+            logger.info(
+                f"Znaleziono {total_files_to_process} plików w {len(subfolders_to_process)} kategoriach"
             )
+            if progress_callback:
+                progress_callback(
+                    10,
+                    f"Znaleziono {total_files_to_process} plików w {len(subfolders_to_process)} wybranych podkategoriach.",
+                )
 
             processed_files_count = 0
 
-            if self.split_mode == "files":  # Oblicz min tylko raz dla trybu "files"
+            if self.split_mode == "files":
                 (
                     self.min_files_in_selection_for_report,
                     self.folders_with_min_for_report,
@@ -191,15 +306,19 @@ class Worker(QThread):
                     and self.use_validation
                     and self.split_value > 0
                 ):
-                    self.progress_updated.emit(
-                        0,
-                        "Ostrzeżenie: W trybie 'Limit plików' nie znaleziono plików w wybranych kategoriach, co może wpłynąć na podział walidacyjny.",
+                    logger.warning(
+                        "W trybie 'Limit plików' nie znaleziono plików w wybranych kategoriach"
                     )
+                    if progress_callback:
+                        progress_callback(
+                            0,
+                            "Ostrzeżenie: W trybie 'Limit plików' nie znaleziono plików w wybranych kategoriach, co może wpłynąć na podział walidacyjny.",
+                        )
 
             for relative_path, files in subfolders_to_process:
-                if self.is_cancelled:
-                    self.finished.emit("Anulowano.")
-                    return
+                if cancel_check and cancel_check():
+                    logger.info("Przetwarzanie zostało anulowane")
+                    return "Anulowano.", None
 
                 random.shuffle(files)
                 num_train, num_valid = 0, 0
@@ -226,7 +345,6 @@ class Worker(QThread):
                     if self.use_validation:
                         available_for_valid_in_current_cat = len(files) - num_train
                         desired_valid_based_on_min_cat = 0
-                        # Używamy self.min_files_in_selection_for_report, które jest min z wybranych
                         if self.min_files_in_selection_for_report > self.split_value:
                             desired_valid_based_on_min_cat = (
                                 self.min_files_in_selection_for_report
@@ -240,17 +358,8 @@ class Worker(QThread):
                         if num_valid < 0:
                             num_valid = 0
 
-                self.progress_updated.emit(
-                    int(
-                        10
-                        + 80
-                        * (
-                            processed_files_count / total_files_to_process
-                            if total_files_to_process > 0
-                            else 0
-                        )
-                    ),
-                    f"Przetwarzanie: {relative_path} ({num_train} tren., {num_valid} walid.)",
+                logger.info(
+                    f"Przetwarzanie kategorii {relative_path}: {num_train} tren., {num_valid} walid."
                 )
 
                 current_train_path = train_base_path / relative_path
@@ -270,7 +379,7 @@ class Worker(QThread):
                 )
 
                 for file_path in train_files_to_copy:
-                    if self.is_cancelled:
+                    if cancel_check and cancel_check():
                         break
                     try:
                         shutil.copy2(file_path, current_train_path / file_path.name)
@@ -279,54 +388,39 @@ class Worker(QThread):
                             file_path.name
                         )
                         processed_files_count += 1
-                        # Aktualizacja progressu co jakiś czas
                     except Exception as e:
-                        self.error_occurred.emit(
-                            f"Błąd kopiowania {file_path} (trening): {e}"
-                        )
-                if self.is_cancelled:
+                        logger.error(f"Błąd kopiowania {file_path} (trening): {e}")
+                        return None, f"Błąd kopiowania {file_path} (trening): {e}"
+                if cancel_check and cancel_check():
                     break
 
                 for file_path in valid_files_to_copy:
-                    if self.is_cancelled:
+                    if cancel_check and cancel_check():
                         break
                     try:
-                        if current_valid_path:  # Powinno być, bo num_valid > 0
+                        if current_valid_path:
                             shutil.copy2(file_path, current_valid_path / file_path.name)
-                            if self.use_validation:  # Dodatkowe zabezpieczenie
+                            if self.use_validation:
                                 self.stats["valid"][str(relative_path)] += 1
                                 self.json_report[str(relative_path)]["valid"].append(
                                     file_path.name
                                 )
                             processed_files_count += 1
-                            # Aktualizacja progressu
                     except Exception as e:
-                        self.error_occurred.emit(
-                            f"Błąd kopiowania {file_path} (walidacja): {e}"
-                        )
-                if self.is_cancelled:
+                        logger.error(f"Błąd kopiowania {file_path} (walidacja): {e}")
+                        return None, f"Błąd kopiowania {file_path} (walidacja): {e}"
+                if cancel_check and cancel_check():
                     break
 
-            if self.is_cancelled:
-                self.finished.emit("Anulowano.")
-            else:
-                self.progress_updated.emit(100, "Zakończono kopiowanie plików.")
-                report = self._generate_report()
-                json_path = self.output_dir / "raport_kopiowania.json"
-                with open(json_path, "w", encoding="utf-8") as f:
-                    json.dump(self.json_report, f, ensure_ascii=False, indent=2)
-                self.finished.emit(
-                    f"Przetwarzanie zakończone pomyślnie!\n\n{report}\n\nZapisano raport JSON: {json_path}"
-                )
+            logger.info("Przetwarzanie zakończone sukcesem")
+            return self._generate_report(), None
 
-        except ValueError as ve:
-            self.error_occurred.emit(f"Błąd konfiguracji: {ve}")
-            self.finished.emit(f"Błąd: {ve}")
         except Exception as e:
-            self.error_occurred.emit(f"Niespodziewany błąd: {e}")
-            self.finished.emit(f"Niespodziewany błąd: {e}")
+            logger.error(f"Wystąpił błąd podczas przetwarzania: {e}")
+            return None, str(e)
 
     def _generate_report(self):
+        """Generuje raport z przetwarzania"""
         report = ["=== RAPORT KOPIOWANIA ===", ""]
         if self.split_mode == "percent":
             report.append(f"Algorytm: Podział procentowy (dla wybranych kategorii)")
@@ -388,29 +482,187 @@ class Worker(QThread):
         report.append(f"  - Walidacja: {total_valid} plików")
         return "\n".join(report)
 
+
+class Worker(QThread):
+    """Wątek do przetwarzania danych w tle"""
+
+    progress_updated = pyqtSignal(int, str)
+    finished = pyqtSignal(str)
+    error_occurred = pyqtSignal(str)
+
+    def __init__(
+        self,
+        input_dir,
+        output_dir,
+        split_mode,
+        split_value,
+        use_validation=True,
+        selected_categories=None,
+    ):
+        super().__init__()
+        logger.info("Inicjalizacja wątku Worker")
+        self.splitter = FileSplitter(
+            input_dir,
+            output_dir,
+            split_mode,
+            split_value,
+            use_validation,
+            selected_categories,
+        )
+        self.is_cancelled = False
+
+    def run(self):
+        try:
+            logger.info("Rozpoczynam przetwarzanie w wątku Worker")
+            self.progress_updated.emit(0, "Rozpoczynanie przetwarzania...")
+
+            result, error = self.splitter.process_files(
+                progress_callback=self.progress_updated.emit,
+                cancel_check=lambda: self.is_cancelled,
+            )
+
+            if self.is_cancelled:
+                logger.info("Przetwarzanie zostało anulowane")
+                self.finished.emit("Anulowano.")
+            elif error:
+                logger.error(f"Wystąpił błąd podczas przetwarzania: {error}")
+                self.error_occurred.emit(f"Błąd: {error}")
+                self.finished.emit(f"Błąd: {error}")
+            else:
+                logger.info("Przetwarzanie zakończone sukcesem")
+                self.finished.emit(result)
+
+        except ConfigurationError as ce:
+            logger.error(f"Błąd konfiguracji: {ce}")
+            self.error_occurred.emit(f"Błąd konfiguracji: {ce}")
+            self.finished.emit(f"Błąd: {ce}")
+        except ProcessingError as pe:
+            logger.error(f"Błąd przetwarzania: {pe}")
+            self.error_occurred.emit(f"Błąd przetwarzania: {pe}")
+            self.finished.emit(f"Błąd: {pe}")
+        except Exception as e:
+            logger.error(f"Niespodziewany błąd: {e}")
+            self.error_occurred.emit(f"Niespodziewany błąd: {e}")
+            self.finished.emit(f"Niespodziewany błąd: {e}")
+
     def cancel(self):
+        logger.info("Anulowanie przetwarzania")
         self.is_cancelled = True
         self.progress_updated.emit(0, "Anulowanie...")
+
+
+# Sygnały dla skanera folderów
+class ScannerSignals(QObject):
+    """Sygnały emitowane przez skaner katalogów"""
+
+    finished = pyqtSignal(dict)  # Przekazuje słownik z danymi skanowania
+    progress = pyqtSignal(int, str)  # Postęp (procent, wiadomość)
+    error = pyqtSignal(str)  # Komunikat błędu
+
+
+class FolderScanner(QRunnable):
+    """Zadanie skanowania katalogów w tle używające QRunnable"""
+
+    def __init__(self, root_path, allowed_extensions):
+        super().__init__()
+        logger.info(f"Inicjalizacja FolderScanner dla ścieżki: {root_path}")
+        self.root_path = Path(root_path)
+        self.allowed_extensions = allowed_extensions
+        self.signals = ScannerSignals()
+
+    @pyqtSlot()
+    def run(self):
+        """Wykonuje skanowanie katalogów"""
+        try:
+            logger.info("Rozpoczynam skanowanie katalogów")
+            result = {
+                "folder_counts": {},
+                "min_files_count": float("inf"),
+                "min_files_folder": None,
+                "total_files": 0,
+            }
+
+            # Określ całkowitą liczbę folderów
+            folders = [f for f in self.root_path.iterdir() if f.is_dir()]
+            total_folders = len(folders)
+            logger.info(f"Znaleziono {total_folders} folderów do przeskanowania")
+
+            for i, category_dir in enumerate(folders):
+                # Aktualizuj postęp
+                progress_percent = (
+                    int((i / total_folders) * 100) if total_folders > 0 else 0
+                )
+                self.signals.progress.emit(
+                    progress_percent,
+                    f"Skanowanie: {category_dir.name} ({i+1}/{total_folders})",
+                )
+
+                # Policz pliki w kategorii
+                file_count = sum(
+                    1
+                    for f in category_dir.iterdir()
+                    if f.is_file() and f.suffix.lower() in self.allowed_extensions
+                )
+
+                result["folder_counts"][category_dir.name] = file_count
+                result["total_files"] += file_count
+
+                logger.info(
+                    f"Kategoria {category_dir.name}: znaleziono {file_count} plików"
+                )
+
+                # Aktualizuj minimum, jeśli kategoria ma pliki
+                if 0 < file_count < result["min_files_count"]:
+                    result["min_files_count"] = file_count
+                    result["min_files_folder"] = category_dir.name
+                    logger.info(
+                        f"Nowa minimalna liczba plików: {file_count} w kategorii {category_dir.name}"
+                    )
+
+            # Zakończ, jeśli nie znaleziono minimum
+            if result["min_files_count"] == float("inf"):
+                result["min_files_count"] = 0
+                result["min_files_folder"] = None
+                logger.warning("Nie znaleziono żadnych plików w kategoriach")
+
+            logger.info(
+                f"Skanowanie zakończone: {result['total_files']} plików w {len(result['folder_counts'])} kategoriach"
+            )
+            self.signals.finished.emit(result)
+
+        except Exception as e:
+            logger.error(f"Błąd podczas skanowania katalogów: {e}")
+            self.signals.error.emit(str(e))
 
 
 # --- Główna klasa aplikacji GUI ---
 class DataSplitterApp(QWidget):
     def __init__(self):
         super().__init__()
+        logger.info("Inicjalizacja DataSplitterApp")
         self.input_dir = ""
         self.output_dir = ""
         self.processing_thread = None
         self.files_list = []
 
-        icon_path = Path("resources/img/icon.png")  # Użyj Path dla spójności
+        # Inicjalizacja puli wątków
+        self.threadpool = QThreadPool()
+        logger.info(
+            f"Używam puli wątków z maksymalnie {self.threadpool.maxThreadCount()} wątkami"
+        )
+
+        # Inicjalizacja interfejsu
+        icon_path = Path("resources/img/icon.png")
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
+            logger.info(f"Wczytano ikonę aplikacji: {icon_path}")
         else:
-            print(f"Nie znaleziono pliku ikony: {icon_path}")
+            logger.warning(f"Nie znaleziono pliku ikony: {icon_path}")
 
         self.initUI()
         self._apply_material_theme()
-        self.update_files_limit_and_validation_based_on_selection()  # Inicjalizacja kontrolek
+        self.update_files_limit_and_validation_based_on_selection()
+        logger.info("Inicjalizacja DataSplitterApp zakończona")
 
     def _apply_material_theme(self):
         self.setStyleSheet(
@@ -421,7 +673,7 @@ class DataSplitterApp(QWidget):
             QLineEdit {{ background-color: #1C1C1C; border: 1px solid {BORDER_COLOR}; border-radius: 2px; padding: 2px; }}
             QSlider::groove:horizontal {{ border: 1px solid {BORDER_COLOR}; height: 8px; background: {SURFACE}; margin: 2px 0; border-radius: 4px; }}
             QSlider::handle:horizontal {{ background: {PRIMARY_COLOR}; border: 1px solid {PRIMARY_COLOR}; width: 18px; margin: -2px 0; border-radius: 9px; }}
-            QSlider::sub-page:horizontal {{ background: {PRIMARY_COLOR}; border-radius: 4px; }}
+            QSlider::sub-page:horizontal {{ background-color: {PRIMARY_COLOR}; border-radius: 4px; }}
             QProgressBar {{ border: 1px solid {BORDER_COLOR}; background-color: {SURFACE}; text-align: center; color: {TEXT_COLOR}; }}
             QProgressBar::chunk {{ background-color: {PRIMARY_COLOR}; }}
             QTextEdit {{ background-color: #1C1C1C; border: 1px solid {BORDER_COLOR}; border-radius: 2px; padding: 2px; font-family: 'Consolas', 'Courier New', monospace; font-size: 10px; }}
@@ -594,9 +846,10 @@ class DataSplitterApp(QWidget):
             self.update_files_limit_and_validation_based_on_selection()
 
     def update_folder_tree(self):
+        """Aktualizuje drzewo folderów z wykorzystaniem QThreadPool"""
         self.folder_tree.clear()
         if not self.input_dir:
-            self.update_files_limit_and_validation_based_on_selection()  # Aktualizuj kontrolki nawet jeśli brak folderu
+            self.update_files_limit_and_validation_based_on_selection()
             return
 
         root_path = Path(self.input_dir)
@@ -604,44 +857,61 @@ class DataSplitterApp(QWidget):
         self.folder_tree.addTopLevelItem(tree_root_item)
         tree_root_item.setExpanded(True)
 
-        try:  # Odłącz, aby uniknąć wielokrotnego podłączania lub błędów
+        # Odłącz sygnał zmiany elementu
+        try:
             self.folder_tree.itemChanged.disconnect(self.on_folder_tree_item_changed)
         except TypeError:
-            pass  # Nie było podłączone
+            pass
 
-        # Znajdź folder z najmniejszą liczbą plików
-        min_files_count = float("inf")
-        min_files_folder = None
-        folder_counts = {}
+        # Uruchom skaner folderów w tle
+        scanner = FolderScanner(root_path, ALLOWED_IMAGE_EXTENSIONS)
 
-        for category_dir in root_path.iterdir():
-            if category_dir.is_dir():
-                direct_file_count = sum(
-                    1
-                    for f in category_dir.iterdir()
-                    if f.is_file() and f.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
-                )
-                folder_counts[category_dir.name] = direct_file_count
-                if direct_file_count < min_files_count:
-                    min_files_count = direct_file_count
-                    min_files_folder = category_dir.name
+        # Funkcje obsługi sygnałów
+        def on_scan_progress(percent, message):
+            self.log_message(message)
+            self.progress_bar.setValue(percent)
+            QApplication.processEvents()
 
-        # Dodaj foldery do drzewa
-        for category_dir in root_path.iterdir():
-            if category_dir.is_dir():
-                direct_file_count = folder_counts[category_dir.name]
-                display_text = f"{category_dir.name} ({direct_file_count} plików)"
-                item = QTreeWidgetItem(tree_root_item, [display_text])
-                item.setData(0, Qt.ItemDataRole.UserRole, category_dir.name)
-                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-                item.setCheckState(0, Qt.CheckState.Checked)  # Domyślnie zaznaczony
+        def on_scan_finished(result):
+            folder_counts = result["folder_counts"]
+            min_files_folder = result["min_files_folder"]
 
-                # Wyróżnij folder z najmniejszą liczbą plików
-                if category_dir.name == min_files_folder and min_files_count > 0:
-                    item.setForeground(0, QColor(HIGHLIGHT_COLOR))
+            # Dodaj foldery do drzewa
+            for category_dir in root_path.iterdir():
+                if category_dir.is_dir():
+                    file_count = folder_counts.get(category_dir.name, 0)
+                    display_text = f"{category_dir.name} ({file_count} plików)"
+                    item = QTreeWidgetItem(tree_root_item, [display_text])
+                    item.setData(0, Qt.ItemDataRole.UserRole, category_dir.name)
+                    item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                    item.setCheckState(0, Qt.CheckState.Checked)
 
-        self.folder_tree.itemChanged.connect(self.on_folder_tree_item_changed)
-        self.update_files_limit_and_validation_based_on_selection()  # Zawsze aktualizuj po przebudowie drzewa
+                    # Wyróżnij folder z najmniejszą liczbą plików
+                    if category_dir.name == min_files_folder and file_count > 0:
+                        item.setForeground(0, QColor(HIGHLIGHT_COLOR))
+
+                    QApplication.processEvents()  # Zapobiega blokowaniu UI
+
+            # Podłącz ponownie sygnał i aktualizuj kontrolki
+            self.folder_tree.itemChanged.connect(self.on_folder_tree_item_changed)
+            self.update_files_limit_and_validation_based_on_selection()
+            self.progress_bar.setValue(0)  # Zresetuj pasek postępu
+            self.log_message(
+                f"Znaleziono {result['total_files']} plików w {len(folder_counts)} kategoriach."
+            )
+
+        def on_scan_error(error_message):
+            self.log_message(f"Błąd podczas skanowania: {error_message}", logging.ERROR)
+            self.progress_bar.setValue(0)
+            # Podłącz ponownie sygnał
+            self.folder_tree.itemChanged.connect(self.on_folder_tree_item_changed)
+
+        # Podłącz sygnały i rozpocznij skanowanie
+        scanner.signals.progress.connect(on_scan_progress)
+        scanner.signals.finished.connect(on_scan_finished)
+        scanner.signals.error.connect(on_scan_error)
+
+        self.threadpool.start(scanner)
 
     def on_folder_tree_item_changed(self, item, column):
         if (
@@ -691,103 +961,195 @@ class DataSplitterApp(QWidget):
         return (min_val, folders_with_min) if min_val != float("inf") else (0, [])
 
     def update_files_limit_and_validation_based_on_selection(self):
+        """Aktualizuje stan kontrolek na podstawie wybranych kategorii"""
         selected_cats = self.get_selected_categories_names()
-
-        min_files_in_selection, _ = self.get_min_files_in_selected_categories(
-            selected_cats
+        min_files_in_selection, folders_with_min = (
+            self.get_min_files_in_selected_categories(selected_cats)
         )
 
+        # Aktualizuj stan SpinBoxa dla plików
+        self._update_files_spin_state(selected_cats, min_files_in_selection)
+
+        # Aktualizuj stan checkboxa walidacji
+        self._update_validation_checkbox_state(selected_cats, min_files_in_selection)
+
+    def _update_files_spin_state(self, selected_cats, min_files_in_selection):
+        """Aktualizuje stan kontrolki files_spin"""
         if not selected_cats:
             self.files_spin.setEnabled(False)
-            self.files_spin.setValue(1)  # Reset do minimum, gdy nic nie wybrano
+            self.files_spin.setValue(1)
             self.log_message("Wybierz kategorie, aby dostosować opcje podziału.")
         else:
-            self.files_spin.setEnabled(
-                self.mode_combo.currentIndex() == 1
-            )  # Aktywny tylko w trybie limitu
+            self.files_spin.setEnabled(self.mode_combo.currentIndex() == 1)
             if min_files_in_selection > 0:
                 self.files_spin.setMaximum(min_files_in_selection)
-                # Nie zmieniaj wartości spinboxa, jeśli obecna jest nadal ważna
                 if self.files_spin.value() > min_files_in_selection:
                     self.files_spin.setValue(min_files_in_selection)
-            else:  # Brak plików w wybranych kategoriach
-                self.files_spin.setMaximum(1)  # Ustaw max na 1 (min)
+            else:
+                self.files_spin.setMaximum(1)
                 self.files_spin.setValue(1)
-            # self.log_message(f"Min. plików w wybranych: {min_files_in_selection}.")
 
-        # Logika dla checkboxa walidacji
-        current_files_limit_from_spin = self.files_spin.value()
+    def _update_validation_checkbox_state(self, selected_cats, min_files_in_selection):
+        """Aktualizuje stan checkboxa walidacji i jego etykiety"""
+        current_files_limit = self.files_spin.value()
 
         if self.mode_combo.currentIndex() == 0:  # Tryb procentowy
-            can_create_validation = self.split_slider.value() < 100
-            self.validation_check.setEnabled(
-                can_create_validation and bool(selected_cats)
-            )  # Muszą być wybrane kategorie
-            if not can_create_validation:
-                self.validation_check.setChecked(False)
-                self.validation_label.setText("(100% tren.)")
-            else:
-                self.validation_label.setText(
-                    f"({100 - self.split_slider.value()}% walid.)"
-                )
+            self._update_validation_for_percent_mode(selected_cats)
         else:  # Tryb limitu plików
-            # min_files_in_selection to już minimum z *aktualnie wybranych*
-            can_create_validation = (
-                current_files_limit_from_spin < min_files_in_selection
-                and min_files_in_selection > 0
-                and bool(selected_cats)
+            self._update_validation_for_files_mode(
+                selected_cats, min_files_in_selection, current_files_limit
             )
-            self.validation_check.setEnabled(can_create_validation)
-            if not can_create_validation:
-                self.validation_check.setChecked(False)
-                if not selected_cats:
-                    self.validation_label.setText("(wybierz kat.)")
-                elif min_files_in_selection == 0:
-                    self.validation_label.setText("(brak plików)")
-                else:
-                    self.validation_label.setText("(limit >= min.)")
-            else:
-                max_valid = min_files_in_selection - current_files_limit_from_spin
-                self.validation_label.setText(f"(do {max_valid} walid.)")
 
-        # Jeśli validation_check jest odznaczone przez użytkownika, nie zaznaczaj go automatycznie
-        # Powyższa logika tylko ustawia `setEnabled` i tekst etykiety.
+    def _update_validation_for_percent_mode(self, selected_cats):
+        """Aktualizuje stan walidacji dla trybu procentowego"""
+        can_create_validation = self.split_slider.value() < 100
+        self.validation_check.setEnabled(can_create_validation and bool(selected_cats))
+
+        if not can_create_validation:
+            self.validation_check.setChecked(False)
+            self.validation_label.setText("(100% tren.)")
+        else:
+            self.validation_label.setText(
+                f"({100 - self.split_slider.value()}% walid.)"
+            )
+
+    def _update_validation_for_files_mode(
+        self, selected_cats, min_files_in_selection, current_files_limit
+    ):
+        """Aktualizuje stan walidacji dla trybu limitu plików"""
+        can_create_validation = (
+            current_files_limit < min_files_in_selection
+            and min_files_in_selection > 0
+            and bool(selected_cats)
+        )
+        self.validation_check.setEnabled(can_create_validation)
+
+        if not can_create_validation:
+            self.validation_check.setChecked(False)
+            self._set_validation_label_for_files_mode(
+                selected_cats, min_files_in_selection
+            )
+        else:
+            max_valid = min_files_in_selection - current_files_limit
+            self.validation_label.setText(f"(do {max_valid} walid.)")
+
+    def _set_validation_label_for_files_mode(
+        self, selected_cats, min_files_in_selection
+    ):
+        """Ustawia tekst etykiety walidacji dla trybu plików gdy walidacja jest niedostępna"""
+        if not selected_cats:
+            self.validation_label.setText("(wybierz kat.)")
+        elif min_files_in_selection == 0:
+            self.validation_label.setText("(brak plików)")
+        else:
+            self.validation_label.setText("(limit >= min.)")
 
     def update_files_list(self):
+        """Aktualizuje listę wszystkich plików w wybranych katalogach"""
         self.files_list_widget.clear()
         self.files_list = []
+
         if not self.input_dir:
             return
-        root_path = Path(self.input_dir)
-        for item in root_path.rglob("*"):  # rglob przechodzi przez podfoldery
-            if item.is_file() and item.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS:
-                relative_path = item.relative_to(root_path)
-                self.files_list.append(item)
-                self.files_list_widget.addItem(str(relative_path))
 
-    def log_message(self, message):
+        # Dodaj element informujący o skanowaniu
+        self.files_list_widget.addItem("Trwa skanowanie plików...")
+        QApplication.processEvents()
+
+        # Skaner plików w osobnym wątku
+        class FileScanner(QThread):
+            finished = pyqtSignal(list)
+            progress = pyqtSignal(int)
+
+            def __init__(self, root_path, allowed_extensions):
+                super().__init__()
+                self.root_path = root_path
+                self.allowed_extensions = allowed_extensions
+                self.files = []
+
+            def run(self):
+                for item in self.root_path.rglob("*"):
+                    if (
+                        item.is_file()
+                        and item.suffix.lower() in self.allowed_extensions
+                    ):
+                        relative_path = item.relative_to(self.root_path)
+                        self.files.append((item, str(relative_path)))
+                        if len(self.files) % 100 == 0:
+                            self.progress.emit(len(self.files))
+                self.finished.emit(self.files)
+
+        # Funkcje zwrotne dla skanera
+        def on_scan_progress(count):
+            self.files_list_widget.item(0).setText(
+                f"Skanowanie w toku... Znaleziono {count} plików"
+            )
+            QApplication.processEvents()
+
+        def on_scan_complete(files):
+            self.files_list_widget.clear()
+            self.files_list = [f[0] for f in files]  # Zapisz pełne ścieżki
+
+            # Pokaż tylko pierwsze 1000 plików w widoku
+            display_limit = 1000
+            for i, (_, file_path_str) in enumerate(files[:display_limit]):
+                self.files_list_widget.addItem(file_path_str)
+
+            # Dodaj informację o limicie
+            if len(files) > display_limit:
+                self.files_list_widget.addItem(
+                    f"... oraz {len(files) - display_limit} więcej plików"
+                )
+
+            self.log_message(f"Znaleziono łącznie {len(files)} plików.", logging.INFO)
+
+        # Uruchom skaner
+        scanner = FileScanner(Path(self.input_dir), ALLOWED_IMAGE_EXTENSIONS)
+        scanner.progress.connect(on_scan_progress)
+        scanner.finished.connect(on_scan_complete)
+        scanner.start()
+
+    def log_message(self, message, level=logging.INFO):
+        """Loguje wiadomość w interfejsie i w systemie logowania"""
         self.log_edit.append(message)
         self.log_edit.verticalScrollBar().setValue(
             self.log_edit.verticalScrollBar().maximum()
         )
         QApplication.processEvents()
 
+        # Logowanie do pliku
+        if level == logging.DEBUG:
+            logger.debug(message)
+        elif level == logging.INFO:
+            logger.info(message)
+        elif level == logging.WARNING:
+            logger.warning(message)
+        elif level == logging.ERROR:
+            logger.error(message)
+        elif level == logging.CRITICAL:
+            logger.critical(message)
+
     def select_input_folder(self):
+        logger.info("Rozpoczynam wybór folderu źródłowego")
         folder = QFileDialog.getExistingDirectory(self, "Wybierz folder źródłowy")
         if folder:
             self.input_dir = folder
             self.in_path_edit.setText(folder)
-            self.log_message(f"Wybrano folder źródłowy: {folder}")
-            self.update_folder_tree()  # To wywoła aktualizację kontrolek
+            logger.info(f"Wybrano folder źródłowy: {folder}")
+            self.update_folder_tree()
             self.update_files_list()
-            # update_files_limit_and_validation_based_on_selection() jest wywoływane w update_folder_tree
+        else:
+            logger.info("Anulowano wybór folderu źródłowego")
 
     def select_output_folder(self):
+        logger.info("Rozpoczynam wybór folderu docelowego")
         folder = QFileDialog.getExistingDirectory(self, "Wybierz folder docelowy")
         if folder:
             self.output_dir = folder
             self.out_path_edit.setText(folder)
-            self.log_message(f"Wybrano folder docelowy: {folder}")
+            logger.info(f"Wybrano folder docelowy: {folder}")
+        else:
+            logger.info("Anulowano wybór folderu docelowego")
 
     def update_progress(self, value, message):
         self.progress_bar.setValue(value)
@@ -795,18 +1157,21 @@ class DataSplitterApp(QWidget):
             self.log_message(message)
 
     def processing_finished(self, final_message):
+        logger.info(f"Zakończono przetwarzanie: {final_message}")
         self.log_message(f"Status końcowy: {final_message}")
-        QApplication.processEvents()  # Upewnij się, że log jest widoczny przed dialogiem
+        QApplication.processEvents()
 
         if "Błąd" in final_message:
+            logger.error(f"Wystąpił błąd podczas przetwarzania: {final_message}")
             QMessageBox.warning(
                 self, "Błąd", f"Wystąpił błąd:\n{final_message.splitlines()[-1]}"
             )
         elif "Anulowano" not in final_message:
+            logger.info("Przetwarzanie zakończone sukcesem")
             dialog = ReportDialog(final_message, self)
             dialog.exec()
-            # QMessageBox.information(self, "Zakończono", "Przetwarzanie danych zakończone.") # Dialog raportu wystarczy
         else:
+            logger.info("Przetwarzanie zostało anulowane przez użytkownika")
             QMessageBox.information(
                 self, "Anulowano", "Przetwarzanie zostało anulowane."
             )
@@ -816,25 +1181,29 @@ class DataSplitterApp(QWidget):
         self.mode_combo.setEnabled(True)
         self.split_slider.setEnabled(self.mode_combo.currentIndex() == 0)
         self.files_spin.setEnabled(self.mode_combo.currentIndex() == 1)
-        # Stan validation_check jest zarządzany przez update_files_limit...
-        self.update_files_limit_and_validation_based_on_selection()  # Przywróć stan kontrolek
+        self.update_files_limit_and_validation_based_on_selection()
         self.processing_thread = None
 
     def processing_error(self, error_message):
+        logger.error(f"Błąd w wątku przetwarzania: {error_message}")
         self.log_message(f"BŁĄD WĄTKU: {error_message}")
 
     def start_processing(self):
+        logger.info("Rozpoczynam przetwarzanie")
         if not self.input_dir or not Path(self.input_dir).is_dir():
+            logger.error("Nie wybrano prawidłowego folderu źródłowego")
             QMessageBox.warning(
                 self, "Brak folderu", "Wybierz prawidłowy folder źródłowy."
             )
             return
         if not self.output_dir:
+            logger.error("Nie wybrano folderu docelowego")
             QMessageBox.warning(self, "Brak folderu", "Wybierz folder docelowy.")
             return
 
         selected_categories = self.get_selected_categories_names()
         if not selected_categories:
+            logger.error("Nie wybrano żadnych kategorii")
             QMessageBox.warning(
                 self,
                 "Brak kategorii",
@@ -842,11 +1211,16 @@ class DataSplitterApp(QWidget):
             )
             return
 
+        logger.info(f"Wybrane kategorie: {selected_categories}")
+
         # Sprawdzenie ścieżek
         input_path = Path(self.input_dir)
         output_path = Path(self.output_dir)
-        try:  # Aby uniknąć błędu, jeśli output_dir nie jest jeszcze absolutny lub poprawny
+        try:
             if input_path == output_path or output_path.is_relative_to(input_path):
+                logger.warning(
+                    f"Folder docelowy jest taki sam jak źródłowy lub znajduje się wewnątrz niego: {output_path}"
+                )
                 reply = QMessageBox.question(
                     self,
                     "Potwierdzenie ścieżki",
@@ -857,18 +1231,18 @@ class DataSplitterApp(QWidget):
                     QMessageBox.StandardButton.No,
                 )
                 if reply == QMessageBox.StandardButton.No:
+                    logger.info("Użytkownik anulował operację")
                     return
-        except (
-            ValueError
-        ):  # Np. gdy jedna ścieżka jest względna a druga absolutna w inny sposób
-            pass  # Pozwól Workerowi na dalszą walidację
+        except ValueError as e:
+            logger.warning(f"Błąd podczas sprawdzania ścieżek: {e}")
+            pass
 
         self.start_button.setEnabled(False)
         self.cancel_button.setEnabled(True)
         self.mode_combo.setEnabled(False)
         self.split_slider.setEnabled(False)
         self.files_spin.setEnabled(False)
-        self.validation_check.setEnabled(False)  # Całkowicie blokujemy kontrolki
+        self.validation_check.setEnabled(False)
         self.progress_bar.setValue(0)
         self.log_edit.clear()
 
@@ -880,12 +1254,9 @@ class DataSplitterApp(QWidget):
         )
         use_validation = self.validation_check.isChecked()
 
-        self.log_message("=" * 30)
-        self.log_message(
-            f"Rozpoczynanie (tryb: {split_mode}, wartość: {split_value}, walidacja: {use_validation})"
+        logger.info(
+            f"Parametry przetwarzania: tryb={split_mode}, wartość={split_value}, walidacja={use_validation}"
         )
-        self.log_message(f"Wybrane kategorie: {', '.join(selected_categories)}")
-        # ... (reszta logów) ...
 
         self.processing_thread = Worker(
             self.input_dir,
@@ -893,16 +1264,17 @@ class DataSplitterApp(QWidget):
             split_mode,
             split_value,
             use_validation,
-            selected_categories,  # Przekazanie wybranych kategorii
+            selected_categories,
         )
         self.processing_thread.progress_updated.connect(self.update_progress)
         self.processing_thread.finished.connect(self.processing_finished)
         self.processing_thread.error_occurred.connect(self.processing_error)
+        logger.info("Uruchamiam wątek przetwarzania")
         self.processing_thread.start()
 
     def cancel_processing(self):
         if self.processing_thread and self.processing_thread.isRunning():
-            self.log_message("Wysyłanie sygnału anulowania...")
+            logger.info("Wysyłanie sygnału anulowania...")
             self.processing_thread.cancel()
             self.cancel_button.setEnabled(False)
 
@@ -948,18 +1320,20 @@ class DataSplitterApp(QWidget):
 class ReportDialog(QDialog):
     def __init__(self, report_text, parent=None):
         super().__init__(parent)
+        logger.info("Inicjalizacja okna raportu")
         self.setWindowTitle("Raport kopiowania")
         self.setMinimumSize(800, 600)
         layout = QVBoxLayout()
         self.text_edit = QTextEdit()
         self.text_edit.setReadOnly(True)
-        self.text_edit.setFont(QFont("Consolas", 10))  # Zmniejszona czcionka
+        self.text_edit.setFont(QFont("Consolas", 10))
         self.text_edit.setStyleSheet(
             f"""
             QTextEdit {{ background-color: {BACKGROUND}; color: {TEXT_COLOR}; border: 1px solid {BORDER_COLOR}; padding: 10px; }}
         """
         )
-        self.text_edit.setHtml(self._format_report_to_html(report_text))  # Użyj HTML
+        self.text_edit.setHtml(self._format_report_to_html(report_text))
+        logger.info("Raport został sformatowany i wyświetlony")
         close_button = QPushButton("Zamknij")
         close_button.setStyleSheet(
             f"""
@@ -971,16 +1345,24 @@ class ReportDialog(QDialog):
         layout.addWidget(self.text_edit)
         layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
         self.setLayout(layout)
+        logger.info("Okno raportu zostało skonfigurowane")
 
     def _format_report_to_html(self, report_text):
-        # Proste formatowanie - można rozbudować
+        """Formatuje raport do HTML"""
+        logger.debug("Formatowanie raportu do HTML")
         html = report_text.replace("\n", "<br>")
-        html = html.replace("===", "<h3>").replace(" ===", "</h3>")  # Nagłówki
-        # Można dodać więcej reguł, np. dla list
+        html = html.replace("===", "<h3>").replace(" ===", "</h3>")
         return f"<body style='color:{TEXT_COLOR}; background-color:{BACKGROUND};'>{html}</body>"
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    ex = DataSplitterApp()
-    sys.exit(app.exec())
+    try:
+        logger.info("Uruchamianie aplikacji")
+        app = QApplication(sys.argv)
+        logger.info("QApplication utworzona")
+        ex = DataSplitterApp()
+        logger.info("DataSplitterApp utworzona")
+        sys.exit(app.exec())
+    except Exception as e:
+        logger.critical(f"Krytyczny błąd podczas uruchamiania aplikacji: {e}")
+        raise

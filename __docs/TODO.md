@@ -1,7 +1,8 @@
 TODO 0.4
 
-<!-- - fine-tuning dopracowac -->
+- fine-tuning dopracowac - dialog do poprawy ładowanie profili nie dziala
 - folder log
+- menu poprawic
 
 - lista modeli/ status ilosc kategorii?>?
 - przenieść pomoc
