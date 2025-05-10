@@ -123,10 +123,10 @@ def verify_model_config(model_path, class_names):
         class_names: Słownik mapujący indeksy na nazwy klas
 
     Returns:
-        bool: True jeśli konfiguracja jest zgodna, False w przeciwnym razie
+        bool: True jeśli konfiguracja είναι zgodna, False w przeciwnym razie
     """
-    # Sprawdź czy istnieje plik config.json
-    config_path = os.path.join(os.path.dirname(model_path), "config.json")
+    # Poprawiono sposób tworzenia ścieżki do pliku konfiguracyjnego
+    config_path = os.path.splitext(model_path)[0] + "_config.json"
     if not os.path.exists(config_path):
         print(f"Uwaga: Nie znaleziono pliku konfiguracyjnego {config_path}")
         return False
@@ -313,45 +313,74 @@ def display_directory_structure(verify_result):
 def create_class_mapping(model_config, train_directories):
     """
     Tworzy mapowanie między klasami z modelu bazowego a klasami w katalogu treningowym.
-
-    Args:
-        model_config: Konfiguracja modelu bazowego wczytana z pliku config.json
-        train_directories: Lista katalogów klas w zbiorze treningowym
-
-    Returns:
-        dict: Słownik mapujący nazwy klas na ich indeksy
     """
+    print("\n=== SZCZEGÓŁOWE MAPOWANIE KLAS ===")
+    print("\n1. KLASY BAZOWE (z modelu):")
+    print("--------------------------------")
+
     # Utwórz odwrotne mapowanie "nazwa klasy -> indeks" z modelu bazowego
     base_class_to_idx = {}
     if "class_names" in model_config:
         base_class_to_idx = {
             name.lower(): int(idx) for idx, name in model_config["class_names"].items()
         }
+        for idx, name in model_config["class_names"].items():
+            print(f"  [{idx}] {name}")
     elif "metadata" in model_config and "class_names" in model_config["metadata"]:
         base_class_to_idx = {
             name.lower(): int(idx)
             for idx, name in model_config["metadata"]["class_names"].items()
         }
+        for idx, name in model_config["metadata"]["class_names"].items():
+            print(f"  [{idx}] {name}")
+    else:
+        print("  UWAGA: Nie znaleziono mapowania klas w konfiguracji modelu!")
 
-    # Mapuj klasy treningowe na indeksy z modelu bazowego lub utwórz nowe indeksy
+    print("\n2. KLASY DO DOSZKALANIA (z folderów):")
+    print("--------------------------------")
+    for class_name in sorted(train_directories):
+        print(f"  - {class_name}")
+
+    print("\n3. MAPOWANIE KLAS:")
+    print("--------------------------------")
     class_mapping = {}
     max_idx = -1
     if base_class_to_idx:
         max_idx = max([int(idx) for idx in base_class_to_idx.values()], default=-1)
+        print(f"Maksymalny indeks w modelu bazowym: {max_idx}")
 
     for class_name in sorted(train_directories):
         class_lower = class_name.lower()
         if class_lower in base_class_to_idx:
-            # Klasa istnieje w modelu bazowym, użyj jej oryginalnego indeksu
-            class_mapping[class_name] = base_class_to_idx[class_lower]
+            # Klasa istnieje w modelu bazowym
+            base_idx = base_class_to_idx[class_lower]
+            class_mapping[class_name] = base_idx
             print(
-                f"  ✓ Klasa '{class_name}' mapowana na istniejący indeks {base_class_to_idx[class_lower]}"
+                f"  ✓ Klasa '{class_name}' -> ID {base_idx} (istniejąca w modelu bazowym)"
             )
         else:
-            # Nowa klasa, przypisz jej nowy indeks
+            # Nowa klasa
             max_idx += 1
             class_mapping[class_name] = max_idx
-            print(f"  + Nowa klasa '{class_name}' mapowana na nowy indeks {max_idx}")
+            print(f"  + Klasa '{class_name}' -> ID {max_idx} (nowa klasa)")
+
+    print("\n4. PODSUMOWANIE MAPOWANIA:")
+    print("--------------------------------")
+    print(f"- Liczba klas w modelu bazowym: {len(base_class_to_idx)}")
+    print(f"- Liczba klas do doszkalania: {len(train_directories)}")
+    print(
+        f"- Liczba nowych klas: {len([c for c in class_mapping.values() if c > max_idx])}"
+    )
+    print(
+        f"- Liczba zachowanych klas z modelu bazowego: {len([c for c in class_mapping.values() if c <= max_idx])}"
+    )
+
+    print("\n5. PEŁNE MAPOWANIE:")
+    print("--------------------------------")
+    print("Format: [ID] Nazwa klasy -> Mapped ID (Status)")
+    for class_name, mapped_idx in sorted(class_mapping.items(), key=lambda x: x[1]):
+        status = "Nowa klasa" if mapped_idx > max_idx else "Istniejąca klasa"
+        print(f"  [{mapped_idx}] {class_name} -> {mapped_idx} ({status})")
 
     return class_mapping
 
@@ -449,22 +478,59 @@ def fine_tune_model(
             with open(base_config_path, "r") as f:
                 base_config = json.load(f)
                 print(f"\nWczytano konfigurację modelu bazowego: {base_config_path}")
+                # Wyświetl tablicę class_names
+                if "class_names" in base_config:
+                    print("\nKlasy z modelu bazowego:")
+                    for idx, name in base_config["class_names"].items():
+                        print(f"  - ID {idx}: {name}")
+                elif (
+                    "metadata" in base_config
+                    and "class_names" in base_config["metadata"]
+                ):
+                    print("\nKlasy z modelu bazowego (z metadanych):")
+                    for idx, name in base_config["metadata"]["class_names"].items():
+                        print(f"  - ID {idx}: {name}")
         except Exception as e:
             print(f"Ostrzeżenie: Nie udało się wczytać konfiguracji modelu: {str(e)}")
 
     # Utwórz mapowanie klas
     print("\n=== MAPOWANIE KLAS ===")
     train_directories = directory_verification["train"]["directories"].keys()
-    class_mapping = create_class_mapping(base_config, train_directories)
-
-    # Sprawdź urządzenie
-    if device is None:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Urządzenie: {device}")
 
     # 1. Załaduj bazowy model
     print("\nŁadowanie modelu bazowego...")
     base_classifier = ImageClassifier(weights_path=base_model_path)
+
+    # Wyświetl klasy z modelu bazowego
+    print("\nKlasy w modelu bazowym:")
+    for idx, name in base_classifier.class_names.items():
+        print(f"  - ID {idx}: {name}")
+
+    # Wyświetl klasy do doszkolenia
+    print("\nKlasy do doszkolenia (znalezione w folderach):")
+    for idx, folder in enumerate(sorted(train_directories)):
+        print(f"  - ID {idx}: {folder}")
+
+    # Utwórz i wyświetl mapowanie
+    print("\nMapowanie klas:")
+    class_mapping = {}
+    for class_name in sorted(train_directories):
+        class_lower = class_name.lower()
+        if class_lower in {
+            name.lower(): idx for idx, name in base_classifier.class_names.items()
+        }:
+            base_idx = next(
+                idx
+                for idx, name in base_classifier.class_names.items()
+                if name.lower() == class_lower
+            )
+            class_mapping[class_name] = base_idx
+            print(f"  ✓ {class_name} -> ID {base_idx} (istniejąca w modelu bazowym)")
+        else:
+            print(f"  + {class_name} -> Nowa klasa (będzie dodana)")
+
+    # Zachowaj oryginalne mapowanie klas
+    new_class_names = base_classifier.class_names.copy()
 
     # Utwórz kopię modelu bazowego do późniejszego użycia w technikach zapobiegających zapominaniu
     if prevent_forgetting:
@@ -483,62 +549,45 @@ def fine_tune_model(
     print(f"Liczba klas w modelu bazowym: {model_info['num_classes']}")
     print(f"Łączna liczba parametrów: {model_info['total_parameters']:,}")
 
-    # 2. Znajdź liczbę klas w nowym zbiorze danych
-    print("\nAnalizowanie zbioru treningowego...")
-    print("\nStruktura katalogu treningowego:")
-    print_directory_structure(train_dir)
+    # --- Ustalanie finalnej listy klas (`new_class_names`) dla nowego modelu ---
+    train_directories_list = sorted(list(train_directories))
 
-    if val_dir:
-        print("\nStruktura katalogu walidacyjnego:")
-        print_directory_structure(val_dir)
-
-    train_folders = [
-        f for f in os.listdir(train_dir) if os.path.isdir(os.path.join(train_dir, f))
-    ]
-    new_num_classes = len(train_folders)
-    print(f"\nZnaleziono {new_num_classes} klas w zbiorze treningowym:")
-    for idx, folder in enumerate(sorted(train_folders)):
-        print(f"  - ID {idx}: {folder}")
-
-    # 3. Utwórz mapowanie klas na podstawie folderów
-    new_class_names = {
-        str(i): class_name for i, class_name in enumerate(sorted(train_folders))
-    }
-
-    # Zmodyfikowane mapowanie klas - zachowaj oryginalne klasy ORAZ dodaj nowe
     if prevent_forgetting and preserve_original_classes:
-        print("Inteligentne mapowanie klas - zachowanie indeksów oryginalnych klas...")
+        print(
+            "\nPrzygotowywanie listy klas dla nowego modelu (zachowując klasy bazowe i dodając/aktualizując z treningowych):"
+        )
+        new_class_names = {str(k): v for k, v in base_classifier.class_names.items()}
+        current_max_id = -1
+        if new_class_names:
+            current_max_id = max(int(idx_str) for idx_str in new_class_names.keys())
+        base_model_classes_by_name_lower = {
+            name.lower(): str(idx) for idx, name in base_classifier.class_names.items()
+        }
 
-        # Mapowanie klas treningowych do oryginalnych indeksów
-        class_mapping = {}
-        for class_name in sorted(train_folders):
-            added = False
-            # Sprawdź czy klasa istnieje w modelu bazowym
-            for idx, base_name in base_classifier.class_names.items():
-                if class_name.lower() == base_name.lower():
-                    class_mapping[class_name] = idx
-                    print(
-                        f"  Klasa {class_name} już istnieje w modelu bazowym z indeksem {idx}"
-                    )
-                    added = True
-                    break
+        for train_class_name in train_directories_list:
+            train_class_lower = train_class_name.lower()
+            if train_class_lower in base_model_classes_by_name_lower:
+                base_id_str = base_model_classes_by_name_lower[train_class_lower]
+                new_class_names[base_id_str] = train_class_name
+            else:
+                current_max_id += 1
+                new_class_names[str(current_max_id)] = train_class_name
+    else:
+        print(
+            "\nPrzygotowywanie listy klas dla nowego modelu (tylko klasy z folderów treningowych):"
+        )
+        new_class_names = {}
+        for i, train_class_name in enumerate(train_directories_list):
+            new_class_names[str(i)] = train_class_name
 
-            if not added:
-                # Dodajemy nową klasę z nowym indeksem
-                next_idx = str(
-                    max([int(idx) for idx in base_classifier.class_names.keys()]) + 1
-                )
-                class_mapping[class_name] = next_idx
-                print(f"  Dodajemy nową klasę {class_name} z indeksem {next_idx}")
-
-        # Zachowaj wszystkie oryginalne klasy
-        new_class_names = base_classifier.class_names.copy()
-
-        # Dodaj/zaktualizuj klasy treningowe zgodnie z mapowaniem
-        for class_name, idx in class_mapping.items():
-            new_class_names[idx] = class_name
-
-        print(f"  Finalne mapowanie klas: {len(new_class_names)} klas w modelu")
+    print(
+        f"\nFinalna lista klas przygotowana dla nowego modelu ({len(new_class_names)} klas):"
+    )
+    # Tworzymy set nazw klas treningowych dla szybkiego sprawdzania
+    training_class_names_set = set(train_directories_list)
+    for id_str, name_val in sorted(new_class_names.items(), key=lambda x: int(x[0])):
+        marker = "(doszkalana)" if name_val in training_class_names_set else ""
+        print(f"  ID {id_str}: {name_val} {marker}")
 
     # 4. Przygotowanie modelu do fine-tuningu
     print("\nPrzygotowanie modelu do fine-tuningu...")

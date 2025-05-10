@@ -200,56 +200,64 @@ def compute_fisher_information(
 ) -> Dict[str, torch.Tensor]:
     """
     Oblicza diagonalną macierz informacji Fishera dla parametrów modelu.
-
+    
     Args:
         model: Model do obliczenia informacji Fishera
         data_loader: DataLoader z przykładami
         num_samples: Liczba próbek do użycia
         device: Urządzenie do obliczeń (CPU/GPU)
-
+        
     Returns:
         Słownik z diagonalną macierzą informacji Fishera dla każdego parametru
     """
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    
+    # Inicjalizuj słownik Fisher dla każdego parametru
     fisher = {}
     for name, param in model.named_parameters():
-        fisher[name] = torch.zeros_like(param)
-
-    # Ustaw model w tryb ewaluacji podczas zbierania danych do informacji Fishera
+        if param.requires_grad:
+            fisher[name] = torch.zeros_like(param)
+    
+    # Ustaw model w tryb ewaluacji podczas zbierania danych
     model.eval()
-
+    
     sample_count = 0
+    
+    criterion = torch.nn.CrossEntropyLoss()
+    
+    # Przejdź przez dane i oblicz diagonalną macierz Fishera
     for inputs, targets in data_loader:
         if sample_count >= num_samples:
             break
-
+            
         inputs, targets = inputs.to(device), targets.to(device)
         batch_size = inputs.size(0)
-
-        # Przetwórz tylko tyle próbek, ile potrzeba, aby osiągnąć num_samples
+        
+        # Przetwórz tylko tyle próbek, ile potrzeba
         actual_batch_size = min(batch_size, num_samples - sample_count)
         if actual_batch_size < batch_size:
             inputs = inputs[:actual_batch_size]
             targets = targets[:actual_batch_size]
-
-        # Forward pass
-        outputs = model(inputs)
-        log_probs = F.log_softmax(outputs, dim=1)
-
-        # Dla każdej próbki w batch
+        
+        # Dla każdej próbki oblicz gradient log-prawdopodobieństwa
         for i in range(actual_batch_size):
-            sample_count += 1
-
-            # Oblicz gradient na podstawie log-prawdopodobieństwa poprawnej klasy
-            log_prob = log_probs[i, targets[i]]
             model.zero_grad()
-            log_prob.backward(retain_graph=(i < actual_batch_size - 1))
-
-            # Zaktualizuj informację Fishera
+            
+            # Forward pass dla pojedynczej próbki
+            output = model(inputs[i:i+1])
+            
+            # Oblicz stratę dla poprawnej klasy
+            log_prob = criterion(output, targets[i:i+1])
+            
+            # Backward pass
+            log_prob.backward()
+            
+            # Dodaj kwadraty gradientów do macierzy Fishera
             for name, param in model.named_parameters():
-                if param.grad is not None:
+                if param.requires_grad and param.grad is not None:
                     fisher[name] += param.grad.pow(2) / num_samples
-
+            
+            sample_count += 1
+    
     return fisher
