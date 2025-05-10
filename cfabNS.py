@@ -1,5 +1,4 @@
 import os
-import random  # <--- DODANO: Import modułu random
 import sys
 import traceback
 
@@ -45,57 +44,28 @@ def main():
     # --- Ekran powitalny ---
     splash = None  # Zainicjuj jako None
     try:
-        # --- POCZĄTEK ZMIAN DLA LOSOWEGO SPLASH SCREEN ---
-        splash_dir = os.path.join("resources", "img")
-        splash_file_prefix = "splash_"
-        # Można dodać więcej obsługiwanych rozszerzeń, np. ".png"
-        allowed_extensions = (".jpg", ".jpeg", ".png")
+        splash_path = os.path.join("resources", "img", "splash.jpg")
+        splash_pix = QPixmap(splash_path)
+        # print(f"DEBUG: Ścieżka splash: {splash_path}, Pixmap isNull: {splash_pix.isNull()}") # Debug
+        # Sprawdź, czy obraz został poprawnie załadowany
+        if not splash_pix.isNull():
+            splash = QSplashScreen(splash_pix, Qt.WindowType.WindowStaysOnTopHint)
+            splash.showMessage(
+                "Ładowanie...",
+                Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
+                Qt.GlobalColor.white,
+            )
+            splash.show()
+            app.processEvents()  # Pozwól na odświeżenie UI
 
-        potential_splash_files = []
-        if os.path.isdir(splash_dir):
-            for f_name in os.listdir(splash_dir):
-                # Sprawdź prefix i rozszerzenie (ignorując wielkość liter dla rozszerzenia)
-                if f_name.startswith(splash_file_prefix) and f_name.lower().endswith(
-                    allowed_extensions
-                ):
-                    potential_splash_files.append(f_name)
-
-        if potential_splash_files:
-            selected_splash_file = random.choice(potential_splash_files)
-            splash_path = os.path.join(splash_dir, selected_splash_file)
-
-            # Komunikat informacyjny o wybranym pliku (opcjonalny, do debugowania)
-            # print(f"INFO: Wybrano plik splash: {splash_path}")
-
-            splash_pix = QPixmap(splash_path)
-            # Sprawdź, czy obraz został poprawnie załadowany
-            if not splash_pix.isNull():
-                splash = QSplashScreen(splash_pix, Qt.WindowType.WindowStaysOnTopHint)
-                splash.showMessage(
-                    "Ładowanie...",
-                    Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
-                    Qt.GlobalColor.white,
-                )
-                splash.show()
-                app.processEvents()  # Pozwól na odświeżenie UI
-
-                # Ustaw timer na zamknięcie splash screen (np. 2500 ms)
-                QTimer.singleShot(2500, splash.close)
-            else:
-                warning_msg = (
-                    "Ostrzeżenie: Nie można załadować obrazu "
-                    f"dla ekranu powitalnego: {splash_path}"
-                )
-                print(warning_msg)
+            # Ustaw timer na 3 sekundy (3000 ms)
+            QTimer.singleShot(2500, splash.close)
         else:
-            # Komunikat, jeśli nie znaleziono pasujących plików lub katalog nie istnieje
             warning_msg = (
-                f"Ostrzeżenie: Nie znaleziono odpowiednich plików ekranu powitalnego w '{splash_dir}' "
-                f"z prefiksem '{splash_file_prefix}' i rozszerzeniami {allowed_extensions}."
+                "Ostrzeżenie: Nie można załadować obrazu "
+                f"dla ekranu powitalnego: {splash_path}"
             )
             print(warning_msg)
-            # splash pozostaje None, aplikacja będzie kontynuować bez niego
-        # --- KONIEC ZMIAN DLA LOSOWEGO SPLASH SCREEN ---
 
     except (ImportError, AttributeError, Exception) as splash_error:
         warning_msg = (
@@ -105,7 +75,7 @@ def main():
         # splash pozostaje None, aplikacja będzie kontynuować bez niego
 
     # Upewnij się, że katalogi istnieją
-    if splash:  # Komunikaty na splashu tylko jeśli splash istnieje
+    if splash:
         splash.showMessage(
             "Tworzenie katalogów...",
             Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
@@ -115,15 +85,15 @@ def main():
 
     os.makedirs("data/models", exist_ok=True)
     os.makedirs("data/tasks", exist_ok=True)
-    # os.makedirs("logs", exist_ok=True)
-    # os.makedirs("reports", exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
+    os.makedirs("reports", exist_ok=True)
 
     try:
         # Inicjalizacja loggera teraz, przed MainWindow
         logger = Logger()
 
         # Pokaż komunikat na splash screen przed załadowaniem głównego okna
-        if splash:  # Komunikaty na splashu tylko jeśli splash istnieje
+        if splash:
             splash.showMessage(
                 "Ładowanie interfejsu użytkownika...",
                 Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
@@ -134,7 +104,7 @@ def main():
         # Inicjalizacja głównego okna
         window = MainWindow()  # Logger jest już dostępny dla MainWindow
 
-        # Pokaż główne okno (splash zamknie się sam po upływie timera)
+        # Pokaż główne okno (splash zamknie się sam po 3 sekundach)
         window.show()
 
         sys.exit(app.exec())
@@ -164,7 +134,7 @@ def main():
 
             # Informacje o wersji PyTorch
             print("\nInformacje o wersji PyTorch:")
-            import torch  # Importuj torch tylko w razie tego konkretnego błędu
+            import torch
 
             print(f"PyTorch: {torch.__version__}")
             print(f"CUDA dostępna: {torch.cuda.is_available()}")
