@@ -1,0 +1,14 @@
+[
+    {
+        "date": "2025-05-10T17:19:33.904735",
+        "image_path": "F:/______training_database_V2/bed/24.52683b8127ae5.jpg",
+        "class_name": "outdoor_plant",
+        "confidence": 0.6162109375
+    },
+    {
+        "date": "2025-05-10T17:19:39.212871",
+        "image_path": "F:/______training_database_V2/bed/226617.552d0f29a4537.jpg",
+        "class_name": "indoor_plant",
+        "confidence": 0.8701171875
+    }
+]

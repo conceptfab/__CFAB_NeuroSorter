@@ -497,16 +497,6 @@ class ImageClassifier:
             "class_names": self.class_names,
         }
 
-        # Kopiujemy wszystkie oryginalne metadane
-        if "metadata" in original_config:
-            if metadata is None:
-                metadata = {}
-
-            # Kopiujemy wszystkie oryginalne metadane oprócz tych, które będziemy aktualizować
-            for key, value in original_config["metadata"].items():
-                if key not in metadata and key != "finetuning_history":
-                    metadata[key] = value
-
         # Dodajemy metadane do checkpointu
         if metadata:
             checkpoint["metadata"] = metadata
@@ -515,16 +505,10 @@ class ImageClassifier:
         torch.save(checkpoint, save_path)
 
         # Przygotuj plik konfiguracyjny bazujący na oryginalnym
-        # WAŻNE: Kopiujemy WSZYSTKO z oryginalnego pliku
         config = original_config.copy()
 
-        # Aktualizuj tylko te pola, które faktycznie się zmieniły
-        config["model_type"] = self.model_type
-        config["num_classes"] = self.num_classes
-        config["class_names"] = self.class_names
-
-        # Dodaj lub aktualizuj metadane, zachowując resztę oryginalnych danych
-        if not "metadata" in config:
+        # NIE MODYFIKUJ głównych kluczy konfiguracji, tylko metadane wewnątrz
+        if "metadata" not in config:
             config["metadata"] = {}
 
         if metadata:
