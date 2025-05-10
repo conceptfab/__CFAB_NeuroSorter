@@ -1,5 +1,5 @@
 {
-    "name": "ogrodnik",
+    "name": "Nowe zadanie",
     "type": "fine_tuning",
     "config": {
         "base_model": "F:/__CFAB_NeuroSorter/data/models/base_A.pt",
@@ -9,7 +9,7 @@
             "architecture": "EfficientNet",
             "variant": "b2",
             "input_size": 260,
-            "num_classes": 3
+            "num_classes": 5
         },
         "training": {
             "epochs": 100,
@@ -159,8 +159,9 @@
                 },
                 "ewc_regularization": {
                     "use": true,
-                    "lambda": 120.0,
-                    "fisher_sample_size": 200
+                    "lambda": 5000.0,
+                    "fisher_sample_size": 200,
+                    "adaptive_lambda": true
                 },
                 "layer_freezing": {
                     "strategy": "gradual",
@@ -169,20 +170,14 @@
             }
         }
     },
-    "training_time": 115.71,
-    "training_time_str": "0:01:55",
-    "status": "W trakcie",
-    "train_accuracy": 84.9507735583685,
-    "train_loss": 1.5433471254680469,
+    "training_time": 0,
+    "training_time_str": "0:00:00",
+    "status": "Oczekuj\u0105ce",
+    "train_accuracy": 0.0,
+    "train_loss": 0.0,
     "validation_accuracy": 0.0,
     "validation_loss": 0.0,
     "model_filename": "",
     "accuracy": 0.0,
-    "epochs_trained": 0,
-    "progress": 80,
-    "current_epoch": 4,
-    "total_epochs": 5,
-    "train_acc": 0.8509142053445851,
-    "val_loss": 1.5671730637550354,
-    "val_acc": 82.77777777777777
+    "epochs_trained": 0
 }

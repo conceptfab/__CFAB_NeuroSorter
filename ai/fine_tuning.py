@@ -429,6 +429,7 @@ def fine_tune_model(
     layer_freezing_config=None,
     augmentation_params=None,
     preprocessing_params=None,
+    use_green_diffusion=False,
 ):
     """
     Przeprowadza fine-tuning istniejącego modelu na nowym zbiorze danych.
@@ -462,6 +463,7 @@ def fine_tune_model(
         layer_freezing_config: Konfiguracja zamrażania warstw
         augmentation_params: Parametry augmentacji
         preprocessing_params: Parametry preprocessingu
+        use_green_diffusion: Czy stosować technikę zielonej dyfuzji
 
     Returns:
         Tuple: (ścieżka do zapisanego modelu, historia treningu, szczegóły modelu)
@@ -756,8 +758,8 @@ def fine_tune_model(
         if ewc_config is None:
             ewc_config = {
                 "use": True,
-                "lambda": 5000.0,  # Współczynnik regularyzacji EWC
-                "fisher_sample_size": 200,  # Liczba przykładów do obliczenia macierzy Fishera
+                "lambda": 1000.0,  # Zmniejszona wartość z 5000.0 do 1000.0
+                "fisher_sample_size": 200,
             }
             print(f"Używam domyślnej konfiguracji EWC: {ewc_config}")
 
@@ -1174,10 +1176,9 @@ def fine_tune_model(
             train_correct += predicted.eq(targets).sum().item()
 
             # Inicjalizacja train_acc przed użyciem w callback
-            cumulative_train_acc_for_epoch = 0.0  # Zmieniono nazwę dla jasności
-            if train_total > 0:
-                cumulative_train_acc_for_epoch = 100.0 * train_correct / train_total
-
+            cumulative_train_acc_for_epoch = (
+                train_correct / train_total
+            )  # Usunięto mnożenie przez 100
             avg_train_loss_for_epoch = train_loss / (batch_idx + 1)
 
             # DODATKOWY WYDRUK KONTROLNY:
@@ -1258,25 +1259,36 @@ def fine_tune_model(
                     if len(all_probs) > 0:
                         y_prob = np.array(all_probs)
                         if y_prob.shape[1] > 2:  # Wieloklasowy problem
-                            val_metrics["auc"] = roc_auc_score(
-                                y_true,
-                                y_prob,
-                                multi_class="ovr",
-                                average="macro",
-                                labels=np.arange(y_prob.shape[1]),
-                            )
-                        elif y_prob.shape[1] == 2:  # Problem binarny
-                            val_metrics["auc"] = roc_auc_score(y_true, y_prob[:, 1])
+                            try:
+                                val_metrics["auc"] = roc_auc_score(
+                                    y_true,
+                                    y_prob,
+                                    multi_class="ovr",
+                                    average="macro",
+                                    labels=np.arange(y_prob.shape[1]),
+                                )
+                            except ValueError as e:
+                                print(f"Nie udało się obliczyć AUC: {e}")
+                                val_metrics["auc"] = 0.0
 
                         # Top-k metryki
                         if y_prob.shape[1] >= 3:
-                            val_metrics["top3"] = top_k_accuracy_score(
-                                y_true, y_prob, k=3
-                            )
+                            try:
+                                val_metrics["top3"] = top_k_accuracy_score(
+                                    y_true, y_prob, k=min(3, y_prob.shape[1])
+                                )
+                            except Exception as e:
+                                print(f"Błąd przy obliczaniu top-3: {e}")
+                                val_metrics["top3"] = 0.0
+
                         if y_prob.shape[1] >= 5:
-                            val_metrics["top5"] = top_k_accuracy_score(
-                                y_true, y_prob, k=5
-                            )
+                            try:
+                                val_metrics["top5"] = top_k_accuracy_score(
+                                    y_true, y_prob, k=min(5, y_prob.shape[1])
+                                )
+                            except Exception as e:
+                                print(f"Błąd przy obliczaniu top-5: {e}")
+                                val_metrics["top5"] = 0.0
             except Exception as e:
                 print(f"Ostrzeżenie: Nie udało się obliczyć niektórych metryk: {e}")
                 # Zachowamy domyślne wartości 0.0 dla metryk, których nie udało się obliczyć
@@ -1968,30 +1980,110 @@ def print_directory_structure(directory, indent=""):
 # DODANA FUNKCJA DISTILLATION LOSS
 def distillation_loss(student_outputs, labels, teacher_outputs, temperature, alpha):
     """
-    Ulepszona funkcja obliczania straty dla destylacji wiedzy.
-    :param student_outputs: Logity z modelu ucznia.
-    :param labels: Prawdziwe etykiety (twarde).
-    :param teacher_outputs: Logity z modelu nauczyciela.
-    :param temperature: Temperatura do zmiękczania prawdopodobieństw.
-    :param alpha: Współczynnik wagi między stratą destylacji a stratą na twardych etykietach.
-    :return: Całkowita strata.
+    Oblicza stratę dla destylacji wiedzy z lepszą numeryczną stabilnością.
+
+    Args:
+        student_outputs: Logity z modelu ucznia
+        labels: Prawdziwe etykiety
+        teacher_outputs: Logity z modelu nauczyciela
+        temperature: Temperatura do zmiękczania prawdopodobieństw
+        alpha: Współczynnik wagi między stratą destylacji a stratą na twardych etykietach
+
+    Returns:
+        float: Wartość straty
     """
     # Standardowa strata na twardych etykietach
     hard_loss = F.cross_entropy(student_outputs, labels)
 
-    # ZMIANA: Lepsza implementacja straty na miękkich etykietach
-    # Najpierw normalizujemy logity temperaturą
-    student_logits = student_outputs / temperature
-    teacher_logits = teacher_outputs / temperature
+    # Strata na miękkich etykietach (KL Divergence) z lepszą stabilnością
+    student_log_softmax = F.log_softmax(student_outputs / temperature, dim=1)
+    teacher_softmax = F.softmax(
+        teacher_outputs / temperature, dim=1
+    ).detach()  # Dodano detach()
 
-    # Obliczamy prawdopodobieństwa
-    student_probs = F.log_softmax(student_logits, dim=1)
-    teacher_probs = F.softmax(teacher_logits, dim=1)
+    soft_loss = F.kl_div(
+        student_log_softmax, teacher_softmax, reduction="batchmean"
+    ) * (
+        temperature * temperature
+    )  # Skalowanie gradientu
 
-    # Użycie KL-Divergence dla miękkich etykiet
-    soft_loss = F.kl_div(student_probs, teacher_probs, reduction="batchmean") * (
-        temperature**2
-    )
+    # Dodajemy sprawdzanie NaN
+    if torch.isnan(soft_loss):
+        print(
+            "OSTRZEŻENIE: Wykryto NaN w stracie distillation. Używam tylko hard_loss."
+        )
+        return hard_loss
 
-    # Całkowita strata jako ważona suma
     return alpha * hard_loss + (1.0 - alpha) * soft_loss
+
+
+def generate_synthetic_samples(model, classes, samples_per_class, device):
+    """
+    Generuje syntetyczne próbki dla mechanizmu rehearsal.
+
+    Args:
+        model: Model używany do generowania próbek
+        classes: Lista klas, dla których generować próbki
+        samples_per_class: Liczba próbek na klasę
+        device: Urządzenie (CPU/GPU)
+
+    Returns:
+        DataLoader zawierający syntetyczne próbki
+    """
+    synthetic_samples = []
+    synthetic_labels = []
+
+    model.eval()
+    with torch.no_grad():
+        for class_idx in classes:
+            # Generuj próbki dla każdej klasy
+            for _ in range(samples_per_class):
+                # Generuj losowy szum
+                noise = torch.randn(1, 3, 224, 224).to(device)
+                # Przekształć przez model
+                output = model(noise)
+                synthetic_samples.append(output.cpu())
+                synthetic_labels.append(class_idx)
+
+    # Konwertuj na tensory
+    synthetic_samples = torch.cat(synthetic_samples, dim=0)
+    synthetic_labels = torch.tensor(synthetic_labels)
+
+    # Stwórz dataset i dataloader
+    synthetic_dataset = torch.utils.data.TensorDataset(
+        synthetic_samples, synthetic_labels
+    )
+    synthetic_loader = DataLoader(synthetic_dataset, batch_size=32, shuffle=True)
+
+    return synthetic_loader
+
+
+def green_diffusion(inputs, noise_level=0.05, apply_prob=0.3):
+    """
+    Stosuje technikę zielonej dyfuzji do danych wejściowych.
+
+    Args:
+        inputs: Tensor z danymi wejściowymi
+        noise_level: Poziom szumu (0-1)
+        apply_prob: Prawdopodobieństwo zastosowania dyfuzji
+
+    Returns:
+        Tensor z zastosowaną dyfuzją lub oryginalne dane
+    """
+    if np.random.random() > apply_prob:
+        return inputs
+
+    # Zastosuj dyfuzję tylko do zielonego kanału
+    batch_size, channels, height, width = inputs.shape
+
+    if channels >= 3:  # Tylko dla obrazów kolorowych
+        # Dodaj szum do zielonego kanału (indeks 1)
+        noise = (
+            torch.randn(batch_size, 1, height, width).to(inputs.device) * noise_level
+        )
+        inputs[:, 1:2, :, :] += noise
+
+        # Przytnij wartości do zakresu [0, 1]
+        inputs = torch.clamp(inputs, 0, 1)
+
+    return inputs
