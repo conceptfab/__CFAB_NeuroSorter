@@ -169,11 +169,11 @@
             }
         }
     },
-    "training_time": 92.78,
-    "training_time_str": "0:01:32",
+    "training_time": 95.8,
+    "training_time_str": "0:01:35",
     "status": "Zakończony",
-    "train_accuracy": 54.71167369901547,
-    "train_loss": 3.1002441800158955,
+    "train_accuracy": 56.118143459915615,
+    "train_loss": 3.0591330528259277,
     "validation_accuracy": 0.0,
     "validation_loss": 0.0,
     "model_filename": "",
@@ -182,7 +182,7 @@
     "progress": 100,
     "current_epoch": 5,
     "total_epochs": 5,
-    "train_acc": 54.71167369901547,
-    "val_loss": 2.9239133993784585,
-    "val_acc": 25.555555555555557
+    "train_acc": 56.118143459915615,
+    "val_loss": 2.8901609579722085,
+    "val_acc": 26.666666666666668
 }

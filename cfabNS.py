@@ -115,8 +115,8 @@ def main():
 
     os.makedirs("data/models", exist_ok=True)
     os.makedirs("data/tasks", exist_ok=True)
-    os.makedirs("logs", exist_ok=True)
-    os.makedirs("reports", exist_ok=True)
+    # os.makedirs("logs", exist_ok=True)
+    # os.makedirs("reports", exist_ok=True)
 
     try:
         # Inicjalizacja loggera teraz, przed MainWindow

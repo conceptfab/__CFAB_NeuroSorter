@@ -1026,7 +1026,7 @@ def fine_tune_model(
             break
 
         epoch_start_time = time.time()
-        print(f"\n--- Epoka {epoch+1}/{num_epochs} --- पाण्डेय")
+        print(f"\n--- Epoka {epoch+1}/{num_epochs} ---")
 
         # Progressive unfreezing - odmrażanie kolejnych warstw w każdej epoce
         if (
@@ -1141,35 +1141,20 @@ def fine_tune_model(
             train_correct += predicted.eq(targets).sum().item()
 
             # Inicjalizacja train_acc przed użyciem w callback
-            train_acc = 0.0
+            cumulative_train_acc_for_epoch = 0.0  # Zmieniono nazwę dla jasności
             if train_total > 0:
-                train_acc = 100.0 * train_correct / train_total
+                cumulative_train_acc_for_epoch = 100.0 * train_correct / train_total
 
-            # Aktualizuj progress bar
-            if progress_callback:
-                try:
-                    progress_callback(
-                        epoch + 1,
-                        num_epochs,
-                        train_loss
-                        / (batch_idx + 1),  # Przekaż bieżącą średnią stratę treningową
-                        train_acc,  # Przekaż bieżącą dokładność treningową
-                        # Na tym etapie metryki walidacyjne nie są jeszcze znane dla bieżącej epoki,
-                        # więc przekazujemy 0 lub None, albo ostatnio znane, jeśli tego chcemy.
-                        # Dla uproszczenia, teraz przekażemy 0.
-                        0,  # val_loss
-                        0,  # val_acc
-                        0,  # top3
-                        0,  # top5
-                        0,  # precision
-                        0,  # recall
-                        0,  # f1
-                        0,  # auc
-                    )
-                except Exception as e:
-                    print(
-                        f"Błąd podczas wywołania progress_callback w pętli batch: {str(e)}"
-                    )
+            avg_train_loss_for_epoch = train_loss / (batch_idx + 1)
+
+            # DODATKOWY WYDRUK KONTROLNY:
+            print(
+                f"DEBUG INFO: Epoka {epoch + 1}, Batch {batch_idx + 1}/{len(train_loader)}"
+            )
+            print(f"  Raw: train_correct={train_correct}, train_total={train_total}")
+            print(
+                f"  Przekazywane do callback: avg_loss={avg_train_loss_for_epoch:.4f}, cumulative_acc={cumulative_train_acc_for_epoch:.2f}%"
+            )
 
             # Sprawdź czy należy przerwać trening
             if should_stop_callback and should_stop_callback():
@@ -1241,7 +1226,11 @@ def fine_tune_model(
                         y_prob = np.array(all_probs)
                         if y_prob.shape[1] > 2:  # Wieloklasowy problem
                             val_metrics["auc"] = roc_auc_score(
-                                y_true, y_prob, multi_class="ovr", average="macro"
+                                y_true,
+                                y_prob,
+                                multi_class="ovr",
+                                average="macro",
+                                labels=np.arange(y_prob.shape[1]),
                             )
                         elif y_prob.shape[1] == 2:  # Problem binarny
                             val_metrics["auc"] = roc_auc_score(y_true, y_prob[:, 1])
@@ -1335,8 +1324,8 @@ def fine_tune_model(
                 progress_callback(
                     epoch + 1,
                     num_epochs,
-                    train_loss,  # Średnia strata treningowa dla epoki
-                    train_acc,  # Dokładność treningowa dla epoki
+                    avg_train_loss_for_epoch,  # Przekaż bieżącą średnią stratę treningową
+                    cumulative_train_acc_for_epoch,  # Przekaż bieżącą dokładność treningową
                     val_loss_cb,
                     val_acc_cb,
                     top3_cb,
