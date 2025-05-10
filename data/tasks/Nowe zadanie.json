@@ -9,7 +9,7 @@
       "architecture": "EfficientNet",
       "variant": "b2",
       "input_size": 260,
-      "num_classes": 5
+      "num_classes": 3
     },
     "training": {
       "epochs": 100,

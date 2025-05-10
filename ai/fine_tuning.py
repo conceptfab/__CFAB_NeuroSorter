@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import time
 from copy import deepcopy
 from datetime import datetime
@@ -235,6 +236,13 @@ def fine_tune_model(
     print(f"Zamrożenie warstw: {freeze_ratio*100:.0f}%")
 
     # Sprawdź strukturę katalogów
+    print("\nSprawdzanie struktury katalogów...")
+    if not ensure_class_folder_structure(train_dir):
+        raise ValueError(f"Nie udało się przygotować katalogu {train_dir} do treningu.")
+
+    if val_dir and not ensure_class_folder_structure(val_dir):
+        raise ValueError(f"Nie udało się przygotować katalogu {val_dir} do treningu.")
+
     if not verify_directory_structure(train_dir):
         raise ValueError(
             f"Nieprawidłowa struktura katalogów w {train_dir}. "
@@ -289,11 +297,18 @@ def fine_tune_model(
 
     # 2. Znajdź liczbę klas w nowym zbiorze danych
     print("\nAnalizowanie zbioru treningowego...")
+    print("\nStruktura katalogu treningowego:")
+    print_directory_structure(train_dir)
+
+    if val_dir:
+        print("\nStruktura katalogu walidacyjnego:")
+        print_directory_structure(val_dir)
+
     train_folders = [
         f for f in os.listdir(train_dir) if os.path.isdir(os.path.join(train_dir, f))
     ]
     new_num_classes = len(train_folders)
-    print(f"Znaleziono {new_num_classes} klas w zbiorze treningowym:")
+    print(f"\nZnaleziono {new_num_classes} klas w zbiorze treningowym:")
     for idx, folder in enumerate(sorted(train_folders)):
         print(f"  - ID {idx}: {folder}")
 
@@ -1322,3 +1337,85 @@ def compare_base_and_finetuned(base_model_path, finetuned_model_path, test_dir):
                     break
 
     return results
+
+
+def ensure_class_folder_structure(directory):
+    """
+    Sprawdza i naprawia strukturę katalogów dla treningu.
+    Jeśli w katalogu są bezpośrednio pliki obrazów (bez podkatalogów),
+    tworzy podkatalog 'default_class' i przenosi tam wszystkie obrazy.
+
+    Args:
+        directory: Ścieżka do katalogu z danymi
+
+    Returns:
+        bool: True jeśli struktura była poprawna lub została naprawiona, False w przypadku błędu
+    """
+    # Sprawdź, czy istnieją jakiekolwiek podkatalogi
+    has_subdirs = False
+    has_images = False
+
+    for item in os.listdir(directory):
+        item_path = os.path.join(directory, item)
+        if os.path.isdir(item_path):
+            has_subdirs = True
+        elif os.path.isfile(item_path) and item.lower().endswith(
+            (".jpg", ".jpeg", ".png", ".bmp")
+        ):
+            has_images = True
+
+    # Jeśli nie ma podkatalogów, ale są obrazy, utwórz katalog 'default_class'
+    if not has_subdirs and has_images:
+        print(
+            f"Wykryto obrazy bez struktury klas. Tworzenie katalogu 'default_class'..."
+        )
+        default_class_dir = os.path.join(directory, "default_class")
+
+        try:
+            # Utwórz katalog 'default_class'
+            os.makedirs(default_class_dir, exist_ok=True)
+
+            # Przenieś wszystkie pliki obrazów do tego katalogu
+            for item in os.listdir(directory):
+                item_path = os.path.join(directory, item)
+                if os.path.isfile(item_path) and item.lower().endswith(
+                    (".jpg", ".jpeg", ".png", ".bmp")
+                ):
+                    shutil.move(item_path, os.path.join(default_class_dir, item))
+
+            print(f"Utworzono domyślną klasę i przeniesiono do niej obrazy.")
+            return True
+        except Exception as e:
+            print(f"Błąd podczas tworzenia struktury katalogów: {e}")
+            return False
+
+    return True
+
+
+def print_directory_structure(directory, indent=""):
+    """
+    Wyświetla strukturę katalogu wraz z liczbą plików w każdym podkatalogu.
+
+    Args:
+        directory: Ścieżka do katalogu
+        indent: Wcięcie dla zagnieżdżonych katalogów
+    """
+    total_files = 0
+    for item in os.listdir(directory):
+        item_path = os.path.join(directory, item)
+        if os.path.isdir(item_path):
+            files = [
+                f
+                for f in os.listdir(item_path)
+                if os.path.isfile(os.path.join(item_path, f))
+            ]
+            image_files = [
+                f
+                for f in files
+                if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))
+            ]
+            print(f"{indent}📁 {item}/ ({len(image_files)} obrazów)")
+            total_files += len(image_files)
+    print(
+        f"\nŁącznie znaleziono {total_files} obrazów w {len(os.listdir(directory))} katalogach"
+    )

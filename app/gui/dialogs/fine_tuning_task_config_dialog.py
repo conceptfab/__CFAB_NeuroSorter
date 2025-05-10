@@ -2389,6 +2389,10 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
     def _on_accept(self):
         """Obsługa zatwierdzenia konfiguracji."""
+        import os
+
+        from PyQt6 import QtWidgets
+
         try:
             # Sprawdź czy nazwa zadania jest pusta
             task_name = self.name_edit.text().strip()
@@ -2413,12 +2417,48 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                     self, "Błąd", "Katalog treningowy nie może być pusty."
                 )
                 return
+            # WALIDACJA katalogu treningowego
+            if not os.path.isdir(training_dir):
+                QtWidgets.QMessageBox.critical(
+                    self, "Błąd", f"Katalog treningowy nie istnieje:\n{training_dir}"
+                )
+                return
+            subdirs = [
+                d
+                for d in os.listdir(training_dir)
+                if os.path.isdir(os.path.join(training_dir, d))
+            ]
+            if not subdirs:
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Błąd",
+                    f"Katalog treningowy nie zawiera żadnych podfolderów (klas):\n{training_dir}",
+                )
+                return
 
             # Sprawdź czy katalog walidacyjny jest ustawiony
             validation_dir = self.val_dir_edit.text().strip()
             if not validation_dir:
                 QtWidgets.QMessageBox.warning(
                     self, "Błąd", "Katalog walidacyjny nie może być pusty."
+                )
+                return
+            # WALIDACJA katalogu walidacyjnego
+            if not os.path.isdir(validation_dir):
+                QtWidgets.QMessageBox.critical(
+                    self, "Błąd", f"Katalog walidacyjny nie istnieje:\n{validation_dir}"
+                )
+                return
+            val_subdirs = [
+                d
+                for d in os.listdir(validation_dir)
+                if os.path.isdir(os.path.join(validation_dir, d))
+            ]
+            if not val_subdirs:
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Błąd",
+                    f"Katalog walidacyjny nie zawiera żadnych podfolderów (klas):\n{validation_dir}",
                 )
                 return
 
