@@ -149,6 +149,29 @@
       "quantization": {
         "use": false,
         "precision": "int8"
+      },
+      "catastrophic_forgetting_prevention": {
+        "enable": true,
+        "preserve_original_classes": true,
+        "rehearsal": {
+          "use": true,
+          "samples_per_class": 20,
+          "synthetic_samples": true
+        },
+        "knowledge_distillation": {
+          "use": true,
+          "temperature": 2.0,
+          "alpha": 0.4
+        },
+        "ewc_regularization": {
+          "use": true,
+          "lambda": 100.0,
+          "fisher_sample_size": 200
+        },
+        "layer_freezing": {
+          "strategy": "gradual",
+          "freeze_ratio": 0.7
+        }
       }
     }
   }

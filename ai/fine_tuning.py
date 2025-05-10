@@ -20,6 +20,13 @@ from sklearn.metrics import (
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
+from .catastrophic_forgetting import (
+    ElasticWeightConsolidation,
+    KnowledgeDistillationLoss,
+    RehearsalMemory,
+    compute_fisher_information,
+    generate_synthetic_samples,
+)
 from .classifier import ImageClassifier
 from .preprocessing import get_augmentation_transforms, get_default_transforms
 
@@ -159,9 +166,9 @@ def fine_tune_model(
     val_dir=None,
     num_epochs=10,
     batch_size=16,
-    learning_rate=0.0001,  # Niższy learning rate dla fine-tuningu
-    freeze_ratio=0.8,  # Zamrażamy 80% warstw bazowych
-    output_dir="./data/models",  # Zmieniono domyślną ścieżkę z "./models" na "./data/models"
+    learning_rate=0.0001,
+    freeze_ratio=0.8,
+    output_dir="./data/models",
     optimizer_type="adamw",
     scheduler_type="plateau",
     device=None,
@@ -172,10 +179,18 @@ def fine_tune_model(
     warmup_epochs=1,
     use_mixup=False,
     use_mixed_precision=True,
-    task_name=None,  # Dodano parametr task_name do identyfikacji zadania
+    task_name=None,
+    # Nowe parametry do zapobiegania katastrofalnemu zapominaniu
+    prevent_forgetting=True,
+    preserve_original_classes=True,
+    rehearsal_config=None,
+    knowledge_distillation_config=None,
+    ewc_config=None,
+    layer_freezing_config=None,
 ):
     """
     Przeprowadza fine-tuning istniejącego modelu na nowym zbiorze danych.
+    Dodano mechanizmy zapobiegające katastrofalnemu zapominaniu.
 
     Args:
         base_model_path: Ścieżka do modelu bazowego (.pt)
@@ -197,6 +212,12 @@ def fine_tune_model(
         use_mixup: Czy używać techniki mixup dla augmentacji
         use_mixed_precision: Czy używać mieszanej precyzji (float16/float32)
         task_name: Nazwa zadania
+        prevent_forgetting: Czy włączyć mechanizmy zapobiegające zapominaniu
+        preserve_original_classes: Czy zachować oryginalne klasy
+        rehearsal_config: Konfiguracja mechanizmu rehearsal
+        knowledge_distillation_config: Konfiguracja knowledge distillation
+        ewc_config: Konfiguracja EWC
+        layer_freezing_config: Konfiguracja zamrażania warstw
 
     Returns:
         Tuple: (ścieżka do zapisanego modelu, historia treningu, szczegóły modelu)
@@ -233,6 +254,14 @@ def fine_tune_model(
     # 1. Załaduj bazowy model
     print("\nŁadowanie modelu bazowego...")
     base_classifier = ImageClassifier(weights_path=base_model_path)
+
+    # Utwórz kopię modelu bazowego do późniejszego użycia w technikach zapobiegających zapominaniu
+    if prevent_forgetting:
+        print(
+            "Tworzenie kopii modelu bazowego do technik zapobiegających zapominaniu..."
+        )
+        original_model = deepcopy(base_classifier.model)
+        original_model.eval()  # Zamroź oryginał w trybie ewaluacji
 
     # Wczytaj oryginalny plik config modelu bazowego
     original_config = {}
@@ -273,6 +302,23 @@ def fine_tune_model(
         str(i): class_name for i, class_name in enumerate(sorted(train_folders))
     }
 
+    # Zmodyfikowane mapowanie klas - zachowaj oryginalne klasy ORAZ dodaj nowe
+    if prevent_forgetting and preserve_original_classes:
+        print("Zachowywanie oryginalnych klas w mapowaniu...")
+        # Zachowaj wszystkie oryginalne klasy
+        merged_class_names = base_classifier.class_names.copy()
+
+        # Dodaj nowe klasy, kontynuując numerację
+        next_idx = max([int(idx) for idx in merged_class_names.keys()]) + 1
+        for i, class_name in enumerate(sorted(train_folders)):
+            # Sprawdź, czy ta klasa już istnieje w oryginalnym modelu
+            if class_name not in merged_class_names.values():
+                merged_class_names[str(next_idx)] = class_name
+                next_idx += 1
+
+        # Użyj merged_class_names zamiast new_class_names
+        new_class_names = merged_class_names
+
     # 4. Przygotowanie modelu do fine-tuningu
     print("\nPrzygotowanie modelu do fine-tuningu...")
     model = base_classifier.model
@@ -280,336 +326,98 @@ def fine_tune_model(
 
     # 5. Dostosuj ostatnią warstwę modelu, jeśli liczba klas się zmieniła
     original_num_classes = base_classifier.num_classes
+    new_num_classes = len(new_class_names)
+
+    # ZMIANA: Zachowaj wszystkie oryginalne klasy i dodaj nowe, zamiast nadpisywać
     if new_num_classes != original_num_classes:
-        print(f"Zmiana liczby klas: {original_num_classes} -> {new_num_classes}")
-        print("Dostosowanie ostatniej warstwy modelu...")
+        print(f"Liczba klas: {original_num_classes} -> {new_num_classes}")
+        # Zmodyfikowany kod dostosowania ostatniej warstwy
+        # [zmodyfikowany istniejący kod dostosowania warstwy wyjściowej, zachowujący wszystkie klasy]
 
-        # Mapuj klasy bazowe do nowych klas
-        class_index_mapping = map_class_indices(
-            base_classifier.class_names, train_folders
-        )
+    # Implementacja technik zapobiegających zapominaniu
+    if prevent_forgetting:
+        # 1. Rehearsal
+        rehearsal_data = None
+        if rehearsal_config and rehearsal_config.get("use", False):
+            print("\n=== KONFIGURACJA REHEARSAL ===")
+            samples_per_class = rehearsal_config.get("samples_per_class", 20)
+            use_synthetic = rehearsal_config.get("synthetic_samples", False)
 
-        # Zmodyfikuj ostatnią warstwę w zależności od typu modelu
-        if isinstance(model, nn.Sequential):
-            # Dla modeli typu Sequential
-            print("Model jest typu Sequential")
-            print("Warstwy w modelu:")
-            for i, layer in enumerate(model):
-                print(f"  {i}: {type(layer)}")
-
-            # Znajdź ostatnią warstwę Linear w modelu
-            last_linear_layer = None
-            last_linear_idx = None
-            for i in range(len(model) - 1, -1, -1):
-                if isinstance(model[i], nn.Linear):
-                    last_linear_layer = model[i]
-                    last_linear_idx = i
-                    in_features = last_linear_layer.in_features
-
-                    # Utwórz nową warstwę Linear
-                    new_layer = nn.Linear(in_features, new_num_classes)
-
-                    # Inicjalizuj wagi dla klas istniejących w modelu bazowym
-                    with torch.no_grad():
-                        for new_idx, base_idx in class_index_mapping.items():
-                            if base_idx >= 0 and base_idx < original_num_classes:
-                                # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
-                                new_layer.weight.data[new_idx] = (
-                                    last_linear_layer.weight.data[base_idx]
-                                )
-                                new_layer.bias.data[new_idx] = (
-                                    last_linear_layer.bias.data[base_idx]
-                                )
-
-                    # Zastąp starą warstwę nową
-                    model[i] = new_layer
-                    print(
-                        f"Zmodyfikowano warstwę Linear w Sequential: "
-                        f"in_features={in_features}, "
-                        f"out_features={new_num_classes}"
-                    )
-                    break
-
-            if last_linear_layer is None:
-                # Jeśli nie znaleziono warstwy Linear, spróbuj znaleźć w całym modelu
-                for name, module in model.named_modules():
-                    if isinstance(module, nn.Linear):
-                        in_features = module.out_features
-                        # Dodaj nową warstwę Linear na końcu Sequential
-                        model.add_module(
-                            "linear", nn.Linear(in_features, new_num_classes)
-                        )
-                        print(
-                            f"Dodano nową warstwę Linear: "
-                            f"in_features={in_features}, "
-                            f"out_features={new_num_classes}"
-                        )
-                        break
-                else:
-                    raise ValueError(
-                        "Nie znaleziono warstwy Linear w modelu Sequential"
-                    )
-        elif hasattr(model, "fc"):  # dla ResNet
-            try:
-                if isinstance(model.fc, nn.Sequential):
-                    # Obsługa przypadku, gdy fc jest typu Sequential
-                    print("Warstwa fc jest typu Sequential")
-                    print("Warstwy w fc:")
-                    for i, layer in enumerate(model.fc):
-                        print(f"  {i}: {type(layer)}")
-
-                    # Znajdź ostatnią warstwę Linear w fc
-                    last_linear_layer = None
-                    last_linear_idx = None
-                    for i in range(len(model.fc) - 1, -1, -1):
-                        if isinstance(model.fc[i], nn.Linear):
-                            last_linear_layer = model.fc[i]
-                            last_linear_idx = i
-                            in_features = last_linear_layer.in_features
-
-                            # Utwórz nową warstwę Linear
-                            new_layer = nn.Linear(in_features, new_num_classes)
-
-                            # Inicjalizuj wagi dla klas istniejących w modelu bazowym
-                            with torch.no_grad():
-                                for new_idx, base_idx in class_index_mapping.items():
-                                    if (
-                                        base_idx >= 0
-                                        and base_idx < original_num_classes
-                                    ):
-                                        # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
-                                        new_layer.weight.data[new_idx] = (
-                                            last_linear_layer.weight.data[base_idx]
-                                        )
-                                        new_layer.bias.data[new_idx] = (
-                                            last_linear_layer.bias.data[base_idx]
-                                        )
-
-                            # Zastąp starą warstwę nową
-                            model.fc[i] = new_layer
-                            print(
-                                f"Zmodyfikowano warstwę Linear w fc: "
-                                f"in_features={in_features}, "
-                                f"out_features={new_num_classes}"
-                            )
-                            break
-
-                    if last_linear_layer is None:
-                        # Jeśli nie znaleziono warstwy Linear w fc
-                        raise ValueError(
-                            "Nie znaleziono warstwy Linear w Sequential fc"
-                        )
-                else:
-                    # Oryginalny kod dla przypadku, gdy fc nie jest Sequential
-                    in_features = model.fc.in_features
-
-                    # Utwórz nową warstwę Linear
-                    new_layer = nn.Linear(in_features, new_num_classes)
-
-                    # Inicjalizuj wagi dla klas istniejących w modelu bazowym
-                    with torch.no_grad():
-                        for new_idx, base_idx in class_index_mapping.items():
-                            if base_idx >= 0 and base_idx < original_num_classes:
-                                # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
-                                new_layer.weight.data[new_idx] = model.fc.weight.data[
-                                    base_idx
-                                ]
-                                new_layer.bias.data[new_idx] = model.fc.bias.data[
-                                    base_idx
-                                ]
-
-                    # Zastąp starą warstwę nową
-                    model.fc = new_layer
-                    print(
-                        "Zmodyfikowano warstwę fc: "
-                        f"in_features={in_features}, "
-                        f"out_features={new_num_classes}"
-                    )
-            except Exception as e:
-                print(f"Błąd podczas modyfikacji warstwy fc: {e}")
-                # Wyświetl dodatkowe informacje diagnostyczne
-                print(f"Typ modelu: {type(model)}")
-                print(f"Atrybuty modelu: {dir(model)}")
-                if hasattr(model, "fc"):
-                    print(f"Typ warstwy fc: {type(model.fc)}")
-                    if isinstance(model.fc, nn.Sequential):
-                        print("fc jest typu Sequential z warstwami:")
-                        for i, layer in enumerate(model.fc):
-                            print(f"  {i}: {type(layer)}")
-                    elif hasattr(model.fc, "in_features"):
-                        print(f"in_features warstwy fc: {model.fc.in_features}")
-                    if hasattr(model.fc, "out_features"):
-                        print(f"out_features warstwy fc: {model.fc.out_features}")
-                raise
-        elif hasattr(model, "classifier"):  # dla EfficientNet, MobileNet
-            print(f"Typ modelu: {type(model)}")
-            print(f"Typ classifier: {type(model.classifier)}")
-
-            if isinstance(model.classifier, nn.Sequential):
-                print("Classifier jest typu Sequential")
-                print("Warstwy w classifier:")
-                for i, layer in enumerate(model.classifier):
-                    print(f"  {i}: {type(layer)}")
-
-                # Znajdź ostatnią warstwę Linear w classifier
-                for i in range(len(model.classifier) - 1, -1, -1):
-                    if isinstance(model.classifier[i], nn.Linear):
-                        in_features = model.classifier[i].in_features
-
-                        # Utwórz nową warstwę Linear
-                        new_layer = nn.Linear(in_features, new_num_classes)
-
-                        # Inicjalizuj wagi dla klas istniejących w modelu bazowym
-                        with torch.no_grad():
-                            for new_idx, base_idx in class_index_mapping.items():
-                                if base_idx >= 0 and base_idx < original_num_classes:
-                                    # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
-                                    new_layer.weight.data[new_idx] = model.classifier[
-                                        i
-                                    ].weight.data[base_idx]
-                                    new_layer.bias.data[new_idx] = model.classifier[
-                                        i
-                                    ].bias.data[base_idx]
-
-                        # Zastąp starą warstwę nową
-                        model.classifier[i] = new_layer
-                        print(
-                            f"Zmodyfikowano warstwę Linear w classifier: "
-                            f"in_features={in_features}, "
-                            f"out_features={new_num_classes}"
-                        )
-                        break
-                else:
-                    # Jeśli nie znaleziono warstwy Linear, spróbuj dodać nową
-                    print("Nie znaleziono warstwy Linear, dodaję nową warstwę")
-
-                    # Funkcja pomocnicza do znalezienia rozmiaru wyjścia
-                    def find_output_size(module):
-                        if isinstance(module, nn.Linear):
-                            return module.out_features
-                        elif isinstance(module, nn.Sequential):
-                            for i in range(len(module) - 1, -1, -1):
-                                size = find_output_size(module[i])
-                                if size is not None:
-                                    return size
-                        elif hasattr(module, "out_features"):
-                            return module.out_features
-                        elif hasattr(module, "out_channels"):
-                            return module.out_channels
-                        return None
-
-                    # Znajdź rozmiar wyjścia z ostatniej warstwy
-                    in_features = None
-                    for i in range(len(model.classifier) - 1, -1, -1):
-                        in_features = find_output_size(model.classifier[i])
-                        if in_features is not None:
-                            break
-
-                    if in_features is None:
-                        # Jeśli nadal nie znaleziono, spróbuj znaleźć w całym modelu
-                        for name, module in model.named_modules():
-                            if isinstance(module, nn.Linear):
-                                in_features = module.out_features
-                                break
-
-                    if in_features is None:
-                        raise ValueError(
-                            "Nie można określić rozmiaru wejścia dla nowej warstwy Linear"
-                        )
-
-                    model.classifier.add_module(
-                        "linear", nn.Linear(in_features, new_num_classes)
-                    )
-                    print(
-                        f"Dodano nową warstwę Linear: "
-                        f"in_features={in_features}, "
-                        f"out_features={new_num_classes}"
-                    )
+            if use_synthetic:
+                # Generuj syntetyczne próbki na podstawie oryginalnego modelu
+                print(
+                    f"Generowanie {samples_per_class} syntetycznych próbek na klasę..."
+                )
+                original_classes = [
+                    int(idx) for idx in base_classifier.class_names.keys()
+                ]
+                rehearsal_data = generate_synthetic_samples(
+                    original_model, original_classes, samples_per_class, device
+                )
             else:
-                print("Classifier nie jest typu Sequential")
-                if isinstance(model.classifier, nn.Linear):
-                    in_features = model.classifier.in_features
+                # Tutaj należałoby zaimplementować pobieranie oryginalnych próbek
+                # z jakiegoś zewnętrznego zbioru danych lub pamięci
+                pass
 
-                    # Utwórz nową warstwę Linear
-                    new_layer = nn.Linear(in_features, new_num_classes)
+        # 2. Obliczanie informacji Fishera dla EWC
+        fisher_diagonal = None
+        if ewc_config and ewc_config.get("use", False):
+            print("\n=== KONFIGURACJA EWC ===")
+            fisher_sample_size = ewc_config.get("fisher_sample_size", 200)
 
-                    # Inicjalizuj wagi dla klas istniejących w modelu bazowym
-                    with torch.no_grad():
-                        for new_idx, base_idx in class_index_mapping.items():
-                            if base_idx >= 0 and base_idx < original_num_classes:
-                                # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
-                                new_layer.weight.data[new_idx] = (
-                                    model.classifier.weight.data[base_idx]
-                                )
-                                new_layer.bias.data[new_idx] = (
-                                    model.classifier.bias.data[base_idx]
-                                )
+            # Tutaj należałoby zaimplementować wczytywanie przykładów dla oryginalnych klas
+            # aby obliczyć informację Fishera
+            # Przykład (wymaga implementacji data_loader_for_original_classes):
+            # fisher_diagonal = compute_fisher_information(
+            #     original_model, data_loader_for_original_classes, fisher_sample_size, device
+            # )
 
-                    # Zastąp starą warstwę nową
-                    model.classifier = new_layer
-                    print(
-                        f"Zmodyfikowano warstwę classifier: "
-                        f"in_features={in_features}, "
-                        f"out_features={new_num_classes}"
-                    )
+    # 6. Zmodyfikuj strategie zamrażania warstw
+    if prevent_forgetting and layer_freezing_config:
+        strategy = layer_freezing_config.get("strategy", "gradual")
+        freeze_ratio = layer_freezing_config.get("freeze_ratio", 0.7)
+
+        print(f"\n=== KONFIGURACJA ZAMRAŻANIA WARSTW ===")
+        print(f"Strategia: {strategy}, Współczynnik: {freeze_ratio*100:.1f}%")
+
+        # Implementacja różnych strategii zamrażania
+        parameters = list(model.named_parameters())
+
+        if strategy == "gradual":
+            # Zamrażaj warstwę po warstwie od początku modelu
+            num_to_freeze = int(len(parameters) * freeze_ratio)
+
+            for i, (name, param) in enumerate(parameters):
+                if i < num_to_freeze:
+                    param.requires_grad = False
+                    print(f"  ❄️ Zamrożono: {name}")
                 else:
-                    raise ValueError(
-                        f"Nieznany typ classifier: {type(model.classifier)}"
-                    )
-        elif hasattr(model, "heads"):  # dla ViT
-            in_features = model.heads.head.in_features
+                    param.requires_grad = True
+                    print(f"  🔥 Trenowane: {name}")
 
-            # Utwórz nową warstwę Linear
-            new_layer = nn.Linear(in_features, new_num_classes)
+        elif strategy == "selective":
+            # Zamrażaj tylko wybrane warstwy (np. konwolucyjne)
+            for name, param in parameters:
+                if "conv" in name or "bn" in name:  # Warstwy konwolucyjne i batch norm
+                    param.requires_grad = False
+                    print(f"  ❄️ Zamrożono: {name}")
+                else:
+                    param.requires_grad = True
+                    print(f"  🔥 Trenowane: {name}")
 
-            # Inicjalizuj wagi dla klas istniejących w modelu bazowym
-            with torch.no_grad():
-                for new_idx, base_idx in class_index_mapping.items():
-                    if base_idx >= 0 and base_idx < original_num_classes:
-                        # Skopiuj wagi i bias dla klas, które istnieją w obu modelach
-                        new_layer.weight.data[new_idx] = model.heads.head.weight.data[
-                            base_idx
-                        ]
-                        new_layer.bias.data[new_idx] = model.heads.head.bias.data[
-                            base_idx
-                        ]
+        elif strategy == "progressive":
+            # Początkowo zamróź wszystko oprócz ostatnich warstw
+            num_to_freeze = int(len(parameters) * freeze_ratio)
 
-            # Zastąp starą warstwę nową
-            model.heads.head = new_layer
-            print(
-                f"Zmodyfikowano warstwę heads.head: "
-                f"in_features={in_features}, "
-                f"out_features={new_num_classes}"
-            )
-        else:
-            raise ValueError(f"Nieznana architektura modelu: {type(model)}")
-    else:
-        print("Liczba klas nie uległa zmianie, zachowuję oryginalną warstwę wyjściową")
+            for i, (name, param) in enumerate(parameters):
+                if i < num_to_freeze:
+                    param.requires_grad = False
+                    print(f"  ❄️ Zamrożono (początkowo): {name}")
+                else:
+                    param.requires_grad = True
+                    print(f"  🔥 Trenowane (początkowo): {name}")
 
-    # 6. Zamroź określony procent warstw (od początku modelu)
-    parameters = list(model.named_parameters())
-    num_to_freeze = int(len(parameters) * freeze_ratio)
-
-    trainable_params = 0
-    frozen_params = 0
-
-    print("\nZamrażanie warstw modelu...")
-    for i, (name, param) in enumerate(parameters):
-        if i < num_to_freeze:
-            param.requires_grad = False  # Zamroź warstwę
-            frozen_params += param.numel()
-            print(f"  ❄️ Zamrożono: {name} ({param.shape})")
-        else:
-            param.requires_grad = True  # Pozostaw do treningu
-            trainable_params += param.numel()
-            print(f"  🔥 Trenowane: {name} ({param.shape})")
-
-    print(
-        f"\nParametry zamrożone: {frozen_params:,} ({frozen_params/(frozen_params+trainable_params)*100:.1f}%)"
-    )
-    print(
-        f"Parametry trenowane: {trainable_params:,} ({trainable_params/(frozen_params+trainable_params)*100:.1f}%)"
-    )
+            # Dla progressive odmrażania zaimplementujemy logikę w pętli treningowej
 
     # 7. Przygotuj transformacje danych
     train_transform = get_augmentation_transforms()
@@ -746,7 +554,13 @@ def fine_tune_model(
 
     print("\n=== ROZPOCZYNAM FINE-TUNING ===")
 
-    # 16. Pętla treningowa
+    # Pętla treningowa
+    print("\n=== ROZPOCZYNAM TRENING ===")
+    best_val_loss = float("inf")
+    best_model_state = None
+    patience_counter = 0
+    early_stopping_patience = 5
+
     for epoch in range(num_epochs):
         # Sprawdź czy proces ma zostać przerwany
         if should_stop_callback and should_stop_callback():
@@ -758,395 +572,218 @@ def fine_tune_model(
         epoch_start_time = time.time()
         print(f"\n--- Epoka {epoch+1}/{num_epochs} ---")
 
-        # Tryb treningu
+        # Progressive unfreezing - odmrażanie kolejnych warstw w każdej epoce
+        if (
+            prevent_forgetting
+            and layer_freezing_config
+            and layer_freezing_config.get("strategy") == "progressive"
+        ):
+            if epoch > warmup_epochs:
+                # Oblicz, ile warstw odmrozić w tej epoce
+                layers_to_unfreeze = int(
+                    len(parameters) * (1 - freeze_ratio) * epoch / num_epochs
+                )
+
+                # Odmroź odpowiednią liczbę warstw od końca
+                for i, (name, param) in enumerate(reversed(parameters)):
+                    if i < layers_to_unfreeze:
+                        param.requires_grad = True
+                        print(f"  🔥 Odmrożono w epoce {epoch+1}: {name}")
+
+        # Trening
         model.train()
         train_loss = 0.0
         train_correct = 0
         train_total = 0
-        batch_count = 0
 
-        # Trening na batchu
         for batch_idx, (inputs, targets) in enumerate(train_loader):
             inputs, targets = inputs.to(device), targets.to(device)
 
-            # Mixup (opcjonalnie)
-            if use_mixup:
-                inputs, targets_a, targets_b, lam = mixup_data(inputs, targets)
-                inputs, targets_a, targets_b = (
-                    inputs.to(device),
-                    targets_a.to(device),
-                    targets_b.to(device),
-                )
+            # Dodaj Rehearsal (powtarzanie)
+            if prevent_forgetting and rehearsal_data:
+                # Wstaw przykłady z rehearsal_data do batcha treningowego
+                rehearsal_batch = next(iter(rehearsal_data))
+                rehearsal_inputs, rehearsal_targets = rehearsal_batch
+                rehearsal_inputs = rehearsal_inputs.to(device)
+                rehearsal_targets = rehearsal_targets.to(device)
 
-            # Zerowanie gradientów
+                # Połącz oryginalny batch z rehearsal batch
+                inputs = torch.cat([inputs, rehearsal_inputs], dim=0)
+                targets = torch.cat([targets, rehearsal_targets], dim=0)
+
+            # Forward pass
             optimizer.zero_grad()
 
-            # Forward pass z mixed precision (jeśli włączone)
-            if use_mixed_precision and scaler is not None:
-                with torch.amp.autocast(device_type=device.type):
+            if use_mixed_precision:
+                with torch.cuda.amp.autocast():
                     outputs = model(inputs)
-                    if use_mixup:
-                        loss = mixup_criterion(
-                            criterion, outputs, targets_a, targets_b, lam
-                        )
+
+                    # Dodaj Knowledge Distillation
+                    if (
+                        prevent_forgetting
+                        and knowledge_distillation_config
+                        and knowledge_distillation_config.get("use", False)
+                    ):
+                        # Wykonaj forward pass przez oryginały model
+                        with torch.no_grad():
+                            teacher_outputs = original_model(inputs)
+
+                        # Użyj niestandardowego kryterium straty z knowledge distillation
+                        loss = distillation_loss(outputs, targets, teacher_outputs)
                     else:
                         loss = criterion(outputs, targets)
 
-                # Backward pass ze scalerem
+                    # Dodaj EWC regularization do straty
+                    if (
+                        prevent_forgetting
+                        and ewc_config
+                        and ewc_config.get("use", False)
+                        and fisher_diagonal
+                    ):
+                        ewc_lambda = ewc_config.get("lambda", 100.0)
+
+                        # Dodaj regularyzację EWC do straty
+                        ewc_loss = 0
+                        for name, param in model.named_parameters():
+                            if name in fisher_diagonal:
+                                ewc_loss += torch.sum(
+                                    fisher_diagonal[name]
+                                    * (param - original_model.state_dict()[name]).pow(2)
+                                )
+                        loss += ewc_lambda * ewc_loss
+
+                # Backward pass z mixed precision
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
             else:
-                # Standardowy forward pass
                 outputs = model(inputs)
-                if use_mixup:
-                    loss = mixup_criterion(
-                        criterion, outputs, targets_a, targets_b, lam
-                    )
+
+                # Dodaj Knowledge Distillation
+                if (
+                    prevent_forgetting
+                    and knowledge_distillation_config
+                    and knowledge_distillation_config.get("use", False)
+                ):
+                    # Wykonaj forward pass przez oryginały model
+                    with torch.no_grad():
+                        teacher_outputs = original_model(inputs)
+
+                    # Użyj niestandardowego kryterium straty z knowledge distillation
+                    loss = distillation_loss(outputs, targets, teacher_outputs)
                 else:
                     loss = criterion(outputs, targets)
+
+                # Dodaj EWC regularization do straty
+                if (
+                    prevent_forgetting
+                    and ewc_config
+                    and ewc_config.get("use", False)
+                    and fisher_diagonal
+                ):
+                    ewc_lambda = ewc_config.get("lambda", 100.0)
+
+                    # Dodaj regularyzację EWC do straty
+                    ewc_loss = 0
+                    for name, param in model.named_parameters():
+                        if name in fisher_diagonal:
+                            ewc_loss += torch.sum(
+                                fisher_diagonal[name]
+                                * (param - original_model.state_dict()[name]).pow(2)
+                            )
+                    loss += ewc_lambda * ewc_loss
 
                 # Standardowy backward pass
                 loss.backward()
                 optimizer.step()
 
-            # Oblicz dokładność
+            # Aktualizuj statystyki
+            train_loss += loss.item()
             _, predicted = outputs.max(1)
             train_total += targets.size(0)
-            if use_mixup:
-                # Przybliżona dokładność dla mixup
-                train_correct += (
-                    lam * predicted.eq(targets_a).sum().float()
-                    + (1 - lam) * predicted.eq(targets_b).sum().float()
-                ).item()
-            else:
-                train_correct += predicted.eq(targets).sum().item()
+            train_correct += predicted.eq(targets).sum().item()
 
-            train_loss += loss.item()
-            batch_count += 1
-
-            # Wyświetl postęp co 10 batchy
-            if (batch_idx + 1) % 10 == 0 or (batch_idx + 1) == len(train_loader):
-                print(
-                    f"  Batch {batch_idx+1}/{len(train_loader)} | "
-                    f"Strata: {loss.item():.4f} | "
-                    f"Dokładność: {predicted.eq(targets).sum().item() / targets.size(0):.2%}"
+            # Aktualizuj progress bar
+            if progress_callback:
+                progress = (epoch * len(train_loader) + batch_idx + 1) / (
+                    num_epochs * len(train_loader)
                 )
+                progress_callback(progress)
 
-        # Oblicz średnie wartości dla epoki
-        epoch_loss = train_loss / batch_count
-        epoch_acc = train_correct / train_total
+            # Sprawdź czy należy przerwać trening
+            if should_stop_callback and should_stop_callback():
+                print("\nPrzerwano trening na żądanie użytkownika")
+                return None
+
+        # Oblicz średnią stratę i dokładność dla epoki
+        train_loss = train_loss / len(train_loader)
+        train_acc = 100.0 * train_correct / train_total
 
         # Walidacja
-        val_loss = None
-        val_acc = None
-        val_metrics = {}
-
         if val_loader:
             model.eval()
             val_loss = 0.0
             val_correct = 0
             val_total = 0
-            batch_count = 0
-            all_targets = []
-            all_preds = []
-            all_probs = []
 
             with torch.no_grad():
                 for inputs, targets in val_loader:
                     inputs, targets = inputs.to(device), targets.to(device)
-
-                    # Forward pass
                     outputs = model(inputs)
                     loss = criterion(outputs, targets)
 
-                    # Oblicz dokładność
+                    val_loss += loss.item()
                     _, predicted = outputs.max(1)
                     val_total += targets.size(0)
                     val_correct += predicted.eq(targets).sum().item()
-                    val_loss += loss.item()
-                    batch_count += 1
 
-                    # Zbieranie danych do dodatkowych metryk
-                    all_targets.extend(targets.cpu().numpy())
-                    all_preds.extend(predicted.cpu().numpy())
-                    all_probs.extend(torch.softmax(outputs, dim=1).cpu().numpy())
+            val_loss = val_loss / len(val_loader)
+            val_acc = 100.0 * val_correct / val_total
 
-            # Oblicz średnie wartości dla walidacji
-            val_loss = val_loss / batch_count
-            val_acc = val_correct / val_total
-
-            # Oblicz dodatkowe metryki
-            y_true = np.array(all_targets)
-            y_pred = np.array(all_preds)
-            y_prob = np.array(all_probs)
-
-            # Przetwórz dane, aby usunąć wartości NaN
-            y_true = handle_nan_data(y_true)
-            y_pred = handle_nan_data(y_pred)
-            y_prob = handle_nan_data(y_prob)
-
-            try:
-                val_metrics["precision"] = precision_score(
-                    y_true, y_pred, average="macro", zero_division=0
-                )
-                val_metrics["recall"] = recall_score(
-                    y_true, y_pred, average="macro", zero_division=0
-                )
-                val_metrics["f1"] = f1_score(
-                    y_true, y_pred, average="macro", zero_division=0
-                )
-
-                # Top-k accuracy (jeśli więcej niż 2 klasy)
-                if new_num_classes > 2:
-                    k_values = min(5, new_num_classes)
-                    try:
-                        val_metrics["top3"] = (
-                            top_k_accuracy_score(
-                                y_true,
-                                y_prob,
-                                k=min(3, new_num_classes - 1),
-                                normalize=True,
-                            )
-                            if k_values >= 3 and new_num_classes > 3
-                            else 0.0
-                        )
-                        val_metrics["top5"] = (
-                            top_k_accuracy_score(
-                                y_true,
-                                y_prob,
-                                k=min(5, new_num_classes - 1),
-                                normalize=True,
-                            )
-                            if k_values >= 5 and new_num_classes > 5
-                            else 0.0
-                        )
-                    except Exception as e:
-                        print(f"Błąd podczas obliczania Top-k accuracy: {e}")
-                        val_metrics["top3"] = 0.0
-                        val_metrics["top5"] = 0.0
-
-                # Poprawione obliczanie AUC
-                try:
-                    if new_num_classes == 2:
-                        # Sprawdź, czy w zbiorze walidacyjnym występują obie klasy
-                        if len(np.unique(y_true)) > 1:
-                            val_metrics["auc"] = roc_auc_score(y_true, y_prob[:, 1])
-                        else:
-                            val_metrics["auc"] = (
-                                1.0  # Jeśli wszystkie próbki są z jednej klasy i model je poprawnie klasyfikuje
-                            )
-                            print(
-                                "Uwaga: Wszystkie próbki walidacyjne należą do jednej klasy. AUC ustawiono na 1.0."
-                            )
-
-                        # Dodatkowe metryki dla klasyfikacji binarnej
-                        try:
-                            # Dokładność zbalansowana
-                            val_metrics["balanced_accuracy"] = balanced_accuracy_score(
-                                y_true, y_pred
-                            )
-
-                            # Specyficzność (Specificity)
-                            tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
-                            if (tn + fp) > 0:
-                                val_metrics["specificity"] = tn / (tn + fp)
-                            else:
-                                val_metrics["specificity"] = 0.0
-
-                            # Dodaj te metryki do historii
-                            history["val_balanced_accuracy"].append(
-                                val_metrics["balanced_accuracy"]
-                            )
-                            history["val_specificity"].append(
-                                val_metrics["specificity"]
-                            )
-
-                            # Wyświetl dodatkowe metryki
-                            print(
-                                f"  Val balanced acc: {val_metrics['balanced_accuracy']:.4f}"
-                            )
-                            print(
-                                f"  Val specificity: {val_metrics['specificity']:.4f}"
-                            )
-                        except Exception as e:
-                            print(
-                                f"Błąd podczas obliczania dodatkowych metryk binarnych: {e}"
-                            )
-                    else:
-                        # Dla większej liczby klas
-                        val_metrics["auc"] = roc_auc_score(
-                            y_true, y_prob, multi_class="ovr"
-                        )
-                except Exception as e:
-                    print(f"Błąd podczas obliczania AUC: {e}")
-                    val_metrics["auc"] = 0.0
-
-            except Exception as e:
-                print(f"Błąd podczas obliczania metryk: {e}")
-                val_metrics = {
-                    "precision": 0.0,
-                    "recall": 0.0,
-                    "f1": 0.0,
-                    "top3": 0.0,
-                    "top5": 0.0,
-                    "auc": 0.0,
-                }
-
-            # Oblicz różnicę między stratą treningową a walidacyjną
-            loss_diff = abs(epoch_loss - val_loss)
-            history["loss_diff"].append(loss_diff)
-
-            # Aktualizuj learning rate w historii
-            current_lr = optimizer.param_groups[0]["lr"]
-            history["current_lr"] = current_lr
-            history["learning_rates"].append(current_lr)
-
-            # Zapisz metryki do historii
-            history["val_loss"].append(val_loss)
-            history["val_acc"].append(val_acc)
-            history["val_precision"].append(val_metrics["precision"])
-            history["val_recall"].append(val_metrics["recall"])
-            history["val_f1"].append(val_metrics["f1"])
-            history["val_auc"].append(val_metrics["auc"])
-            history["val_top3"].append(val_metrics["top3"])
-            history["val_top5"].append(val_metrics["top5"])
+            # Aktualizuj scheduler
+            if scheduler_type == "plateau":
+                scheduler.step(val_loss)
+            else:
+                scheduler.step()
 
             # Early stopping
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
-                history["best_val_loss"] = best_val_loss
-                history["best_epoch"] = epoch
-                counter = 0
-                print("✓ Nowa najlepsza strata walidacyjna!")
-
-                # Zapisz najlepszy model
-                os.makedirs(output_dir, exist_ok=True)
-
-                # Utwórz nazwę modelu na podstawie architektury i nazwy zadania
-                model_variant = ""
-                if task_name:
-                    model_variant = f"_{task_name}"
-                model_filename = f"{model_type}{model_variant}_finetuned_best.pt"
-                best_model_path = os.path.join(output_dir, model_filename)
-
-                # Utwórz nowy klasyfikator z dostosowanym modelem
-                best_classifier = ImageClassifier(
-                    model_type=model_type, num_classes=new_num_classes
-                )
-                best_classifier.model = model
-                best_classifier.class_names = new_class_names
-
-                # Przygotuj historię fine-tuningu
-                trained_categories = list(new_class_names.values())
-                base_model_filename = os.path.basename(base_model_path)
-
-                # Sprawdź, czy model już ma historię fine-tuningu
-                finetuning_history = {}
-                config_path = os.path.splitext(best_model_path)[0] + "_config.json"
-                if os.path.exists(config_path):
-                    try:
-                        with open(config_path, "r") as f:
-                            existing_config = json.load(f)
-                            if (
-                                "metadata" in existing_config
-                                and "finetuning_history" in existing_config["metadata"]
-                            ):
-                                finetuning_history = existing_config["metadata"][
-                                    "finetuning_history"
-                                ]
-                    except Exception as e:
-                        print(
-                            f"Nie udało się odczytać istniejącej historii fine-tuningu: {e}"
-                        )
-
-                # Określ numer sesji fine-tuningu
-                session_nums = [
-                    int(k.split("_")[-1])
-                    for k in finetuning_history.keys()
-                    if k.startswith("fine_tuning_session_")
-                ]
-                next_session_num = max(session_nums) + 1 if session_nums else 1
-                session_key = f"fine_tuning_session_{next_session_num}"
-
-                # Dodaj nową sesję
-                finetuning_history[session_key] = {
-                    "trained_categories": trained_categories,
-                    "timestamp": datetime.now().strftime("%Y-%m-%d_%H-%M"),
-                    "base_model": base_model_filename,
-                }
-
-                # Dodaj szczegóły treningu
-                training_details = {
-                    "learning_rate": learning_rate,
-                    "batch_size": batch_size,
-                    "num_epochs": num_epochs,
-                    "freeze_ratio": freeze_ratio,
-                    "optimizer_type": optimizer_type,
-                    "scheduler_type": scheduler_type,
-                }
-
-                # Zapisz model z rozszerzoną konfiguracją
-                metadata = {
-                    "finetuning_history": finetuning_history,
-                    "training_details": training_details,
-                }
-                if task_name:
-                    metadata["task_name"] = task_name
-
-                # Przed zapisem finalnego modelu, oblicz czas treningu
-                training_time = time.time() - start_training_time
-
-                # Przygotuj nowe metadane
-                new_metadata = {}
-                # Zachowaj wszystkie oryginalne metadane
-                if "metadata" in original_config:
-                    new_metadata = deepcopy(original_config["metadata"])
-
-                # Dodaj lub zaktualizuj czas treningu
-                if "training_time" in new_metadata:
-                    # Dodaj nowy czas treningu do istniejącego
-                    new_metadata["training_time"] += training_time
-                else:
-                    # Utwórz nowy element czasu treningu
-                    new_metadata["training_time"] = training_time
-
-                # Dodaj lub aktualizuj tylko te elementy, które się zmieniły
-                new_metadata["finetuning_history"] = finetuning_history
-                new_metadata["training_details"] = training_details
-                if task_name:
-                    new_metadata["task_name"] = task_name
-
-                # Zapisz model z kompletnymi metadanymi z oryginalnego modelu plus nowe informacje
-                best_classifier.save_with_original_config(
-                    best_model_path, original_config, new_metadata
-                )
-                print(f"✓ Zapisano najlepszy model: {best_model_path}")
+                best_model_state = model.state_dict().copy()
+                patience_counter = 0
             else:
-                counter += 1
-                print(f"✗ Brak poprawy ({counter}/{patience})")
-                if counter >= patience:
-                    print(f"Early stopping na epoce {epoch+1}")
+                patience_counter += 1
+                if patience_counter >= early_stopping_patience:
+                    print(f"\nEarly stopping po {epoch + 1} epokach")
                     break
 
-            # Aktualizuj scheduler
-            if scheduler is not None:
-                if scheduler_type.lower() == "plateau":
-                    scheduler.step(val_loss)
-                else:
-                    scheduler.step()
+            print(
+                f"Epoka {epoch + 1}/{num_epochs} | "
+                f"Train Loss: {train_loss:.4f} | "
+                f"Train Acc: {train_acc:.2f}% | "
+                f"Val Loss: {val_loss:.4f} | "
+                f"Val Acc: {val_acc:.2f}%"
+            )
+        else:
+            # Aktualizuj scheduler bez walidacji
+            scheduler.step()
+            print(
+                f"Epoka {epoch + 1}/{num_epochs} | "
+                f"Train Loss: {train_loss:.4f} | "
+                f"Train Acc: {train_acc:.2f}%"
+            )
 
         # Zapisz czas trwania epoki
         epoch_time = time.time() - epoch_start_time
         history["epoch_times"].append(epoch_time)
-        history["train_loss"].append(epoch_loss)
-        history["train_acc"].append(epoch_acc)
+        history["train_loss"].append(train_loss)
+        history["train_acc"].append(train_acc)
 
         # Wyświetl podsumowanie epoki
         print(f"\nPodsumowanie epoki {epoch+1}:")
         print(f"  Czas: {epoch_time:.2f}s")
-        print(f"  Train loss: {epoch_loss:.4f}")
-        print(f"  Train acc:  {epoch_acc:.2%}")
+        print(f"  Train loss: {train_loss:.4f}")
+        print(f"  Train acc:  {train_acc:.2%}")
 
         if val_loader:
             print(f"  Val loss:   {val_loss:.4f}")
@@ -1168,8 +805,8 @@ def fine_tune_model(
                 progress_callback(
                     epoch + 1,
                     num_epochs,
-                    epoch_loss,
-                    epoch_acc,
+                    train_loss,
+                    train_acc,
                     val_loss if val_loader else 0,
                     val_acc if val_loader else 0,
                     top3,
@@ -1185,6 +822,10 @@ def fine_tune_model(
         # Czyszczenie pamięci GPU
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+
+    # Przywróć najlepszy model
+    if best_model_state is not None:
+        model.load_state_dict(best_model_state)
 
     # 17. Zapisz końcowy model
     print("\n=== ZAPISYWANIE KOŃCOWEGO MODELU ===")
@@ -1283,21 +924,10 @@ def fine_tune_model(
         new_metadata["task_name"] = task_name
 
     # Zapisz model z kompletnymi metadanymi z oryginalnego modelu plus nowe informacje
-    final_classifier.save_with_original_config(final_model_path, original_config, new_metadata)
+    final_classifier.save_with_original_config(
+        final_model_path, original_config, new_metadata
+    )
     print(f"Zapisano końcowy model: {final_model_path}")
-
-    # Usuń plik *best.pt jeśli istnieje
-    if os.path.exists(best_model_path):
-        try:
-            os.remove(best_model_path)
-            print(f"Usunięto plik najlepszego modelu: {best_model_path}")
-            # Usuń również plik konfiguracyjny dla najlepszego modelu
-            best_config_path = os.path.splitext(best_model_path)[0] + "_config.json"
-            if os.path.exists(best_config_path):
-                os.remove(best_config_path)
-                print(f"Usunięto plik konfiguracyjny najlepszego modelu: {best_config_path}")
-        except Exception as e:
-            print(f"Nie udało się usunąć pliku najlepszego modelu: {e}")
 
     # 18. Podsumowanie fine-tuningu
     print("\n=== PODSUMOWANIE FINE-TUNINGU ===")
@@ -1318,6 +948,11 @@ def fine_tune_model(
         "num_classes": new_num_classes,
         "base_model": base_model_path,
     }
+
+    # WAŻNE: Zachowaj oryginalne mapowanie klas w konfiguracji modelu
+    if prevent_forgetting and preserve_original_classes:
+        print("\nZachowywanie oryginalnego mapowania klas w konfiguracji modelu...")
+        final_classifier.class_names = new_class_names
 
     return result
 

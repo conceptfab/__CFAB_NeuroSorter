@@ -196,50 +196,26 @@ class BatchProcessor(QWidget, TabInterface):
 
     def _start_processing(self):
         """Rozpoczyna przetwarzanie plików."""
+        if not hasattr(self.parent, "classifier") or not self.parent.classifier:
+            msg = "Nie załadowano modelu klasyfikacji. Proszę najpierw załadować model."
+            QMessageBox.warning(self, "Brak modelu", msg)
+            return
+
+        # Sprawdź czy wybrano katalogi
         if not hasattr(self, "input_dir") or not self.input_dir:
-            QMessageBox.warning(
-                self,
-                "Brak katalogu",
-                "Wybierz katalog źródłowy przed rozpoczęciem sortowania.",
-            )
+            msg = "Wybierz katalog źródłowy przed rozpoczęciem sortowania."
+            QMessageBox.warning(self, "Brak katalogu", msg)
             return
         if not hasattr(self, "output_dir") or not self.output_dir:
-            QMessageBox.warning(
-                self,
-                "Brak katalogu",
-                "Wybierz katalog docelowy przed rozpoczęciem sortowania.",
-            )
+            msg = "Wybierz katalog docelowy przed rozpoczęciem sortowania."
+            QMessageBox.warning(self, "Brak katalogu", msg)
             return
 
-        # Sprawdź, czy katalog wejściowy i wyjściowy są różne, jeśli przenosimy
-        if (
-            not self.copy_files_checkbox.isChecked()
-            and self.input_dir == self.output_dir
-        ):
-            QMessageBox.critical(
-                self,
-                "Błąd konfiguracji",
-                "Katalog źródłowy i docelowy muszą być różne, jeśli wybrano "
-                "opcję przenoszenia plików.",
-            )
-            return
-
-        # Sprawdź, czy klasyfikator jest załadowany w obiekcie nadrzędnym
-        if not hasattr(self.parent, "classifier") or not self.parent.classifier:
-            QMessageBox.warning(
-                self,
-                "Brak modelu",
-                "Nie załadowano modelu klasyfikacji. "
-                "Proszę najpierw załadować model.",
-            )
-            return
-
-        # Użyj istniejącego klasyfikatora z obiektu nadrzędnego
-        classifier = self.parent.classifier
-
-        # Inicjalizacja sortera z poprawnym klasyfikatorem
+        # Inicjalizacja sortera
         self.image_sorter = ImageSorter(
-            classifier=classifier, copy_files=self.copy_files_checkbox.isChecked()
+            model_path=self.parent.classifier.model_path,
+            output_directory=self.output_dir,
+            preserve_original_classes=self.copy_files_checkbox.isChecked(),
         )
 
         # Rozpocznij sortowanie
@@ -251,11 +227,10 @@ class BatchProcessor(QWidget, TabInterface):
             self._setup_progress_bar()  # Ustaw/pokaż pasek postępu
             QApplication.processEvents()  # Odśwież UI
 
-            stats = self.image_sorter.sort_directory(
-                input_dir=self.input_dir,
-                output_dir=self.output_dir,
+            stats = self.image_sorter.sort_images(
+                input_directory=self.input_dir,
+                batch_size=16,
                 confidence_threshold=0.5,  # Można dodać do UI
-                callback=self._update_progress,  # Callback do paska postępu
             )
 
             if not self.is_processing:  # Sprawdź czy proces nie został przerwany
@@ -263,23 +238,22 @@ class BatchProcessor(QWidget, TabInterface):
 
             # Aktualizuj tabelę wyników
             self.results_table.setRowCount(0)
-            for category, count in stats["categories"].items():
+            for class_name, count in stats["classes"].items():
                 row = self.results_table.rowCount()
                 self.results_table.insertRow(row)
                 self.results_table.setItem(row, 0, QTableWidgetItem("Kategoria"))
-                self.results_table.setItem(row, 1, QTableWidgetItem(category))
+                self.results_table.setItem(row, 1, QTableWidgetItem(class_name))
                 self.results_table.setItem(row, 2, QTableWidgetItem(str(count)))
                 self.results_table.setItem(row, 3, QTableWidgetItem("Zakończono"))
 
             self.status_label.setText("Sortowanie zakończone")
-            QMessageBox.information(
-                self,
-                "Sukces",
+            msg = (
                 f"Sortowanie plików zostało zakończone pomyślnie.\n\n"
                 f"Przetworzono: {stats['processed']}\n"
                 f"Przeniesiono/skopiowano: {stats['moved']}\n"
-                f"Pominięto: {stats['skipped']}",
+                f"Pominięto: {stats['skipped']}"
             )
+            QMessageBox.information(self, "Sukces", msg)
         except ValueError as ve:
             # Obsługa błędu walidacji katalogów z ImageSorter
             self.logger.error(f"Błąd konfiguracji: {str(ve)}\n{traceback.format_exc()}")

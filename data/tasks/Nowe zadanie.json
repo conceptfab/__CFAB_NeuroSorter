@@ -1,32 +1,25 @@
 {
+  "name": "Nowe zadanie",
   "type": "fine_tuning",
-  "info": "Profil dla klasyfikacji wieloklasowej (5 klas)-FIXED",
-  "description": "Profil dostosowany do klasyfikacji około 5 różnych klas-FIXED",
-  "data_required": "Zestaw danych zawierający przykłady z około 5 różnych klas-FIXED",
-  "hardware_required": "Standardowy sprzęt",
   "config": {
+    "base_model": "F:/__CFAB_NeuroSorter/data/models/base_A.pt",
+    "train_dir": "F:/__Set_gardener/__dane_treningowe",
+    "val_dir": "F:/__Set_gardener/__dane_walidacyjne",
     "model": {
       "architecture": "EfficientNet",
       "variant": "b2",
       "input_size": 260,
-      "num_classes": 5,
-      "pretrained": true,
-      "pretrained_weights": "imagenet",
-      "feature_extraction_only": false,
-      "activation": "relu",
-      "dropout_at_inference": false,
-      "global_pool": "avg",
-      "last_layer_activation": "softmax"
+      "num_classes": 5
     },
     "training": {
       "epochs": 100,
       "batch_size": 48,
       "learning_rate": 0.0002,
       "optimizer": "AdamW",
-      "scheduler": "CosineAnnealingWarmRestarts",
+      "scheduler": "None",
       "num_workers": 4,
       "warmup_epochs": 5,
-      "warmup_lr_init": 5e-7,
+      "warmup_lr_init": 1e-6,
       "mixed_precision": true,
       "gradient_accumulation_steps": 2,
       "gradient_clip": 1.0,
@@ -34,32 +27,23 @@
       "evaluation_freq": 1,
       "use_ema": false,
       "ema_decay": 0.9999,
-      "unfreeze_strategy": "gradual",
-      "unfreeze_after_epochs": 10,
+      "unfreeze_strategy": "unfreeze_all",
+      "unfreeze_after_epochs": 5,
       "unfreeze_layers": 15,
-      "frozen_lr": 0.0001,
-      "unfrozen_lr": 0.001
+      "frozen_lr": 0.0,
+      "unfrozen_lr": 0.0
     },
     "regularization": {
       "weight_decay": 0.00015,
+      "gradient_clip": 1.0,
       "label_smoothing": 0.1,
-      "dropout_rate": 0.3,
       "drop_connect_rate": 0.2,
+      "dropout_rate": 0.3,
       "momentum": 0.9,
       "epsilon": 1e-6,
       "swa": {
         "use": true,
         "start_epoch": 80
-      },
-      "stochastic_depth": {
-        "use": false,
-        "drop_rate": 0.2,
-        "survival_probability": 0.8
-      },
-      "random_erase": {
-        "use": false,
-        "probability": 0.25,
-        "mode": "pixel"
       }
     },
     "augmentation": {
@@ -112,10 +96,7 @@
         "f1": true,
         "topk": true,
         "confusion_matrix": true,
-        "auc": true,
-        "balanced_accuracy": true,
-        "specificity": true,
-        "kappa": true
+        "auc": true
       },
       "logging": {
         "use_tensorboard": true,
@@ -132,29 +113,62 @@
       "early_stopping": {
         "patience": 15,
         "min_delta": 0.0005,
-        "monitor": "val_f1"
+        "monitor": "val_loss"
       },
       "checkpointing": {
         "best_only": true,
         "save_frequency": 1,
-        "metric": "val_f1"
+        "metric": "val_loss"
       }
     },
     "advanced": {
       "seed": 42,
-      "deterministic": true,
-      "class_weights": "auto",
-      "sampler": "weighted_random",
+      "deterministic": false,
+      "class_weights": "none",
+      "sampler": "none",
       "image_channels": 3,
       "tta": {
-        "use": true,
-        "num_augmentations": 3
+        "use": false,
+        "num_augmentations": 5
       },
       "export_onnx": false,
       "quantization": {
         "use": false,
         "precision": "int8"
+      },
+      "catastrophic_forgetting_prevention": {
+        "enable": true,
+        "preserve_original_classes": true,
+        "rehearsal": {
+          "use": true,
+          "samples_per_class": 25,
+          "synthetic_samples": true
+        },
+        "knowledge_distillation": {
+          "use": true,
+          "temperature": 2.0,
+          "alpha": 0.4
+        },
+        "ewc_regularization": {
+          "use": true,
+          "lambda": 120.0,
+          "fisher_sample_size": 200
+        },
+        "layer_freezing": {
+          "strategy": "gradual",
+          "freeze_ratio": 0.7
+        }
       }
     }
-  }
+  },
+  "training_time": 0,
+  "training_time_str": "0:00:00",
+  "status": "Oczekuj\u0105ce",
+  "train_accuracy": 0.0,
+  "train_loss": 0.0,
+  "validation_accuracy": 0.0,
+  "validation_loss": 0.0,
+  "model_filename": "",
+  "accuracy": 0.0,
+  "epochs_trained": 0
 }

@@ -18,7 +18,8 @@ class BatchClassificationThread(QThread):
         self,
         files: List[str],
         output_dir: str,
-        copy_files: bool = True,
+        model_path: str,
+        preserve_original_classes: bool = True,
         confidence_threshold: float = 0.5,
     ):
         """
@@ -27,13 +28,15 @@ class BatchClassificationThread(QThread):
         Args:
             files: Lista plików do sortowania
             output_dir: Katalog docelowy
-            copy_files: Czy kopiować pliki zamiast przenosić
+            model_path: Ścieżka do modelu
+            preserve_original_classes: Czy zachować oryginalne klasy
             confidence_threshold: Minimalny próg pewności klasyfikacji
         """
         super().__init__()
         self.files = files
         self.output_dir = output_dir
-        self.copy_files = copy_files
+        self.model_path = model_path
+        self.preserve_original_classes = preserve_original_classes
         self.confidence_threshold = confidence_threshold
         self.is_paused = False
         self.is_stopped = False
@@ -43,75 +46,32 @@ class BatchClassificationThread(QThread):
         try:
             # Inicjalizacja sortera
             sorter = ImageSorter(
-                classifier=self.parent().classifier, copy_files=self.copy_files
+                model_path=self.model_path,
+                output_directory=self.output_dir,
+                preserve_original_classes=self.preserve_original_classes,
             )
 
             # Sortowanie plików
-            stats = sorter.sort_directory(
-                input_dir=os.path.dirname(self.files[0]),
-                output_dir=self.output_dir,
+            stats = sorter.sort_images(
+                input_directory=os.path.dirname(self.files[0]),
+                batch_size=16,
                 confidence_threshold=self.confidence_threshold,
-                callback=self._progress_callback,
             )
 
             # Emituj wyniki
-            for file_path in self.files:
-                if self.is_stopped:
-                    break
-
-                while self.is_paused:
-                    time.sleep(0.1)
-                    if self.is_stopped:
-                        break
-
-                try:
-                    # Klasyfikacja pliku
-                    result = self.parent().classifier.predict(file_path)
-
-                    if result and result["confidence"] >= self.confidence_threshold:
-                        category = result["class_name"]
-                        status = "Sukces"
-                    else:
-                        category = "__pliki_bez_kategorii"
-                        status = "Brak kategorii"
-
-                    self.result_ready.emit(
-                        {
-                            "file": file_path,
-                            "category": category,
-                            "confidence": result["confidence"] if result else 0.0,
-                            "status": status,
-                        }
-                    )
-
-                except Exception as e:
-                    self.error_occurred.emit(
-                        f"Błąd podczas przetwarzania {file_path}: {str(e)}"
-                    )
-                    self.result_ready.emit(
-                        {
-                            "file": file_path,
-                            "category": "Błąd",
-                            "confidence": 0.0,
-                            "status": f"Błąd: {str(e)}",
-                        }
-                    )
+            self.result_ready.emit(stats)
 
         except Exception as e:
-            self.error_occurred.emit(f"Błąd krytyczny: {str(e)}")
+            self.error_occurred.emit(str(e))
 
-    def _progress_callback(self, current: int, total: int):
-        """Callback do aktualizacji postępu."""
-        self.progress_updated.emit(current, total)
+    def stop(self):
+        """Zatrzymuje wątek."""
+        self.is_stopped = True
 
     def pause(self):
-        """Wstrzymuje przetwarzanie."""
+        """Wstrzymuje wątek."""
         self.is_paused = True
 
     def resume(self):
-        """Wznawia przetwarzanie."""
+        """Wznawia wątek."""
         self.is_paused = False
-
-    def stop(self):
-        """Zatrzymuje przetwarzanie."""
-        self.is_stopped = True

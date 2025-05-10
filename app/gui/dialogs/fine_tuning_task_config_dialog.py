@@ -196,6 +196,98 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.randaugment_m_spin.setRange(0, 30)
         self.randaugment_m_spin.setValue(9)
 
+        # Kontrolki zapobiegania katastrofalnemu zapominaniu
+        self.prevent_forgetting_check = QtWidgets.QCheckBox()
+
+        # Inicjalizacja seed_spin
+        self.seed_spin = QtWidgets.QSpinBox()
+        self.seed_spin.setRange(0, 2147483647)
+        self.seed_spin.setValue(42)
+
+        self.preserve_classes_check = QtWidgets.QCheckBox()
+        self.preserve_classes_check.setChecked(True)
+
+        self.rehearsal_check = QtWidgets.QCheckBox()
+        self.rehearsal_check.setChecked(True)
+
+        self.samples_per_class_spin = QtWidgets.QSpinBox()
+        self.samples_per_class_spin.setRange(5, 100)
+        self.samples_per_class_spin.setValue(20)
+
+        self.synthetic_samples_check = QtWidgets.QCheckBox()
+        self.synthetic_samples_check.setChecked(True)
+
+        self.knowledge_distillation_check = QtWidgets.QCheckBox()
+        self.knowledge_distillation_check.setChecked(True)
+
+        self.kd_temperature_spin = QtWidgets.QDoubleSpinBox()
+        self.kd_temperature_spin.setRange(1.0, 10.0)
+        self.kd_temperature_spin.setValue(2.0)
+        self.kd_temperature_spin.setDecimals(1)
+
+        self.kd_alpha_spin = QtWidgets.QDoubleSpinBox()
+        self.kd_alpha_spin.setRange(0.1, 0.9)
+        self.kd_alpha_spin.setValue(0.4)
+        self.kd_alpha_spin.setDecimals(2)
+
+        self.ewc_check = QtWidgets.QCheckBox()
+        self.ewc_check.setChecked(True)
+
+        self.ewc_lambda_spin = QtWidgets.QDoubleSpinBox()
+        self.ewc_lambda_spin.setRange(10.0, 1000.0)
+        self.ewc_lambda_spin.setValue(100.0)
+        self.ewc_lambda_spin.setDecimals(1)
+
+        self.fisher_sample_size_spin = QtWidgets.QSpinBox()
+        self.fisher_sample_size_spin.setRange(50, 1000)
+        self.fisher_sample_size_spin.setValue(200)
+
+        self.layer_freezing_combo = QtWidgets.QComboBox()
+        self.layer_freezing_combo.addItems(["gradual", "selective", "progressive"])
+
+        self.freeze_ratio_spin = QtWidgets.QDoubleSpinBox()
+        self.freeze_ratio_spin.setRange(0.0, 0.9)
+        self.freeze_ratio_spin.setValue(0.7)
+        self.freeze_ratio_spin.setDecimals(2)
+
+        # Inicjalizacja deterministic_check
+        self.deterministic_check = QtWidgets.QCheckBox()
+        self.deterministic_check.setChecked(False)
+
+        # --- DODANE: Zaawansowane kontrolki ---
+        # class_weights
+        self.class_weights_combo = QtWidgets.QComboBox()
+        self.class_weights_combo.addItems(["none", "balanced", "custom"])
+        self.class_weights_combo.setCurrentText("none")
+
+        # sampler
+        self.sampler_combo = QtWidgets.QComboBox()
+        self.sampler_combo.addItems(["none", "random", "weighted_random"])
+        self.sampler_combo.setCurrentText("none")
+
+        # image_channels
+        self.image_channels_spin = QtWidgets.QSpinBox()
+        self.image_channels_spin.setRange(1, 4)
+        self.image_channels_spin.setValue(3)
+
+        # TTA (Test Time Augmentation)
+        self.use_tta_check = QtWidgets.QCheckBox()
+        self.use_tta_check.setChecked(False)
+        self.tta_num_samples_spin = QtWidgets.QSpinBox()
+        self.tta_num_samples_spin.setRange(1, 100)
+        self.tta_num_samples_spin.setValue(5)
+
+        # export_onnx
+        self.export_onnx_check = QtWidgets.QCheckBox()
+        self.export_onnx_check.setChecked(False)
+
+        # quantization
+        self.quantization_check = QtWidgets.QCheckBox()
+        self.quantization_check.setChecked(False)
+        self.quantization_precision_combo = QtWidgets.QComboBox()
+        self.quantization_precision_combo.addItems(["int8", "float16", "float32"])
+        self.quantization_precision_combo.setCurrentText("int8")
+
     def _setup_logging(self):
         """Konfiguracja logowania dla okna dialogowego."""
         self.logger = logging.getLogger(__name__)
@@ -1261,6 +1353,80 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # Aktualizacja zależnych kontrolek
             self._update_dependent_controls()
 
+            # Wczytaj ustawienia zapobiegania katastrofalnemu zapominaniu
+            forgetting_config = config.get("advanced", {}).get(
+                "catastrophic_forgetting_prevention", {}
+            )
+
+            if forgetting_config:
+                # Główna opcja włączająca
+                if "enable" in forgetting_config:
+                    self.prevent_forgetting_check.setChecked(
+                        forgetting_config["enable"]
+                    )
+
+                # Zachowanie oryginalnych klas
+                if "preserve_original_classes" in forgetting_config:
+                    self.preserve_classes_check.setChecked(
+                        forgetting_config["preserve_original_classes"]
+                    )
+
+                # Rehearsal
+                rehearsal_config = forgetting_config.get("rehearsal", {})
+                if "use" in rehearsal_config:
+                    self.rehearsal_check.setChecked(rehearsal_config["use"])
+
+                if "samples_per_class" in rehearsal_config:
+                    self.samples_per_class_spin.setValue(
+                        rehearsal_config["samples_per_class"]
+                    )
+
+                if "synthetic_samples" in rehearsal_config:
+                    self.synthetic_samples_check.setChecked(
+                        rehearsal_config["synthetic_samples"]
+                    )
+
+                # Knowledge Distillation
+                kd_config = forgetting_config.get("knowledge_distillation", {})
+                if "use" in kd_config:
+                    self.knowledge_distillation_check.setChecked(kd_config["use"])
+
+                if "temperature" in kd_config:
+                    self.kd_temperature_spin.setValue(kd_config["temperature"])
+
+                if "alpha" in kd_config:
+                    self.kd_alpha_spin.setValue(kd_config["alpha"])
+
+                # EWC Regularization
+                ewc_config = forgetting_config.get("ewc_regularization", {})
+                if "use" in ewc_config:
+                    self.ewc_check.setChecked(ewc_config["use"])
+
+                if "lambda" in ewc_config:
+                    self.ewc_lambda_spin.setValue(ewc_config["lambda"])
+
+                if "fisher_sample_size" in ewc_config:
+                    self.fisher_sample_size_spin.setValue(
+                        ewc_config["fisher_sample_size"]
+                    )
+
+                # Layer Freezing
+                layer_freezing_config = forgetting_config.get("layer_freezing", {})
+                if "strategy" in layer_freezing_config:
+                    index = self.layer_freezing_combo.findText(
+                        layer_freezing_config["strategy"]
+                    )
+                    if index >= 0:
+                        self.layer_freezing_combo.setCurrentIndex(index)
+
+                if "freeze_ratio" in layer_freezing_config:
+                    self.freeze_ratio_spin.setValue(
+                        layer_freezing_config["freeze_ratio"]
+                    )
+
+            # Aktualizacja zależnych kontrolek po wczytaniu wszystkich wartości
+            self._update_forgetting_controls()
+
             # Na koniec metody odblokujemy sygnały i ręcznie wywołamy aktualizację UI
             self.blockSignals(False)
             self._update_ui_state()
@@ -1861,76 +2027,80 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
     def _create_advanced_tab(self) -> QtWidgets.QWidget:
         """Tworzy zakładkę z zaawansowanymi parametrami."""
         tab = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout()
-        form = QtWidgets.QFormLayout()
+        layout = QtWidgets.QVBoxLayout(tab)
 
-        # Seed
-        self.seed_spin = QtWidgets.QSpinBox()
-        self.seed_spin.setRange(0, 999999)
-        self.seed_spin.setValue(42)
-        form.addRow("Seed:", self.seed_spin)
+        # Nowa grupa: Parametry zaawansowane
+        advanced_group = QtWidgets.QGroupBox("Parametry zaawansowane")
+        advanced_layout = QtWidgets.QFormLayout()
+        advanced_layout.addRow("Seed:", self.seed_spin)
+        advanced_layout.addRow("Deterministyczny trening:", self.deterministic_check)
+        advanced_layout.addRow("Wagi klas:", self.class_weights_combo)
+        advanced_layout.addRow("Sampler:", self.sampler_combo)
+        advanced_layout.addRow("Liczba kanałów obrazu:", self.image_channels_spin)
+        advanced_layout.addRow("Test Time Augmentation (TTA):", self.use_tta_check)
+        advanced_layout.addRow("Liczba augmentacji TTA:", self.tta_num_samples_spin)
+        advanced_layout.addRow("Eksportuj do ONNX:", self.export_onnx_check)
+        advanced_layout.addRow("Kwantyzacja:", self.quantization_check)
+        advanced_layout.addRow(
+            "Precyzja kwantyzacji:", self.quantization_precision_combo
+        )
+        advanced_group.setLayout(advanced_layout)
+        layout.addWidget(advanced_group)
 
-        # Deterministic
-        self.deterministic_check = QtWidgets.QCheckBox()
-        self.deterministic_check.setChecked(True)
-        form.addRow("Deterministic:", self.deterministic_check)
+        # Grupa: Zapobieganie katastrofalnemu zapominaniu (istniejąca)
+        forgetting_group = QtWidgets.QGroupBox(
+            "Zapobieganie katastrofalnemu zapominaniu"
+        )
+        forgetting_layout = QtWidgets.QFormLayout()
+        self.prevent_forgetting_check.stateChanged.connect(
+            self._update_forgetting_controls
+        )
+        forgetting_layout.addRow("", self.prevent_forgetting_check)
+        forgetting_layout.addRow("", self.preserve_classes_check)
+        forgetting_layout.addRow("", self.rehearsal_check)
+        forgetting_layout.addRow(
+            "Liczba przykładów na klasę:", self.samples_per_class_spin
+        )
+        forgetting_layout.addRow("", self.synthetic_samples_check)
+        forgetting_layout.addRow("", self.knowledge_distillation_check)
+        forgetting_layout.addRow("Temperatura:", self.kd_temperature_spin)
+        forgetting_layout.addRow("Alpha:", self.kd_alpha_spin)
+        forgetting_layout.addRow("", self.ewc_check)
+        forgetting_layout.addRow("Lambda:", self.ewc_lambda_spin)
+        forgetting_layout.addRow("Fisher Sample Size:", self.fisher_sample_size_spin)
+        forgetting_layout.addRow("Strategia zamrażania:", self.layer_freezing_combo)
+        forgetting_layout.addRow("Współczynnik zamrażania:", self.freeze_ratio_spin)
+        forgetting_group.setLayout(forgetting_layout)
+        layout.addWidget(forgetting_group)
 
-        # Class weights
-        self.class_weights_combo = QtWidgets.QComboBox()
-        self.class_weights_combo.addItems(["balanced", "none"])
-        form.addRow("Class weights:", self.class_weights_combo)
-
-        # Sampler
-        self.sampler_combo = QtWidgets.QComboBox()
-        self.sampler_combo.addItems(["weighted_random", "random"])
-        form.addRow("Sampler:", self.sampler_combo)
-
-        # Image channels
-        self.image_channels_spin = QtWidgets.QSpinBox()
-        self.image_channels_spin.setRange(1, 4)
-        self.image_channels_spin.setValue(3)
-        form.addRow("Image channels:", self.image_channels_spin)
-
-        # Quantization
-        quantization_group = QtWidgets.QGroupBox("Quantization")
-        quantization_layout = QtWidgets.QFormLayout()
-
-        self.quantization_check = QtWidgets.QCheckBox("Używaj kwantyzacji")
-        self.quantization_precision_combo = QtWidgets.QComboBox()
-        self.quantization_precision_combo.addItems(["int8", "float16", "bfloat16"])
-
-        quantization_layout.addRow("", self.quantization_check)
-        quantization_layout.addRow("Precision:", self.quantization_precision_combo)
-        quantization_group.setLayout(quantization_layout)
-
-        # ONNX Export
-        onnx_group = QtWidgets.QGroupBox("ONNX Export")
-        onnx_layout = QtWidgets.QFormLayout()
-
-        self.export_onnx_check = QtWidgets.QCheckBox("Eksportuj do ONNX")
-        self.export_onnx_check.setChecked(False)
-        onnx_layout.addRow("", self.export_onnx_check)
-        onnx_group.setLayout(onnx_layout)
-
-        # Test Time Augmentation
-        tta_group = QtWidgets.QGroupBox("Test Time Augmentation")
-        tta_layout = QtWidgets.QFormLayout()
-
-        self.use_tta_check = QtWidgets.QCheckBox("Używaj TTA")
-        self.tta_num_samples_spin = QtWidgets.QSpinBox()
-        self.tta_num_samples_spin.setRange(1, 10)
-        self.tta_num_samples_spin.setValue(5)
-
-        tta_layout.addRow("", self.use_tta_check)
-        tta_layout.addRow("Number of samples:", self.tta_num_samples_spin)
-        tta_group.setLayout(tta_layout)
-
-        layout.addLayout(form)
-        layout.addWidget(quantization_group)
-        layout.addWidget(onnx_group)
-        layout.addWidget(tta_group)
         tab.setLayout(layout)
         return tab
+
+    def _update_forgetting_controls(self):
+        """Aktualizuje stan kontrolek związanych z zapobieganiem katastrofalnemu zapominaniu."""
+        enabled = self.prevent_forgetting_check.isChecked()
+
+        # Włącz/wyłącz wszystkie kontrolki w zależności od stanu głównej opcji
+        self.preserve_classes_check.setEnabled(enabled)
+        self.rehearsal_check.setEnabled(enabled)
+        self.samples_per_class_spin.setEnabled(
+            enabled and self.rehearsal_check.isChecked()
+        )
+        self.synthetic_samples_check.setEnabled(
+            enabled and self.rehearsal_check.isChecked()
+        )
+        self.knowledge_distillation_check.setEnabled(enabled)
+        self.kd_temperature_spin.setEnabled(
+            enabled and self.knowledge_distillation_check.isChecked()
+        )
+        self.kd_alpha_spin.setEnabled(
+            enabled and self.knowledge_distillation_check.isChecked()
+        )
+        self.ewc_check.setEnabled(enabled)
+        self.ewc_lambda_spin.setEnabled(enabled and self.ewc_check.isChecked())
+        self.fisher_sample_size_spin.setEnabled(enabled and self.ewc_check.isChecked())
+        self.layer_freezing_combo.setEnabled(enabled)
+        self.freeze_ratio_spin.setEnabled(enabled)
 
     def _create_fine_tuning_params_tab(self) -> QtWidgets.QWidget:
         """Tworzy zakładkę z parametrami fine-tuningu."""
@@ -2398,6 +2568,29 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                     "quantization": {
                         "use": self.quantization_check.isChecked(),
                         "precision": self.quantization_precision_combo.currentText(),
+                    },
+                    "catastrophic_forgetting_prevention": {
+                        "enable": self.prevent_forgetting_check.isChecked(),
+                        "preserve_original_classes": self.preserve_classes_check.isChecked(),
+                        "rehearsal": {
+                            "use": self.rehearsal_check.isChecked(),
+                            "samples_per_class": self.samples_per_class_spin.value(),
+                            "synthetic_samples": self.synthetic_samples_check.isChecked(),
+                        },
+                        "knowledge_distillation": {
+                            "use": self.knowledge_distillation_check.isChecked(),
+                            "temperature": self.kd_temperature_spin.value(),
+                            "alpha": self.kd_alpha_spin.value(),
+                        },
+                        "ewc_regularization": {
+                            "use": self.ewc_check.isChecked(),
+                            "lambda": self.ewc_lambda_spin.value(),
+                            "fisher_sample_size": self.fisher_sample_size_spin.value(),
+                        },
+                        "layer_freezing": {
+                            "strategy": self.layer_freezing_combo.currentText(),
+                            "freeze_ratio": self.freeze_ratio_spin.value(),
+                        },
                     },
                 },
             }
