@@ -169,11 +169,11 @@
             }
         }
     },
-    "training_time": 0,
-    "training_time_str": "0:00:00",
-    "status": "W trakcie",
-    "train_accuracy": 0.0,
-    "train_loss": 1.1971778765968655,
+    "training_time": 78.54,
+    "training_time_str": "0:01:18",
+    "status": "Zakończony",
+    "train_accuracy": 88.32630098452883,
+    "train_loss": 1.174389818440313,
     "validation_accuracy": 0.0,
     "validation_loss": 0.0,
     "model_filename": "",
@@ -182,7 +182,7 @@
     "progress": 100,
     "current_epoch": 5,
     "total_epochs": 5,
-    "train_acc": 88.88888888888889,
-    "val_loss": 1.3216647704442341,
-    "val_acc": 85.0
+    "train_acc": 88.32630098452883,
+    "val_loss": 1.3386135896046956,
+    "val_acc": 83.33333333333333
 }

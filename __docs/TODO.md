@@ -14,6 +14,8 @@ Struktura katalogu walidacyjnego:
 📁 outdoor_plant/ (60 obrazów)
 📁 tree/ (60 obrazów)
 
+- lista modeli/ status ilosc kategorii?>?
+
 - mapa projektu
 - poprawa startu,
 - poprawa ustawien

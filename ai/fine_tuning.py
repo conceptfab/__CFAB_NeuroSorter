@@ -161,6 +161,201 @@ def verify_model_config(model_path, class_names):
         return False
 
 
+def verify_training_directories(
+    train_dir, val_dir=None, valid_extensions=(".jpg", ".jpeg", ".png", ".bmp")
+):
+    """
+    Weryfikuje strukturę katalogów treningowych i walidacyjnych.
+
+    Args:
+        train_dir: Ścieżka do katalogu treningowego
+        val_dir: Ścieżka do katalogu walidacyjnego (opcjonalnie)
+        valid_extensions: Dozwolone rozszerzenia plików
+
+    Returns:
+        dict: Słownik zawierający informacje o strukturze katalogów
+    """
+    result = {
+        "train": {"directories": {}, "total_images": 0, "valid": True, "errors": []},
+        "validation": {
+            "directories": {},
+            "total_images": 0,
+            "valid": True,
+            "errors": [],
+        },
+    }
+
+    # Sprawdź katalog treningowy
+    try:
+        train_dirs = [
+            d
+            for d in os.listdir(train_dir)
+            if os.path.isdir(os.path.join(train_dir, d))
+        ]
+        if not train_dirs:
+            result["train"]["errors"].append("Brak podkatalogów z klasami")
+            result["train"]["valid"] = False
+
+        for class_dir in train_dirs:
+            class_path = os.path.join(train_dir, class_dir)
+            image_files = [
+                f
+                for f in os.listdir(class_path)
+                if os.path.isfile(os.path.join(class_path, f))
+                and f.lower().endswith(valid_extensions)
+            ]
+
+            result["train"]["directories"][class_dir] = len(image_files)
+            result["train"]["total_images"] += len(image_files)
+
+            if len(image_files) == 0:
+                result["train"]["errors"].append(f"Brak obrazów w katalogu {class_dir}")
+                result["train"]["valid"] = False
+    except Exception as e:
+        result["train"]["errors"].append(
+            f"Błąd podczas sprawdzania katalogu treningowego: {str(e)}"
+        )
+        result["train"]["valid"] = False
+
+    # Sprawdź katalog walidacyjny jeśli podano
+    if val_dir:
+        try:
+            val_dirs = [
+                d
+                for d in os.listdir(val_dir)
+                if os.path.isdir(os.path.join(val_dir, d))
+            ]
+            if not val_dirs:
+                result["validation"]["errors"].append("Brak podkatalogów z klasami")
+                result["validation"]["valid"] = False
+
+            for class_dir in val_dirs:
+                class_path = os.path.join(val_dir, class_dir)
+                image_files = [
+                    f
+                    for f in os.listdir(class_path)
+                    if os.path.isfile(os.path.join(class_path, f))
+                    and f.lower().endswith(valid_extensions)
+                ]
+
+                result["validation"]["directories"][class_dir] = len(image_files)
+                result["validation"]["total_images"] += len(image_files)
+
+                if len(image_files) == 0:
+                    result["validation"]["errors"].append(
+                        f"Brak obrazów w katalogu {class_dir}"
+                    )
+                    result["validation"]["valid"] = False
+
+            # Sprawdź zgodność klas między katalogami
+            train_classes = set(result["train"]["directories"].keys())
+            val_classes = set(result["validation"]["directories"].keys())
+
+            if train_classes != val_classes:
+                missing_in_val = train_classes - val_classes
+                missing_in_train = val_classes - train_classes
+
+                if missing_in_val:
+                    result["validation"]["errors"].append(
+                        f"Brakujące klasy w katalogu walidacyjnym: {', '.join(missing_in_val)}"
+                    )
+
+                if missing_in_train:
+                    result["validation"]["errors"].append(
+                        f"Klasy w katalogu walidacyjnym nieobecne w treningowym: {', '.join(missing_in_train)}"
+                    )
+
+                result["validation"]["valid"] = False
+
+        except Exception as e:
+            result["validation"]["errors"].append(
+                f"Błąd podczas sprawdzania katalogu walidacyjnego: {str(e)}"
+            )
+            result["validation"]["valid"] = False
+
+    return result
+
+
+def display_directory_structure(verify_result):
+    """
+    Wyświetla strukturę katalogów treningowych i walidacyjnych na podstawie wyniku weryfikacji.
+
+    Args:
+        verify_result: Wynik weryfikacji z funkcji verify_training_directories
+    """
+    print("\nStruktura katalogu treningowego:")
+    for class_dir, count in verify_result["train"]["directories"].items():
+        print(f"📁 {class_dir}/ ({count} obrazów)")
+    print(
+        f"\nŁącznie znaleziono {verify_result['train']['total_images']} obrazów w {len(verify_result['train']['directories'])} katalogach"
+    )
+
+    if verify_result["validation"]["directories"]:
+        print("\nStruktura katalogu walidacyjnego:")
+        for class_dir, count in verify_result["validation"]["directories"].items():
+            print(f"📁 {class_dir}/ ({count} obrazów)")
+        print(
+            f"\nŁącznie znaleziono {verify_result['validation']['total_images']} obrazów w {len(verify_result['validation']['directories'])} katalogach"
+        )
+
+    # Wyświetl ewentualne błędy
+    if verify_result["train"]["errors"]:
+        print("\n⚠️ Problemy w katalogu treningowym:")
+        for error in verify_result["train"]["errors"]:
+            print(f"  - {error}")
+
+    if verify_result["validation"]["errors"]:
+        print("\n⚠️ Problemy w katalogu walidacyjnym:")
+        for error in verify_result["validation"]["errors"]:
+            print(f"  - {error}")
+
+
+def create_class_mapping(model_config, train_directories):
+    """
+    Tworzy mapowanie między klasami z modelu bazowego a klasami w katalogu treningowym.
+
+    Args:
+        model_config: Konfiguracja modelu bazowego wczytana z pliku config.json
+        train_directories: Lista katalogów klas w zbiorze treningowym
+
+    Returns:
+        dict: Słownik mapujący nazwy klas na ich indeksy
+    """
+    # Utwórz odwrotne mapowanie "nazwa klasy -> indeks" z modelu bazowego
+    base_class_to_idx = {}
+    if "class_names" in model_config:
+        base_class_to_idx = {
+            name.lower(): int(idx) for idx, name in model_config["class_names"].items()
+        }
+    elif "metadata" in model_config and "class_names" in model_config["metadata"]:
+        base_class_to_idx = {
+            name.lower(): int(idx)
+            for idx, name in model_config["metadata"]["class_names"].items()
+        }
+
+    # Mapuj klasy treningowe na indeksy z modelu bazowego lub utwórz nowe indeksy
+    class_mapping = {}
+    max_idx = -1
+    if base_class_to_idx:
+        max_idx = max([int(idx) for idx in base_class_to_idx.values()], default=-1)
+
+    for class_name in sorted(train_directories):
+        class_lower = class_name.lower()
+        if class_lower in base_class_to_idx:
+            # Klasa istnieje w modelu bazowym, użyj jej oryginalnego indeksu
+            class_mapping[class_name] = base_class_to_idx[class_lower]
+            print(
+                f"  ✓ Klasa '{class_name}' mapowana na istniejący indeks {base_class_to_idx[class_lower]}"
+            )
+        else:
+            # Nowa klasa, przypisz jej nowy indeks
+            max_idx += 1
+            class_mapping[class_name] = max_idx
+            print(f"  + Nowa klasa '{class_name}' mapowana na nowy indeks {max_idx}")
+
+    return class_mapping
+
+
 def fine_tune_model(
     base_model_path,
     train_dir,
@@ -235,24 +430,32 @@ def fine_tune_model(
     print(f"Learning rate: {learning_rate}")
     print(f"Zamrożenie warstw: {freeze_ratio*100:.0f}%")
 
-    # Sprawdź strukturę katalogów
-    print("\nSprawdzanie struktury katalogów...")
-    if not ensure_class_folder_structure(train_dir):
-        raise ValueError(f"Nie udało się przygotować katalogu {train_dir} do treningu.")
+    # Weryfikacja struktury katalogów
+    print("\n=== WERYFIKACJA STRUKTURY KATALOGÓW ===")
+    directory_verification = verify_training_directories(train_dir, val_dir)
+    display_directory_structure(directory_verification)
 
-    if val_dir and not ensure_class_folder_structure(val_dir):
-        raise ValueError(f"Nie udało się przygotować katalogu {val_dir} do treningu.")
+    # Sprawdź czy struktura katalogów jest poprawna
+    if not directory_verification["train"]["valid"]:
+        raise ValueError("Problemy ze strukturą katalogu treningowego")
+    if val_dir and not directory_verification["validation"]["valid"]:
+        raise ValueError("Problemy ze strukturą katalogu walidacyjnego")
 
-    if not verify_directory_structure(train_dir):
-        raise ValueError(
-            f"Nieprawidłowa struktura katalogów w {train_dir}. "
-            "Dozwolona jest tylko struktura płaska: kategoria/obrazy"
-        )
-    if val_dir and not verify_directory_structure(val_dir):
-        raise ValueError(
-            f"Nieprawidłowa struktura katalogów w {val_dir}. "
-            "Dozwolona jest tylko struktura płaska: kategoria/obrazy"
-        )
+    # Wczytaj konfigurację modelu bazowego
+    base_config_path = os.path.splitext(base_model_path)[0] + "_config.json"
+    base_config = {}
+    if os.path.exists(base_config_path):
+        try:
+            with open(base_config_path, "r") as f:
+                base_config = json.load(f)
+                print(f"\nWczytano konfigurację modelu bazowego: {base_config_path}")
+        except Exception as e:
+            print(f"Ostrzeżenie: Nie udało się wczytać konfiguracji modelu: {str(e)}")
+
+    # Utwórz mapowanie klas
+    print("\n=== MAPOWANIE KLAS ===")
+    train_directories = directory_verification["train"]["directories"].keys()
+    class_mapping = create_class_mapping(base_config, train_directories)
 
     # Sprawdź urządzenie
     if device is None:
@@ -270,21 +473,6 @@ def fine_tune_model(
         )
         original_model = deepcopy(base_classifier.model)
         original_model.eval()  # Zamroź oryginał w trybie ewaluacji
-
-    # Wczytaj oryginalny plik config modelu bazowego
-    original_config = {}
-    base_config_path = os.path.splitext(base_model_path)[0] + "_config.json"
-    if os.path.exists(base_config_path):
-        try:
-            with open(base_config_path, "r") as f:
-                original_config = json.load(f)
-                print(f"Wczytano oryginalny plik konfiguracyjny: {base_config_path}")
-        except Exception as e:
-            print(f"Nie udało się wczytać oryginalnego pliku konfiguracyjnego: {e}")
-    else:
-        print(
-            f"Nie znaleziono oryginalnego pliku konfiguracyjnego. Tworzona jest nowa konfiguracja."
-        )
 
     # Weryfikuj konfigurację modelu
     verify_model_config(base_model_path, base_classifier.class_names)
@@ -1001,8 +1189,8 @@ def fine_tune_model(
     # Przygotuj nowe metadane
     new_metadata = {}
     # Zachowaj wszystkie oryginalne metadane
-    if "metadata" in original_config:
-        new_metadata = deepcopy(original_config["metadata"])
+    if "metadata" in base_config:
+        new_metadata = deepcopy(base_config["metadata"])
 
     # Dodaj lub zaktualizuj czas treningu
     if "training_time" in new_metadata:
@@ -1020,7 +1208,7 @@ def fine_tune_model(
 
     # Zapisz model z kompletnymi metadanymi z oryginalnego modelu plus nowe informacje
     final_classifier.save_with_original_config(
-        final_model_path, original_config, new_metadata
+        final_model_path, base_config, new_metadata
     )
     print(f"Zapisano końcowy model: {final_model_path}")
 
@@ -1041,7 +1229,7 @@ def fine_tune_model(
     # Przygotuj wynik
     result = {
         "model_path": final_model_path,
-        "best_model_path": best_model_path if val_loader else final_model_path,
+        "best_model_path": final_model_path,
         "history": history,
         "class_names": new_class_names,
         "model_type": model_type,
