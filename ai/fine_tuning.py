@@ -718,6 +718,11 @@ def fine_tune_model(
             train_total += targets.size(0)
             train_correct += predicted.eq(targets).sum().item()
 
+            # Inicjalizacja train_acc przed użyciem w callback
+            train_acc = 0.0
+            if train_total > 0:
+                train_acc = 100.0 * train_correct / train_total
+
             # Aktualizuj progress bar
             if progress_callback:
                 try:
@@ -767,6 +772,46 @@ def fine_tune_model(
 
             val_loss = val_loss / len(val_loader)
             val_acc = 100.0 * val_correct / val_total
+
+            # Inicjalizacja val_metrics z odpowiednimi wartościami
+            val_metrics = {
+                "loss": val_loss,
+                "acc": val_acc,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "auc": 0.0,
+                "top3": 0.0,
+                "top5": 0.0,
+            }
+
+            # Obliczanie dodatkowych metryk (jeśli potrzebne)
+            if len(val_loader.dataset) > 0:
+                try:
+                    # Kod do obliczania dodatkowych metryk, np. F1 score
+                    y_true = np.array(all_targets) if "all_targets" in locals() else []
+                    y_pred = np.array(all_preds) if "all_preds" in locals() else []
+
+                    if len(y_true) > 0 and len(y_pred) > 0:
+                        from sklearn.metrics import (
+                            f1_score,
+                            precision_score,
+                            recall_score,
+                        )
+
+                        val_metrics["precision"] = precision_score(
+                            y_true, y_pred, average="macro", zero_division=0
+                        )
+                        val_metrics["recall"] = recall_score(
+                            y_true, y_pred, average="macro", zero_division=0
+                        )
+                        val_metrics["f1"] = f1_score(
+                            y_true, y_pred, average="macro", zero_division=0
+                        )
+                except Exception as e:
+                    print(
+                        f"Ostrzeżenie: Nie udało się obliczyć dodatkowych metryk: {str(e)}"
+                    )
 
             # Aktualizuj scheduler
             if scheduler_type == "plateau":
