@@ -4,7 +4,7 @@ TODO 0.4
 - folder log
 
 - lista modeli/ status ilosc kategorii?>?
-
+- przenieść pomoc
 - mapa projektu
 - poprawa startu,
 - poprawa ustawien

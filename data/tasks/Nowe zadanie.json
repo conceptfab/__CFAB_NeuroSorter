@@ -2,14 +2,14 @@
     "name": "Nowe zadanie",
     "type": "fine_tuning",
     "config": {
-        "base_model": "F:/__CFAB_NeuroSorter/data/models/base_A.pt",
-        "train_dir": "F:/_set_A/__dane_treningowe",
-        "val_dir": "F:/_set_A/__dane_walidacyjne",
+        "base_model": "C:/_cloud/__CFAB_NeuroSorter/data/models/18_EfficientNet-B2_1klas_0.00acc_10epok_2025-05-10_23-28.pt",
+        "train_dir": "C:/_cloud/_____XXX/__dane_treningowe",
+        "val_dir": "C:/_cloud/_____XXX/__dane_walidacyjne",
         "model": {
             "architecture": "EfficientNet",
             "variant": "b2",
             "input_size": 260,
-            "num_classes": 5
+            "num_classes": 2
         },
         "training": {
             "epochs": 100,
@@ -172,18 +172,12 @@
     },
     "training_time": 0,
     "training_time_str": "0:00:00",
-    "status": "Zakończony",
-    "train_accuracy": 75.6720430107527,
-    "train_loss": 1.363374379373366,
-    "validation_accuracy": 74.24242424242425,
-    "validation_loss": 1.4698887564919212,
+    "status": "Oczekuj\u0105ce",
+    "train_accuracy": 0.0,
+    "train_loss": 0.0,
+    "validation_accuracy": 0.0,
+    "validation_loss": 0.0,
     "model_filename": "",
     "accuracy": 0.0,
-    "epochs_trained": 0,
-    "progress": 100,
-    "current_epoch": 5,
-    "total_epochs": 5,
-    "train_acc": 75.6720430107527,
-    "val_loss": 1.4698887564919212,
-    "val_acc": 74.24242424242425
+    "epochs_trained": 0
 }
