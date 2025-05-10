@@ -630,7 +630,7 @@ def fine_tune_model(
             optimizer.zero_grad()
 
             if use_mixed_precision:
-                with torch.cuda.amp.autocast():
+                with torch.amp.autocast(device_type="cuda"):
                     outputs = model(inputs)
 
                     # Dodaj Knowledge Distillation
@@ -720,10 +720,23 @@ def fine_tune_model(
 
             # Aktualizuj progress bar
             if progress_callback:
-                progress = (epoch * len(train_loader) + batch_idx + 1) / (
-                    num_epochs * len(train_loader)
-                )
-                progress_callback(progress)
+                try:
+                    progress_callback(
+                        epoch + 1,
+                        num_epochs,
+                        train_loss,
+                        train_acc,
+                        val_loss if val_loader else 0,
+                        val_acc if val_loader else 0,
+                        0,  # top3
+                        0,  # top5
+                        0,  # precision
+                        0,  # recall
+                        0,  # f1
+                        0,  # auc
+                    )
+                except Exception as e:
+                    print(f"Błąd podczas wywołania progress_callback: {str(e)}")
 
             # Sprawdź czy należy przerwać trening
             if should_stop_callback and should_stop_callback():
