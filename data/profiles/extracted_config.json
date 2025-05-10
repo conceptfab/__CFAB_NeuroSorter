@@ -1,0 +1,73 @@
+{
+    "model": {
+        "architecture": "EfficientNet",
+        "variant": "b0",
+        "input_size": 288,
+        "num_classes": 34
+    },
+    "training": {
+        "batch_size": 48,
+        "learning_rate": 0.0002,
+        "optimizer": "AdamW",
+        "scheduler": "None",
+        "warmup_epochs": 10,
+        "mixed_precision": true,
+        "unfreeze_layers": 12,
+        "unfreeze_strategy": "unfreeze_all"
+    },
+    "regularization": {
+        "weight_decay": 0.0001,
+        "drop_connect_rate": 0.3,
+        "dropout_rate": 0.4,
+        "label_smoothing": 0.15,
+        "swa": {
+            "use": true,
+            "start_epoch": 80
+        }
+    },
+    "augmentation": {
+        "basic": {
+            "use": true,
+            "rotation": 30,
+            "brightness": 0.3,
+            "shift": 0.15,
+            "zoom": 0.2,
+            "horizontal_flip": true,
+            "vertical_flip": false
+        },
+        "mixup": {
+            "use": true,
+            "alpha": 0.4
+        },
+        "cutmix": {
+            "use": true,
+            "alpha": 1.0
+        }
+    },
+    "preprocessing": {
+        "normalization": {
+            "mean": [
+                0.48,
+                0.46,
+                0.41
+            ],
+            "std": [
+                0.23,
+                0.22,
+                0.23
+            ]
+        }
+    },
+    "monitoring": {
+        "early_stopping": {
+            "patience": 25,
+            "min_delta": 0.001,
+            "monitor": "val_loss"
+        },
+        "checkpointing": {
+            "best_only": true,
+            "save_frequency": 1,
+            "metric": "val_loss"
+        }
+    }
+}

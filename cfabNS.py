@@ -46,6 +46,7 @@ def main():
     try:
         splash_path = os.path.join("resources", "img", "splash.jpg")
         splash_pix = QPixmap(splash_path)
+        # print(f"DEBUG: Ścieżka splash: {splash_path}, Pixmap isNull: {splash_pix.isNull()}") # Debug
         # Sprawdź, czy obraz został poprawnie załadowany
         if not splash_pix.isNull():
             splash = QSplashScreen(splash_pix, Qt.WindowType.WindowStaysOnTopHint)

@@ -1,5 +1,4 @@
 import json
-import os
 import random
 import shutil
 import sys
@@ -820,7 +819,6 @@ class DataSplitterApp(QWidget):
         # Stan validation_check jest zarządzany przez update_files_limit...
         self.update_files_limit_and_validation_based_on_selection()  # Przywróć stan kontrolek
         self.processing_thread = None
-        self.files_list = []
 
     def processing_error(self, error_message):
         self.log_message(f"BŁĄD WĄTKU: {error_message}")

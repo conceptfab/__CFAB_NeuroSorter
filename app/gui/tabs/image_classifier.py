@@ -2,7 +2,7 @@ import datetime
 import json
 import os
 
-from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -92,109 +92,6 @@ class BatchClassificationThread(QThread):
         self._stop_flag = True
 
 
-class DropLabel(QLabel):
-    """Klasa etykiety obsługującej drag and drop."""
-
-    imageDropped = pyqtSignal(str)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAcceptDrops(True)
-        self.setStyleSheet(
-            """
-            QLabel {
-                background-color: #1C1C1C;
-                border: 2px dashed #3F3F46;
-                color: #AAA;
-                padding: 10px;
-            }
-            QLabel:hover {
-                border: 2px dashed #4F4F56;
-            }
-        """
-        )
-
-    def dragEnterEvent(self, event):
-        """Obsługuje zdarzenie wejścia obiektu w obszar drop."""
-        mime_data = event.mimeData()
-        if mime_data.hasUrls() and any(
-            url.toLocalFile()
-            .lower()
-            .endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif"))
-            for url in mime_data.urls()
-        ):
-            self.setStyleSheet(
-                """
-                QLabel {
-                    background-color: #1C1C1C;
-                    border: 2px dashed #4F4F56;
-                    color: #AAA;
-                    padding: 10px;
-                }
-            """
-            )
-            event.acceptProposedAction()
-
-    def dragMoveEvent(self, event):
-        """Obsługuje zdarzenie przesuwania obiektu w obszarze drop."""
-        mime_data = event.mimeData()
-        if mime_data.hasUrls() and any(
-            url.toLocalFile()
-            .lower()
-            .endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif"))
-            for url in mime_data.urls()
-        ):
-            event.acceptProposedAction()
-
-    def dragLeaveEvent(self, event):
-        """Obsługuje zdarzenie opuszczenia obszaru drop."""
-        self.setStyleSheet(
-            """
-            QLabel {
-                background-color: #1C1C1C;
-                border: 2px dashed #3F3F46;
-                color: #AAA;
-                padding: 10px;
-            }
-        """
-        )
-
-    def dropEvent(self, event):
-        """Obsługuje zdarzenie upuszczenia obiektu."""
-        self.setStyleSheet(
-            """
-            QLabel {
-                background-color: #1C1C1C;
-                border: 2px dashed #3F3F46;
-                color: #AAA;
-                padding: 10px;
-            }
-        """
-        )
-
-        mime_data = event.mimeData()
-        if mime_data.hasUrls():
-            url = mime_data.urls()[0]
-            file_path = url.toLocalFile()
-
-            if file_path.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif")):
-                try:
-                    self.imageDropped.emit(file_path)
-                    event.acceptProposedAction()
-                except Exception as e:
-                    QMessageBox.critical(
-                        self,
-                        "Błąd",
-                        f"Nie udało się przetworzyć upuszczonego pliku: {str(e)}",
-                    )
-            else:
-                QMessageBox.warning(
-                    self,
-                    "Ostrzeżenie",
-                    "Wybrany plik nie jest obsługiwanym formatem obrazu.",
-                )
-
-
 class ImageClassifierTab(QWidget, TabInterface):
     """Klasa zarządzająca zakładką klasyfikacji pojedynczych obrazów."""
 
@@ -231,16 +128,13 @@ class ImageClassifierTab(QWidget, TabInterface):
         left_layout.addWidget(classify_header)
 
         # Podgląd obrazu
-        self.image_preview = DropLabel(self)
-        self.image_preview.setText(
-            "Przeciągnij i upuść obraz tutaj\nlub kliknij 'Wybierz obraz'"
-        )
+        self.image_preview = QLabel("Wybierz obraz do klasyfikacji")
         self.image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_preview.setMinimumHeight(200)
+        self.image_preview.setStyleSheet(
+            "background-color: #1C1C1C; " "border: 1px solid #3F3F46; color: #AAA;"
+        )
         left_layout.addWidget(self.image_preview, 1)
-
-        # Podłącz sygnał
-        self.image_preview.imageDropped.connect(self._handle_dropped_image)
 
         # Przyciski operacji
         buttons_layout = QHBoxLayout()
@@ -696,21 +590,4 @@ class ImageClassifierTab(QWidget, TabInterface):
         except Exception as e:
             QMessageBox.critical(
                 self, "Błąd", f"Nie udało się wyświetlić elementu historii: {str(e)}"
-            )
-
-    def _handle_dropped_image(self, file_path):
-        """Obsługuje upuszczony obraz."""
-        try:
-            # Najpierw wyczyść poprzednie wyniki
-            self.results_table.setRowCount(0)
-
-            # Ustaw nową ścieżkę i wyświetl podgląd
-            self.current_image_path = file_path
-            self._show_image_preview(file_path)
-
-            # Natychmiast uruchom klasyfikację
-            QTimer.singleShot(100, lambda: self._classify_image(file_path))
-        except Exception as e:
-            QMessageBox.critical(
-                self, "Błąd", f"Nie udało się przetworzyć upuszczonego pliku: {str(e)}"
             )
