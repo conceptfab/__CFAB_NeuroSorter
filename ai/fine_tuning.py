@@ -758,6 +758,9 @@ def fine_tune_model(
             val_loss = 0.0
             val_correct = 0
             val_total = 0
+            all_targets = []
+            all_preds = []
+            all_probs = []
 
             with torch.no_grad():
                 for inputs, targets in val_loader:
@@ -770,6 +773,11 @@ def fine_tune_model(
                     val_total += targets.size(0)
                     val_correct += predicted.eq(targets).sum().item()
 
+                    # Dodaj dla obliczenia dodatkowych metryk
+                    all_targets.extend(targets.cpu().numpy())
+                    all_preds.extend(predicted.cpu().numpy())
+                    all_probs.extend(torch.softmax(outputs, dim=1).cpu().numpy())
+
             val_loss = val_loss / len(val_loader)
             val_acc = 100.0 * val_correct / val_total
 
@@ -777,74 +785,88 @@ def fine_tune_model(
             val_metrics = {
                 "loss": val_loss,
                 "acc": val_acc,
+                "f1": 0.0,
                 "precision": 0.0,
                 "recall": 0.0,
-                "f1": 0.0,
                 "auc": 0.0,
                 "top3": 0.0,
                 "top5": 0.0,
             }
 
-            # Obliczanie dodatkowych metryk (jeśli potrzebne)
-            if len(val_loader.dataset) > 0:
-                try:
-                    # Kod do obliczania dodatkowych metryk, np. F1 score
-                    y_true = np.array(all_targets) if "all_targets" in locals() else []
-                    y_pred = np.array(all_preds) if "all_preds" in locals() else []
-
-                    if len(y_true) > 0 and len(y_pred) > 0:
-                        from sklearn.metrics import (
-                            f1_score,
-                            precision_score,
-                            recall_score,
-                        )
-
-                        val_metrics["precision"] = precision_score(
-                            y_true, y_pred, average="macro", zero_division=0
-                        )
-                        val_metrics["recall"] = recall_score(
-                            y_true, y_pred, average="macro", zero_division=0
-                        )
-                        val_metrics["f1"] = f1_score(
-                            y_true, y_pred, average="macro", zero_division=0
-                        )
-                except Exception as e:
-                    print(
-                        f"Ostrzeżenie: Nie udało się obliczyć dodatkowych metryk: {str(e)}"
+            # Próba obliczenia dodatkowych metryk, jeśli możliwe
+            try:
+                if len(all_targets) > 0 and len(all_preds) > 0:
+                    y_true = np.array(all_targets)
+                    y_pred = np.array(all_preds)
+                    val_metrics["f1"] = f1_score(
+                        y_true, y_pred, average="macro", zero_division=0
+                    )
+                    val_metrics["precision"] = precision_score(
+                        y_true, y_pred, average="macro", zero_division=0
+                    )
+                    val_metrics["recall"] = recall_score(
+                        y_true, y_pred, average="macro", zero_division=0
                     )
 
-            # Aktualizuj scheduler
-            if scheduler_type == "plateau":
-                scheduler.step(val_loss)
-            else:
-                scheduler.step()
+                    # Jeśli mamy prawdopodobieństwa, możemy obliczyć AUC i top-k
+                    if len(all_probs) > 0:
+                        y_prob = np.array(all_probs)
+                        if y_prob.shape[1] > 2:  # Wieloklasowy problem
+                            val_metrics["auc"] = roc_auc_score(
+                                y_true, y_prob, multi_class="ovr", average="macro"
+                            )
+                        elif y_prob.shape[1] == 2:  # Problem binarny
+                            val_metrics["auc"] = roc_auc_score(y_true, y_prob[:, 1])
 
-            # Early stopping
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                best_model_state = model.state_dict().copy()
-                patience_counter = 0
-            else:
-                patience_counter += 1
-                if patience_counter >= early_stopping_patience:
-                    print(f"\nEarly stopping po {epoch + 1} epokach")
-                    break
-
-            print(
-                f"Epoka {epoch + 1}/{num_epochs} | "
-                f"Train Loss: {train_loss:.4f} | "
-                f"Train Acc: {train_acc:.2f}% | "
-                f"Val Loss: {val_loss:.4f} | "
-                f"Val Acc: {val_acc:.2f}%"
-            )
+                        # Top-k metryki
+                        if y_prob.shape[1] >= 3:
+                            val_metrics["top3"] = top_k_accuracy_score(
+                                y_true, y_prob, k=3
+                            )
+                        if y_prob.shape[1] >= 5:
+                            val_metrics["top5"] = top_k_accuracy_score(
+                                y_true, y_prob, k=5
+                            )
+            except Exception as e:
+                print(f"Ostrzeżenie: Nie udało się obliczyć niektórych metryk: {e}")
+                # Zachowamy domyślne wartości 0.0 dla metryk, których nie udało się obliczyć
         else:
-            # Aktualizuj scheduler bez walidacji
+            # Utwórz puste val_metrics, gdy walidacja jest wyłączona
+            val_metrics = {
+                "loss": 0.0,
+                "acc": 0.0,
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "auc": 0.0,
+                "top3": 0.0,
+                "top5": 0.0,
+            }
+
+        # Aktualizuj scheduler
+        if scheduler_type == "plateau":
+            scheduler.step(val_loss)
+        else:
             scheduler.step()
-            print(
-                f"Epoka {epoch + 1}/{num_epochs} | "
-                f"Train Loss: {train_loss:.4f} | "
-                f"Train Acc: {train_acc:.2f}%"
-            )
+
+        # Early stopping
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_model_state = model.state_dict().copy()
+            patience_counter = 0
+        else:
+            patience_counter += 1
+            if patience_counter >= early_stopping_patience:
+                print(f"\nEarly stopping po {epoch + 1} epokach")
+                break
+
+        print(
+            f"Epoka {epoch + 1}/{num_epochs} | "
+            f"Train Loss: {train_loss:.4f} | "
+            f"Train Acc: {train_acc:.2f}% | "
+            f"Val Loss: {val_loss:.4f} | "
+            f"Val Acc: {val_acc:.2f}%"
+        )
 
         # Zapisz czas trwania epoki
         epoch_time = time.time() - epoch_start_time
@@ -1009,7 +1031,12 @@ def fine_tune_model(
         best_epoch = history["best_epoch"]
         print(f"Najlepsza epoka: {best_epoch + 1}")
         print(f"Najlepsza strata walidacyjna: {history['best_val_loss']:.4f}")
-        print(f"Dokładność walidacji: {history['val_acc'][best_epoch]:.2%}")
+
+        # Bezpieczny dostęp do listy val_acc
+        if "val_acc" in history and best_epoch < len(history["val_acc"]):
+            print(f"Dokładność walidacji: {history['val_acc'][best_epoch]:.2%}")
+        else:
+            print("Nie znaleziono danych o dokładności walidacji dla najlepszej epoki.")
 
     # Przygotuj wynik
     result = {
