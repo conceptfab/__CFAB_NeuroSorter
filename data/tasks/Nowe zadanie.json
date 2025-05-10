@@ -3,8 +3,8 @@
     "type": "fine_tuning",
     "config": {
         "base_model": "F:/__CFAB_NeuroSorter/data/models/base_A.pt",
-        "train_dir": "F:/__Set_gardener/__dane_treningowe",
-        "val_dir": "F:/__Set_gardener/__dane_walidacyjne",
+        "train_dir": "F:/_set_A/__dane_treningowe",
+        "val_dir": "F:/_set_A/__dane_walidacyjne",
         "model": {
             "architecture": "EfficientNet",
             "variant": "b2",
@@ -170,20 +170,20 @@
             }
         }
     },
-    "training_time": 117.83,
-    "training_time_str": "0:01:57",
+    "training_time": 0,
+    "training_time_str": "0:00:00",
     "status": "Zakończony",
-    "train_accuracy": 87.34177215189874,
-    "train_loss": 1.501647596773894,
-    "validation_accuracy": 0.0,
-    "validation_loss": 0.0,
+    "train_accuracy": 75.6720430107527,
+    "train_loss": 1.363374379373366,
+    "validation_accuracy": 74.24242424242425,
+    "validation_loss": 1.4698887564919212,
     "model_filename": "",
     "accuracy": 0.0,
     "epochs_trained": 0,
     "progress": 100,
     "current_epoch": 5,
     "total_epochs": 5,
-    "train_acc": 87.34177215189874,
-    "val_loss": 1.3563573956489563,
-    "val_acc": 81.66666666666667
+    "train_acc": 75.6720430107527,
+    "val_loss": 1.4698887564919212,
+    "val_acc": 74.24242424242425
 }

@@ -8,8 +8,7 @@ from PyQt6 import QtWidgets
 
 from app.utils.file_utils import (
     validate_training_directory,
-    validate_validation_directory,
-)
+)  # validate_validation_directory, # Usunięty nieużywany import
 
 
 class FineTuningTaskConfigDialog(QtWidgets.QDialog):
@@ -32,277 +31,106 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.profiles_dir.mkdir(exist_ok=True)
         self.current_profile = None
 
+        self._define_dependencies()  # Definicja słownika zależności
+
         # Inicjalizacja wszystkich kontrolek
         self._init_controls()
 
         # Inicjalizacja interfejsu
         self._init_ui()
 
-    def _init_controls(self):
-        """Inicjalizacja wszystkich kontrolek."""
-        # Metrics
-        self.auc_check = QtWidgets.QCheckBox()
-        self.auc_check.setChecked(True)
-        self.accuracy_check = QtWidgets.QCheckBox()
-        self.accuracy_check.setChecked(True)
-        self.precision_check = QtWidgets.QCheckBox()
-        self.precision_check.setChecked(True)
-        self.recall_check = QtWidgets.QCheckBox()
-        self.recall_check.setChecked(True)
-        self.f1_check = QtWidgets.QCheckBox()
-        self.f1_check.setChecked(True)
-        self.topk_check = QtWidgets.QCheckBox()
-        self.topk_check.setChecked(True)
-        self.confusion_matrix_check = QtWidgets.QCheckBox()
-        self.confusion_matrix_check.setChecked(True)
-
-        # Logging
-        self.use_tensorboard_check = QtWidgets.QCheckBox()
-        self.use_tensorboard_check.setChecked(True)
-        self.use_wandb_check = QtWidgets.QCheckBox()
-        self.use_wandb_check.setChecked(False)
-        self.use_csv_check = QtWidgets.QCheckBox()
-        self.use_csv_check.setChecked(True)
-        self.log_freq_combo = QtWidgets.QComboBox()
-        self.log_freq_combo.addItems(["epoch", "batch"])
-
-        # Visualization
-        self.use_gradcam_check = QtWidgets.QCheckBox()
-        self.use_gradcam_check.setChecked(True)
-        self.use_feature_maps_check = QtWidgets.QCheckBox()
-        self.use_feature_maps_check.setChecked(True)
-        self.use_pred_samples_check = QtWidgets.QCheckBox()
-        self.use_pred_samples_check.setChecked(True)
-        self.num_samples_spin = QtWidgets.QSpinBox()
-        self.num_samples_spin.setRange(1, 100)
-        self.num_samples_spin.setValue(10)
-
-        # Early stopping
-        self.patience_spin = QtWidgets.QSpinBox()
-        self.patience_spin.setRange(1, 100)
-        self.patience_spin.setValue(10)
-        self.min_delta_spin = QtWidgets.QDoubleSpinBox()
-        self.min_delta_spin.setRange(0.0, 1.0)
-        self.min_delta_spin.setValue(0.001)
-        self.min_delta_spin.setDecimals(4)
-        self.monitor_combo = QtWidgets.QComboBox()
-        self.monitor_combo.addItems(
-            [
-                "val_loss",
-                "val_accuracy",
-                "val_f1",
-                "val_precision",
-                "val_recall",
-            ]
-        )
-
-        # Checkpointing
-        self.best_only_check = QtWidgets.QCheckBox()
-        self.best_only_check.setChecked(True)
-        self.save_freq_spin = QtWidgets.QSpinBox()
-        self.save_freq_spin.setRange(1, 50)
-        self.save_freq_spin.setValue(1)
-        self.checkpoint_metric_combo = QtWidgets.QComboBox()
-        self.checkpoint_metric_combo.addItems(
-            [
-                "val_loss",
-                "val_accuracy",
-                "val_f1",
-                "val_precision",
-                "val_recall",
-            ]
-        )
-
-        # Normalization controls - używane w wielu miejscach
-        self.norm_mean_r = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_r.setRange(0.0, 1.0)
-        self.norm_mean_r.setValue(0.485)
-        self.norm_mean_r.setDecimals(3)
-
-        self.norm_mean_g = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_g.setRange(0.0, 1.0)
-        self.norm_mean_g.setValue(0.456)
-        self.norm_mean_g.setDecimals(3)
-
-        self.norm_mean_b = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_b.setRange(0.0, 1.0)
-        self.norm_mean_b.setValue(0.406)
-        self.norm_mean_b.setDecimals(3)
-
-        self.norm_std_r = QtWidgets.QDoubleSpinBox()
-        self.norm_std_r.setRange(0.0, 1.0)
-        self.norm_std_r.setValue(0.229)
-        self.norm_std_r.setDecimals(3)
-
-        self.norm_std_g = QtWidgets.QDoubleSpinBox()
-        self.norm_std_g.setRange(0.0, 1.0)
-        self.norm_std_g.setValue(0.224)
-        self.norm_std_g.setDecimals(3)
-
-        self.norm_std_b = QtWidgets.QDoubleSpinBox()
-        self.norm_std_b.setRange(0.0, 1.0)
-        self.norm_std_b.setValue(0.225)
-        self.norm_std_b.setDecimals(3)
-
-        # Resize mode
-        self.resize_mode_combo = QtWidgets.QComboBox()
-        self.resize_mode_combo.addItems(["bilinear", "bicubic", "nearest", "area"])
-
-        # Cache dataset
-        self.cache_dataset_check = QtWidgets.QCheckBox()
-        self.cache_dataset_check.setChecked(False)
-
-        # Dodanie brakujących kontrolek
-        self.scaling_method = QtWidgets.QComboBox()
-        self.scaling_method.addItems(["resize", "crop", "pad"])
-
-        self.maintain_aspect_ratio = QtWidgets.QCheckBox()
-        self.maintain_aspect_ratio.setChecked(True)
-
-        self.pad_to_square = QtWidgets.QCheckBox()
-        self.pad_to_square.setChecked(False)
-
-        self.pad_mode = QtWidgets.QComboBox()
-        self.pad_mode.addItems(["constant", "reflect", "replicate"])
-
-        self.pad_value = QtWidgets.QSpinBox()
-        self.pad_value.setRange(0, 255)
-        self.pad_value.setValue(0)
-
-        self.tensorboard_dir_edit = QtWidgets.QLineEdit()
-        self.tensorboard_dir_edit.setText("logs/tensorboard")
-
-        self.model_dir_edit = QtWidgets.QLineEdit()
-        self.model_dir_edit.setText("models")
-
-        self.save_logs_check = QtWidgets.QCheckBox()
-        self.save_logs_check.setChecked(True)
-
-        # Normalization
-        self.normalization_combo = QtWidgets.QComboBox()
-        self.normalization_combo.addItems(["RGB", "BGR"])
-
-        # AutoAugment
-        self.autoaugment_check = QtWidgets.QCheckBox()
-        self.autoaugment_check.setChecked(False)
-
-        # RandAugment
-        self.randaugment_check = QtWidgets.QCheckBox()
-        self.randaugment_check.setChecked(False)
-        self.randaugment_n_spin = QtWidgets.QSpinBox()
-        self.randaugment_n_spin.setRange(1, 10)
-        self.randaugment_n_spin.setValue(2)
-        self.randaugment_m_spin = QtWidgets.QSpinBox()
-        self.randaugment_m_spin.setRange(0, 30)
-        self.randaugment_m_spin.setValue(9)
-
-        # Kontrolki zapobiegania katastrofalnemu zapominaniu
-        self.prevent_forgetting_check = QtWidgets.QCheckBox()
-
-        # Inicjalizacja seed_spin
-        self.seed_spin = QtWidgets.QSpinBox()
-        self.seed_spin.setRange(0, 2147483647)
-        self.seed_spin.setValue(42)
-
-        self.preserve_classes_check = QtWidgets.QCheckBox()
-        self.preserve_classes_check.setChecked(True)
-
-        self.rehearsal_check = QtWidgets.QCheckBox()
-        self.rehearsal_check.setChecked(True)
-
-        self.samples_per_class_spin = QtWidgets.QSpinBox()
-        self.samples_per_class_spin.setRange(5, 100)
-        self.samples_per_class_spin.setValue(20)
-
-        self.synthetic_samples_check = QtWidgets.QCheckBox()
-        self.synthetic_samples_check.setChecked(True)
-
-        self.knowledge_distillation_check = QtWidgets.QCheckBox()
-        self.knowledge_distillation_check.setChecked(True)
-
-        self.kd_temperature_spin = QtWidgets.QDoubleSpinBox()
-        self.kd_temperature_spin.setRange(1.0, 10.0)
-        self.kd_temperature_spin.setValue(2.0)
-        self.kd_temperature_spin.setDecimals(1)
-
-        self.kd_alpha_spin = QtWidgets.QDoubleSpinBox()
-        self.kd_alpha_spin.setRange(0.1, 0.9)
-        self.kd_alpha_spin.setValue(0.4)
-        self.kd_alpha_spin.setDecimals(2)
-
-        self.ewc_check = QtWidgets.QCheckBox()
-        self.ewc_check.setChecked(True)
-
-        self.ewc_lambda_spin = QtWidgets.QDoubleSpinBox()
-        self.ewc_lambda_spin.setRange(
-            100.0, 10000.0
-        )  # ZMIANA: Zwiększenie zakresu Lambda
-        self.ewc_lambda_spin.setValue(
-            5000.0
-        )  # ZMIANA: Zwiększenie domyślnej wartości Lambda
-        self.ewc_lambda_spin.setDecimals(1)
-        self.ewc_lambda_spin.setToolTip(
-            "Współczynnik lambda dla EWC. Wyższe wartości oznaczają silniejszą ochronę poprzedniej wiedzy."
-        )
-
-        self.fisher_sample_size_spin = QtWidgets.QSpinBox()
-        self.fisher_sample_size_spin.setRange(50, 1000)
-
-        self.layer_freezing_combo = QtWidgets.QComboBox()
-        self.layer_freezing_combo.addItems(["gradual", "selective", "progressive"])
-
-        self.freeze_ratio_spin = QtWidgets.QDoubleSpinBox()
-        self.freeze_ratio_spin.setRange(0.0, 0.9)
-        self.freeze_ratio_spin.setValue(0.7)
-        self.freeze_ratio_spin.setDecimals(2)
-
-        # Inicjalizacja deterministic_check
-        self.deterministic_check = QtWidgets.QCheckBox()
-        self.deterministic_check.setChecked(False)
-
-        # --- DODANE: Zaawansowane kontrolki ---
-        # class_weights
-        self.class_weights_combo = QtWidgets.QComboBox()
-        self.class_weights_combo.addItems(["none", "balanced", "custom"])
-        self.class_weights_combo.setCurrentText("none")
-
-        # sampler
-        self.sampler_combo = QtWidgets.QComboBox()
-        self.sampler_combo.addItems(["none", "random", "weighted_random"])
-        self.sampler_combo.setCurrentText("none")
-
-        # image_channels
-        self.image_channels_spin = QtWidgets.QSpinBox()
-        self.image_channels_spin.setRange(1, 4)
-        self.image_channels_spin.setValue(3)
-
-        # TTA (Test Time Augmentation)
-        self.use_tta_check = QtWidgets.QCheckBox()
-        self.use_tta_check.setChecked(False)
-        self.tta_num_samples_spin = QtWidgets.QSpinBox()
-        self.tta_num_samples_spin.setRange(1, 100)
-        self.tta_num_samples_spin.setValue(5)
-
-        # export_onnx
-        self.export_onnx_check = QtWidgets.QCheckBox()
-        self.export_onnx_check.setChecked(False)
-
-        # quantization
-        self.quantization_check = QtWidgets.QCheckBox()
-        self.quantization_check.setChecked(False)
-        self.quantization_precision_combo = QtWidgets.QComboBox()
-        self.quantization_precision_combo.addItems(["int8", "float16", "float32"])
-        self.quantization_precision_combo.setCurrentText("int8")
-
-        # Optymalizacja parametrów EWC
-        self.adaptive_ewc_lambda_check = QtWidgets.QCheckBox("Adaptacyjna Lambda")
-        self.adaptive_ewc_lambda_check.setChecked(True)
-        self.adaptive_ewc_lambda_check.setToolTip(
-            "Jeśli zaznaczone, Lambda będzie dynamicznie zwiększana podczas treningu."
-        )
-
-        # Dodaj do layoutu
-        ewc_layout = QtWidgets.QHBoxLayout()
+    def _define_dependencies(self):
+        """Definiuje słownik zależności między kontrolkami."""
+        self.dependencies = {
+            "arch_combo": {"update_method": self._update_variant_combo},
+            "optimizer_combo": {
+                "controls_to_update": {
+                    "weight_decay_spin": lambda opt_text: opt_text != "Adam",
+                    "momentum_spin": lambda opt_text: opt_text == "SGD",
+                }
+            },
+            "scheduler_combo": {
+                "controls_to_update": {
+                    "warmup_epochs_spin": lambda sch_text: sch_text != "None",
+                    "warmup_lr_init_spin": lambda sch_text: sch_text != "None",
+                }
+            },
+            "unfreeze_strategy_combo": {
+                "controls_to_update": {
+                    "unfreeze_layers_spin": lambda strategy_text: strategy_text
+                    != self.UNFREEZE_ALL,
+                    "unfreeze_after_epochs_spin": lambda strategy_text: strategy_text
+                    == self.UNFREEZE_AFTER_EPOCHS,
+                    "frozen_lr_spin": lambda strategy_text: strategy_text
+                    != self.UNFREEZE_ALL,
+                    "unfrozen_lr_spin": lambda strategy_text: strategy_text
+                    != self.UNFREEZE_ALL,
+                }
+            },
+            "basic_aug_check": {
+                "controls_to_update": {
+                    "rotation_spin": lambda checked: checked,
+                    "brightness_spin": lambda checked: checked,
+                    "shift_spin": lambda checked: checked,
+                    "zoom_spin": lambda checked: checked,
+                    "horizontal_flip_check": lambda checked: checked,
+                    "vertical_flip_check": lambda checked: checked,
+                }
+            },
+            "mixup_check": {
+                "controls_to_update": {"mixup_alpha_spin": lambda checked: checked}
+            },
+            "cutmix_check": {
+                "controls_to_update": {"cutmix_alpha_spin": lambda checked: checked}
+            },
+            "randaugment_check": {
+                "controls_to_update": {
+                    "randaugment_n_spin": lambda checked: checked,
+                    "randaugment_m_spin": lambda checked: checked,
+                }
+            },
+            "prevent_forgetting_check": {  # Główny przełącznik dla zapobiegania zapominaniu
+                "controls_to_update": {
+                    "preserve_classes_check": lambda checked: checked,
+                    "rehearsal_check": lambda checked: checked,
+                    "knowledge_distillation_check": lambda checked: checked,
+                    "ewc_check": lambda checked: checked,
+                    "layer_freezing_combo": lambda checked: checked,
+                    "freeze_ratio_spin": lambda checked: checked,
+                }
+            },
+            "rehearsal_check": {  # Zależne od prevent_forgetting_check
+                "controls_to_update": {
+                    "samples_per_class_spin": lambda rehearsal_checked: rehearsal_checked,
+                    "synthetic_samples_check": lambda rehearsal_checked: rehearsal_checked,
+                },
+                "parent_condition_control": "prevent_forgetting_check",
+            },
+            "knowledge_distillation_check": {  # Zależne od prevent_forgetting_check
+                "controls_to_update": {
+                    "kd_temperature_spin": lambda kd_checked: kd_checked,
+                    "kd_alpha_spin": lambda kd_checked: kd_checked,
+                },
+                "parent_condition_control": "prevent_forgetting_check",
+            },
+            "ewc_check": {  # Zależne od prevent_forgetting_check
+                "controls_to_update": {
+                    "ewc_lambda_spin": lambda ewc_checked: ewc_checked,
+                    "adaptive_ewc_lambda_check": lambda ewc_checked: ewc_checked,
+                    "fisher_sample_size_spin": lambda ewc_checked: ewc_checked,
+                },
+                "parent_condition_control": "prevent_forgetting_check",
+            },
+            "use_tensorboard_check": {
+                "controls_to_update": {"log_freq_combo": lambda checked: checked}
+            },
+            "use_pred_samples_check": {
+                "controls_to_update": {"num_samples_spin": lambda checked: checked}
+            },
+            "best_only_check": {
+                "controls_to_update": {"save_freq_spin": lambda checked: not checked}
+            },
+        }
 
     def _setup_logging(self):
         """Konfiguracja logowania dla okna dialogowego."""
@@ -391,75 +219,41 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             raise
 
         # Połączenia sygnałów dla aktualizacji UI
-        self.arch_combo.currentTextChanged.connect(
-            self._update_architecture_dependent_controls
-        )
-        self.optimizer_combo.currentTextChanged.connect(
-            self._update_optimizer_dependent_controls
-        )
-        self.scheduler_combo.currentTextChanged.connect(
-            self._update_scheduler_dependent_controls
-        )
-        self.unfreeze_strategy_combo.currentTextChanged.connect(
-            self._update_training_dependent_controls
-        )
+        self.arch_combo.currentTextChanged.connect(self._update_ui_state)
+        self.optimizer_combo.currentTextChanged.connect(self._update_ui_state)
+        self.scheduler_combo.currentTextChanged.connect(self._update_ui_state)
+        self.unfreeze_strategy_combo.currentTextChanged.connect(self._update_ui_state)
 
         # Sygnały dla augmentacji
-        self.basic_aug_check.stateChanged.connect(
-            self._update_augmentation_dependent_controls
-        )
-        self.mixup_check.stateChanged.connect(
-            self._update_augmentation_dependent_controls
-        )
-        self.cutmix_check.stateChanged.connect(
-            self._update_augmentation_dependent_controls
-        )
+        self.basic_aug_check.stateChanged.connect(self._update_ui_state)
+        self.mixup_check.stateChanged.connect(self._update_ui_state)
+        self.cutmix_check.stateChanged.connect(self._update_ui_state)
         self.autoaugment_check.stateChanged.connect(
-            self._update_augmentation_dependent_controls
-        )
-        self.randaugment_check.stateChanged.connect(
-            self._update_augmentation_dependent_controls
-        )
-
-        # Sygnały dla preprocessingu
-        self.norm_mean_r.valueChanged.connect(
-            self._update_preprocessing_dependent_controls
-        )
-        self.norm_mean_g.valueChanged.connect(
-            self._update_preprocessing_dependent_controls
-        )
-        self.norm_mean_b.valueChanged.connect(
-            self._update_preprocessing_dependent_controls
-        )
-        self.norm_std_r.valueChanged.connect(
-            self._update_preprocessing_dependent_controls
-        )
-        self.norm_std_g.valueChanged.connect(
-            self._update_preprocessing_dependent_controls
-        )
-        self.norm_std_b.valueChanged.connect(
-            self._update_preprocessing_dependent_controls
-        )
+            self._update_ui_state
+        )  # autoaugment nie ma kontrolek zależnych w self.dependencies, ale może wpływać na inne aspekty
+        self.randaugment_check.stateChanged.connect(self._update_ui_state)
 
         # Sygnały dla monitorowania
         self.patience_spin.valueChanged.connect(
-            self._update_monitoring_dependent_controls
-        )
+            self._update_ui_state
+        )  # Może wpływać na logikę, ale nie ma kontrolek zależnych w self.dependencies
         self.monitor_combo.currentTextChanged.connect(
-            self._update_monitoring_dependent_controls
-        )
+            self._update_ui_state
+        )  # Jak wyżej
         self.checkpoint_metric_combo.currentTextChanged.connect(
-            self._update_monitoring_dependent_controls
-        )
-        self.use_tensorboard_check.stateChanged.connect(
-            self._update_monitoring_dependent_controls
-        )
-        self.use_pred_samples_check.stateChanged.connect(
-            self._update_monitoring_dependent_controls
-        )
-        self.best_only_check.stateChanged.connect(
-            self._update_monitoring_dependent_controls
-        )
+            self._update_ui_state
+        )  # Jak wyżej
+        self.use_tensorboard_check.stateChanged.connect(self._update_ui_state)
+        self.use_pred_samples_check.stateChanged.connect(self._update_ui_state)
+        self.best_only_check.stateChanged.connect(self._update_ui_state)
+
+        # Sygnały dla zapobiegania katastrofalnemu zapominaniu
+        self.prevent_forgetting_check.stateChanged.connect(self._update_ui_state)
+        self.rehearsal_check.stateChanged.connect(self._update_ui_state)
+        self.knowledge_distillation_check.stateChanged.connect(self._update_ui_state)
+        self.ewc_check.stateChanged.connect(self._update_ui_state)
+
+        self._update_ui_state()  # Ustawienie początkowego stanu kontrolek
 
     def _create_data_model_tab(self) -> QtWidgets.QWidget:
         """Tworzenie zakładki Dane i Model."""
@@ -1048,7 +842,9 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         try:
             # Blokujemy sygnały podczas wczytywania konfiguracji, aby uniknąć
             # wyzwalania zbędnych aktualizacji UI
-            self.blockSignals(True)
+            self.blockSignals(
+                True
+            )  # Zmienione z self.arch_combo.blockSignals itp. na globalne
 
             # Model
             model_config = config.get("model", {})
@@ -1441,10 +1237,10 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                     )
 
             # Aktualizacja zależnych kontrolek po wczytaniu wszystkich wartości
-            self._update_forgetting_controls()
+            # Usunięto _update_forgetting_controls(), bo logika jest w _update_ui_state()
 
             # Na koniec metody odblokujemy sygnały i ręcznie wywołamy aktualizację UI
-            self.blockSignals(False)
+            self.blockSignals(False)  # Globalne odblokowanie
             self._update_ui_state()
             self.logger.info("Konfiguracja modelu została pomyślnie załadowana")
 
@@ -1457,31 +1253,105 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.critical(self, "Błąd", f"{msg}: {str(e)}")
 
     def _update_ui_state(self):
-        """Aktualizuje stan UI po zmianie konfiguracji."""
-        # Aktualizacja stanu kontrolek w zależności od wybranych opcji
-        self._update_architecture_dependent_controls()
-        self._update_training_dependent_controls()
-        self._update_augmentation_dependent_controls()
-        self._update_preprocessing_dependent_controls()
-        self._update_monitoring_dependent_controls()
+        """Aktualizuje stan UI na podstawie zdefiniowanych zależności."""
+        for main_control_attr, dep_info in self.dependencies.items():
+            if not hasattr(self, main_control_attr):
+                self.logger.debug(
+                    f"_update_ui_state: Main control {main_control_attr} not found."
+                )
+                continue
 
-    def _update_dependent_controls(self):
-        """Aktualizuje zależne kontrolki po zmianie konfiguracji."""
-        # Aktualizacja kontrolek zależnych od architektury
-        self._update_variant_combo(self.arch_combo.currentText())
+            main_control_widget = getattr(self, main_control_attr)
+            current_value = None
 
-        # Aktualizacja kontrolek zależnych od treningu
-        self._update_optimizer_dependent_controls()
-        self._update_scheduler_dependent_controls()
+            if isinstance(main_control_widget, QtWidgets.QComboBox):
+                current_value = main_control_widget.currentText()
+            elif isinstance(main_control_widget, QtWidgets.QCheckBox):
+                current_value = main_control_widget.isChecked()
+            elif isinstance(
+                main_control_widget, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)
+            ):
+                current_value = (
+                    main_control_widget.value()
+                )  # Dla spinboxów, jeśli będą primary controllers
 
-        # Aktualizacja kontrolek zależnych od augmentacji
-        self._update_augmentation_dependent_controls()
+            if "update_method" in dep_info:
+                # Specjalne metody aktualizacji, np. _update_variant_combo
+                if (
+                    current_value is not None
+                ):  # Upewnijmy się, że mamy wartość dla metody
+                    dep_info["update_method"](current_value)
+                else:  # Jeśli current_value to None, a metoda oczekuje wartości (np. text z QComboBox)
+                    if isinstance(
+                        main_control_widget, QtWidgets.QComboBox
+                    ):  # Domyślnie dla ComboBox
+                        dep_info["update_method"](main_control_widget.currentText())
 
-        # Aktualizacja kontrolek zależnych od preprocessingu
-        self._update_preprocessing_dependent_controls()
+            if "controls_to_update" in dep_info:
+                parent_active = True  # Domyślnie traktujemy jako aktywne
+                parent_control_attr = dep_info.get("parent_condition_control")
 
-        # Aktualizacja kontrolek zależnych od monitorowania
-        self._update_monitoring_dependent_controls()
+                if parent_control_attr:
+                    if hasattr(self, parent_control_attr):
+                        parent_widget = getattr(self, parent_control_attr)
+                        if isinstance(parent_widget, QtWidgets.QCheckBox):
+                            parent_active = (
+                                parent_widget.isChecked() and parent_widget.isEnabled()
+                            )
+                        else:  # Domyślnie, jeśli rodzic nie jest checkboxem, zakładamy, że nie blokuje
+                            parent_active = parent_widget.isEnabled()
+                    else:  # Rodzic nie istnieje, więc dzieci nie powinny być aktywowane
+                        parent_active = False
+                        self.logger.warning(
+                            f"Parent control {parent_control_attr} not found for {main_control_attr}"
+                        )
+
+                for control_to_update_attr, condition_fn in dep_info[
+                    "controls_to_update"
+                ].items():
+                    if hasattr(self, control_to_update_attr):
+                        control_to_update_widget = getattr(self, control_to_update_attr)
+                        # Kontrolka zależna jest włączana jeśli jej rodzic jest aktywny ORAZ spełnia swój warunek
+                        is_condition_met = (
+                            condition_fn(current_value)
+                            if current_value is not None
+                            else False
+                        )
+                        control_to_update_widget.setEnabled(
+                            parent_active and is_condition_met
+                        )
+                    else:
+                        self.logger.debug(
+                            f"_update_ui_state: Dependent control {control_to_update_attr} for {main_control_attr} not found."
+                        )
+
+    # Usunięcie starych metod aktualizacji UI
+    # def _update_dependent_controls(self):
+    #     pass # Już niepotrzebne
+
+    # def _update_architecture_dependent_controls(self):
+    #     pass # Logika przeniesiona do _update_ui_state i _update_variant_combo
+
+    # def _update_training_dependent_controls(self):
+    #     pass # Logika przeniesiona
+
+    # def _update_optimizer_dependent_controls(self):
+    #     pass # Logika przeniesiona
+
+    # def _update_scheduler_dependent_controls(self):
+    #     pass # Logika przeniesiona
+
+    # def _update_augmentation_dependent_controls(self):
+    #     pass # Logika przeniesiona
+
+    # def _update_preprocessing_dependent_controls(self):
+    #     pass # Była pusta lub redundantna
+
+    # def _update_monitoring_dependent_controls(self):
+    #     pass # Logika przeniesiona
+
+    # def _update_forgetting_controls(self):
+    #     pass # Logika przeniesiona do _update_ui_state
 
     def _select_train_dir(self):
         """Wybiera katalog z danymi treningowymi."""
@@ -1508,33 +1378,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 self,
                 "Błąd",
                 f"Nie można wybrać katalogu treningowego: {str(e)}",
-            )
-
-    def _select_val_dir(self):
-        """Wybiera katalog z danymi walidacyjnymi."""
-        try:
-            dir_path = QtWidgets.QFileDialog.getExistingDirectory(
-                self,
-                "Wybierz katalog z danymi walidacyjnymi",
-                str(Path.home()),
-                QtWidgets.QFileDialog.Option.ShowDirsOnly,
-            )
-            if dir_path:
-                if validate_validation_directory(dir_path):
-                    self.val_dir_edit.setText(dir_path)
-                    self.logger.info(f"Wybrano katalog walidacyjny: {dir_path}")
-                else:
-                    QtWidgets.QMessageBox.warning(
-                        self,
-                        "Błąd walidacji",
-                        "Wybrany katalog nie spełnia wymagań dla danych walidacyjnych.",
-                    )
-        except Exception as e:
-            self.logger.error(f"Błąd podczas wyboru katalogu walidacyjnego: {str(e)}")
-            QtWidgets.QMessageBox.critical(
-                self,
-                "Błąd",
-                f"Nie można wybrać katalogu walidacyjnego: {str(e)}",
             )
 
     def _select_model_file(self):
@@ -1811,46 +1654,16 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
         # Mean
         mean_layout = QtWidgets.QHBoxLayout()
-        self.norm_mean_r = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_r.setRange(0.0, 1.0)
-        self.norm_mean_r.setValue(0.485)
-        self.norm_mean_r.setDecimals(3)
         mean_layout.addWidget(self.norm_mean_r)
-
-        self.norm_mean_g = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_g.setRange(0.0, 1.0)
-        self.norm_mean_g.setValue(0.456)
-        self.norm_mean_g.setDecimals(3)
         mean_layout.addWidget(self.norm_mean_g)
-
-        self.norm_mean_b = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_b.setRange(0.0, 1.0)
-        self.norm_mean_b.setValue(0.406)
-        self.norm_mean_b.setDecimals(3)
         mean_layout.addWidget(self.norm_mean_b)
-
         norm_layout.addRow("Mean (RGB):", mean_layout)
 
         # Std
         std_layout = QtWidgets.QHBoxLayout()
-        self.norm_std_r = QtWidgets.QDoubleSpinBox()
-        self.norm_std_r.setRange(0.0, 1.0)
-        self.norm_std_r.setValue(0.229)
-        self.norm_std_r.setDecimals(3)
         std_layout.addWidget(self.norm_std_r)
-
-        self.norm_std_g = QtWidgets.QDoubleSpinBox()
-        self.norm_std_g.setRange(0.0, 1.0)
-        self.norm_std_g.setValue(0.224)
-        self.norm_std_g.setDecimals(3)
         std_layout.addWidget(self.norm_std_g)
-
-        self.norm_std_b = QtWidgets.QDoubleSpinBox()
-        self.norm_std_b.setRange(0.0, 1.0)
-        self.norm_std_b.setValue(0.225)
-        self.norm_std_b.setDecimals(3)
         std_layout.addWidget(self.norm_std_b)
-
         norm_layout.addRow("Std (RGB):", std_layout)
 
         norm_group.setLayout(norm_layout)
@@ -1876,46 +1689,16 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
         # Mean
         mean_layout = QtWidgets.QHBoxLayout()
-        self.norm_mean_r = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_r.setRange(0.0, 1.0)
-        self.norm_mean_r.setValue(0.485)
-        self.norm_mean_r.setDecimals(3)
         mean_layout.addWidget(self.norm_mean_r)
-
-        self.norm_mean_g = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_g.setRange(0.0, 1.0)
-        self.norm_mean_g.setValue(0.456)
-        self.norm_mean_g.setDecimals(3)
         mean_layout.addWidget(self.norm_mean_g)
-
-        self.norm_mean_b = QtWidgets.QDoubleSpinBox()
-        self.norm_mean_b.setRange(0.0, 1.0)
-        self.norm_mean_b.setValue(0.406)
-        self.norm_mean_b.setDecimals(3)
         mean_layout.addWidget(self.norm_mean_b)
-
         norm_layout.addRow("Mean (RGB):", mean_layout)
 
         # Std
         std_layout = QtWidgets.QHBoxLayout()
-        self.norm_std_r = QtWidgets.QDoubleSpinBox()
-        self.norm_std_r.setRange(0.0, 1.0)
-        self.norm_std_r.setValue(0.229)
-        self.norm_std_r.setDecimals(3)
         std_layout.addWidget(self.norm_std_r)
-
-        self.norm_std_g = QtWidgets.QDoubleSpinBox()
-        self.norm_std_g.setRange(0.0, 1.0)
-        self.norm_std_g.setValue(0.224)
-        self.norm_std_g.setDecimals(3)
         std_layout.addWidget(self.norm_std_g)
-
-        self.norm_std_b = QtWidgets.QDoubleSpinBox()
-        self.norm_std_b.setRange(0.0, 1.0)
-        self.norm_std_b.setValue(0.225)
-        self.norm_std_b.setDecimals(3)
         std_layout.addWidget(self.norm_std_b)
-
         norm_layout.addRow("Std (RGB):", std_layout)
 
         norm_group.setLayout(norm_layout)
@@ -2743,139 +2526,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             f"Zapisuję konfigurację modelu: {json.dumps(config, indent=2)}"
         )
         return config
-
-    def _update_architecture_dependent_controls(self):
-        """Aktualizuje kontrolki zależne od architektury."""
-        architecture = self.arch_combo.currentText()
-        self._update_variant_combo(architecture)
-
-    def _update_training_dependent_controls(self):
-        """Aktualizuje kontrolki zależne od parametrów treningu."""
-        # Aktualizacja kontrolek zależnych od optymalizatora
-        self._update_optimizer_dependent_controls()
-
-        # Aktualizacja kontrolek zależnych od schedulera
-        self._update_scheduler_dependent_controls()
-
-        # Aktualizacja kontrolek zależnych od mixed precision
-        self.mixed_precision_check.setEnabled(True)
-
-        # Aktualizacja kontrolek zależnych od unfreeze strategy
-        self.unfreeze_strategy_combo.setEnabled(True)
-        self.unfreeze_layers_spin.setEnabled(
-            self.unfreeze_strategy_combo.currentText() != self.UNFREEZE_ALL
-        )
-
-    def _update_optimizer_dependent_controls(self):
-        """Aktualizuje kontrolki zależne od optymalizatora."""
-        optimizer = self.optimizer_combo.currentText()
-
-        # Włącz/wyłącz kontrolki w zależności od wybranego optymalizatora
-        self.weight_decay_spin.setEnabled(
-            True
-        )  # Dostępne dla wszystkich optymalizatorów
-
-        # Specyficzne ustawienia dla różnych optymalizatorów
-        if optimizer == "AdamW":
-            self.weight_decay_spin.setEnabled(True)
-        elif optimizer == "SGD":
-            self.weight_decay_spin.setEnabled(True)
-        elif optimizer == "Adam":
-            self.weight_decay_spin.setEnabled(False)
-
-    def _update_scheduler_dependent_controls(self):
-        """Aktualizuje kontrolki zależne od schedulera."""
-        scheduler = self.scheduler_combo.currentText()
-
-        # Włącz/wyłącz kontrolki w zależności od wybranego schedulera
-        self.warmup_epochs_spin.setEnabled(True)
-        self.warmup_lr_init_spin.setEnabled(True)
-
-    def _update_augmentation_dependent_controls(self):
-        """Aktualizuje kontrolki zależne od augmentacji."""
-        # Basic augmentation
-        basic_enabled = self.basic_aug_check.isChecked()
-        self.rotation_spin.setEnabled(basic_enabled)
-        self.brightness_spin.setEnabled(basic_enabled)
-        self.shift_spin.setEnabled(basic_enabled)
-        self.zoom_spin.setEnabled(basic_enabled)
-        self.horizontal_flip_check.setEnabled(basic_enabled)
-        self.vertical_flip_check.setEnabled(basic_enabled)
-
-        # Mixup
-        mixup_enabled = self.mixup_check.isChecked()
-        self.mixup_alpha_spin.setEnabled(mixup_enabled)
-
-        # CutMix
-        cutmix_enabled = self.cutmix_check.isChecked()
-        self.cutmix_alpha_spin.setEnabled(cutmix_enabled)
-
-        # AutoAugment
-        # self.autoaugment_check - stan zarządzany przez użytkownika
-
-        # RandAugment
-        randaugment_enabled = self.randaugment_check.isChecked()
-        self.randaugment_n_spin.setEnabled(randaugment_enabled)
-        self.randaugment_m_spin.setEnabled(randaugment_enabled)
-
-    def _update_preprocessing_dependent_controls(self):
-        """Aktualizuje kontrolki zależne od preprocessingu."""
-        # Normalizacja
-        self.norm_mean_r.setEnabled(True)
-        self.norm_mean_g.setEnabled(True)
-        self.norm_mean_b.setEnabled(True)
-        self.norm_std_r.setEnabled(True)
-        self.norm_std_g.setEnabled(True)
-        self.norm_std_b.setEnabled(True)
-
-    def _update_monitoring_dependent_controls(self):
-        """Aktualizuje kontrolki zależne od monitorowania."""
-        # Metrics
-        self.accuracy_check.setEnabled(True)
-        self.precision_check.setEnabled(True)
-        self.recall_check.setEnabled(True)
-        self.f1_check.setEnabled(True)
-        self.topk_check.setEnabled(True)
-        self.confusion_matrix_check.setEnabled(True)
-        self.auc_check.setEnabled(True)
-
-        # Logging
-        self.use_tensorboard_check.setEnabled(True)
-        self.use_wandb_check.setEnabled(True)
-        self.use_csv_check.setEnabled(True)
-        self.log_freq_combo.setEnabled(True)
-
-        # Visualization
-        self.use_gradcam_check.setEnabled(True)
-        self.use_feature_maps_check.setEnabled(True)
-        self.use_pred_samples_check.setEnabled(True)
-        self.num_samples_spin.setEnabled(True)
-
-        # Early stopping
-        self.patience_spin.setEnabled(True)
-        self.min_delta_spin.setEnabled(True)
-        self.monitor_combo.setEnabled(True)
-
-        # Checkpointing
-        self.best_only_check.setEnabled(True)
-        self.save_freq_spin.setEnabled(True)
-        self.checkpoint_metric_combo.setEnabled(True)
-
-        # Aktualizacja zależności między kontrolkami
-        if self.use_tensorboard_check.isChecked():
-            self.log_freq_combo.setEnabled(True)
-        else:
-            self.log_freq_combo.setEnabled(False)
-
-        if self.use_pred_samples_check.isChecked():
-            self.num_samples_spin.setEnabled(True)
-        else:
-            self.num_samples_spin.setEnabled(False)
-
-        if self.best_only_check.isChecked():
-            self.save_freq_spin.setEnabled(False)
-        else:
-            self.save_freq_spin.setEnabled(True)
 
     def _create_profile_from_model_config(self):
         """Tworzy nowy plik profilu na podstawie wczytanej konfiguracji modelu."""
