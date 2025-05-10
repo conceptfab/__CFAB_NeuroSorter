@@ -170,14 +170,20 @@
             }
         }
     },
-    "training_time": 0,
-    "training_time_str": "0:00:00",
-    "status": "Oczekuj\u0105ce",
-    "train_accuracy": 0.0,
-    "train_loss": 0.0,
+    "training_time": 117.83,
+    "training_time_str": "0:01:57",
+    "status": "Zakończony",
+    "train_accuracy": 87.34177215189874,
+    "train_loss": 1.501647596773894,
     "validation_accuracy": 0.0,
     "validation_loss": 0.0,
     "model_filename": "",
     "accuracy": 0.0,
-    "epochs_trained": 0
+    "epochs_trained": 0,
+    "progress": 100,
+    "current_epoch": 5,
+    "total_epochs": 5,
+    "train_acc": 87.34177215189874,
+    "val_loss": 1.3563573956489563,
+    "val_acc": 81.66666666666667
 }

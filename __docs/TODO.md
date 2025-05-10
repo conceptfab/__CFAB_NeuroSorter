@@ -1,6 +1,6 @@
 TODO 0.4
 
-- fine-tuning dopracowac
+<!-- - fine-tuning dopracowac -->
 - folder log
 
 - lista modeli/ status ilosc kategorii?>?

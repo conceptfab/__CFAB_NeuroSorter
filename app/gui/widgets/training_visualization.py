@@ -393,17 +393,18 @@ class TrainingVisualization(QWidget):
             if self.data_updated:
                 self.update_plot()
 
-            # Zapamiętaj oryginalny rozmiar
-            original_width = self.plot_widget.width()
-            original_height = self.plot_widget.height()
+            # Zapamiętaj oryginalne ograniczenia szerokości
+            original_min_width = self.plot_widget.minimumWidth()
+            original_max_width = self.plot_widget.maximumWidth()
 
             # Zapisz wykres w formacie PNG z minimalną szerokością 3000px
             self.plot_widget.setFixedWidth(3000)  # Ustaw minimalną szerokość
             export_image = self.plot_widget.grab()
             export_image.save(filename)
 
-            # Przywróć oryginalny rozmiar
-            self.plot_widget.setFixedWidth(-1)  # Przywróć automatyczny rozmiar
+            # Przywróć oryginalne ograniczenia szerokości
+            self.plot_widget.setMinimumWidth(original_min_width)
+            self.plot_widget.setMaximumWidth(original_max_width)
             
             # Upewnij się, że wykres jest nadal widoczny
             self.update_plot()

@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import time
+import warnings
 from copy import deepcopy
 from datetime import datetime
 
@@ -24,6 +25,15 @@ from torchvision import datasets
 from .catastrophic_forgetting import compute_fisher_information
 from .classifier import ImageClassifier
 from .preprocessing import get_augmentation_transforms, get_default_transforms
+
+# Ignoruj ostrzeżenia z pyqtgraph o All-NaN slice
+warnings.filterwarnings(
+    "ignore", category=RuntimeWarning, message="All-NaN slice encountered"
+)
+# Ignoruj ostrzeżenia z sklearn o undefined metrics
+warnings.filterwarnings(
+    "ignore", category=UserWarning, message="Only one class is present in y_true"
+)
 
 
 # Funkcja pomocnicza dla target_transform przy obliczaniu macierzy Fishera
@@ -1177,8 +1187,8 @@ def fine_tune_model(
 
             # Inicjalizacja train_acc przed użyciem w callback
             cumulative_train_acc_for_epoch = (
-                train_correct / train_total
-            )  # Usunięto mnożenie przez 100
+                100.0 * train_correct / train_total if train_total > 0 else 0.0
+            )
             avg_train_loss_for_epoch = train_loss / (batch_idx + 1)
 
             # DODATKOWY WYDRUK KONTROLNY:
@@ -1258,24 +1268,42 @@ def fine_tune_model(
                     # Jeśli mamy prawdopodobieństwa, możemy obliczyć AUC i top-k
                     if len(all_probs) > 0:
                         y_prob = np.array(all_probs)
-                        if y_prob.shape[1] > 2:  # Wieloklasowy problem
-                            try:
-                                val_metrics["auc"] = roc_auc_score(
-                                    y_true,
-                                    y_prob,
-                                    multi_class="ovr",
-                                    average="macro",
-                                    labels=np.arange(y_prob.shape[1]),
+                        try:
+                            n_classes = len(np.unique(y_true))
+                            if (
+                                n_classes > 1
+                            ):  # Sprawdzamy liczbę unikalnych klas w danych
+                                if y_prob.shape[1] > 2:  # Wieloklasowy problem
+                                    val_metrics["auc"] = roc_auc_score(
+                                        y_true,
+                                        y_prob,
+                                        multi_class="ovr",
+                                        average="macro",
+                                        labels=np.unique(
+                                            y_true
+                                        ),  # Użyj tylko unikalnych klas występujących w batchu
+                                    )
+                                elif y_prob.shape[1] == 2:  # Problem binarny
+                                    val_metrics["auc"] = roc_auc_score(
+                                        y_true, y_prob[:, 1]
+                                    )
+                            else:
+                                print(
+                                    "Tylko jedna klasa w danych walidacyjnych, AUC nie jest zdefiniowany."
                                 )
-                            except ValueError as e:
-                                print(f"Nie udało się obliczyć AUC: {e}")
                                 val_metrics["auc"] = 0.0
+                        except Exception as e:
+                            print(f"Błąd podczas obliczania AUC: {e}")
+                            val_metrics["auc"] = 0.0
 
                         # Top-k metryki
                         if y_prob.shape[1] >= 3:
                             try:
                                 val_metrics["top3"] = top_k_accuracy_score(
-                                    y_true, y_prob, k=min(3, y_prob.shape[1])
+                                    y_true,
+                                    y_prob,
+                                    k=min(3, y_prob.shape[1]),
+                                    labels=np.unique(y_true),
                                 )
                             except Exception as e:
                                 print(f"Błąd przy obliczaniu top-3: {e}")
@@ -1284,7 +1312,10 @@ def fine_tune_model(
                         if y_prob.shape[1] >= 5:
                             try:
                                 val_metrics["top5"] = top_k_accuracy_score(
-                                    y_true, y_prob, k=min(5, y_prob.shape[1])
+                                    y_true,
+                                    y_prob,
+                                    k=min(5, y_prob.shape[1]),
+                                    labels=np.unique(y_true),
                                 )
                             except Exception as e:
                                 print(f"Błąd przy obliczaniu top-5: {e}")
@@ -1340,11 +1371,11 @@ def fine_tune_model(
         print(f"\nPodsumowanie epoki {epoch+1}:")
         print(f"  Czas: {epoch_time:.2f}s")
         print(f"  Train loss: {train_loss:.4f}")
-        print(f"  Train acc:  {train_acc:.2%}")
+        print(f"  Train acc:  {train_acc/100:.2%}")
 
         if val_loader:
             print(f"  Val loss:   {val_loss:.4f}")
-            print(f"  Val acc:    {val_acc:.2%}")
+            print(f"  Val acc:    {val_acc/100:.2%}")
             print(
                 f"  Val F1:     {val_metrics.get('f1', 0):.4f}"
             )  # Użyj .get() dla bezpieczeństwa
@@ -1369,16 +1400,20 @@ def fine_tune_model(
                 progress_callback(
                     epoch + 1,
                     num_epochs,
-                    avg_train_loss_for_epoch,  # Przekaż bieżącą średnią stratę treningową
-                    cumulative_train_acc_for_epoch,  # Przekaż bieżącą dokładność treningową
-                    val_loss_cb,
-                    val_acc_cb,
-                    top3_cb,
-                    top5_cb,
-                    precision_cb,
-                    recall_cb,
-                    f1_cb,
-                    auc_cb,
+                    float(
+                        avg_train_loss_for_epoch
+                    ),  # Przekaż bieżącą średnią stratę treningową
+                    float(
+                        cumulative_train_acc_for_epoch
+                    ),  # Przekaż bieżącą dokładność treningową
+                    float(val_loss_cb),
+                    float(val_acc_cb),
+                    float(top3_cb),
+                    float(top5_cb),
+                    float(precision_cb),
+                    float(recall_cb),
+                    float(f1_cb),
+                    float(auc_cb),
                 )
             except Exception as e:
                 print(
