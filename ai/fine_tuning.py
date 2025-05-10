@@ -97,7 +97,7 @@ def map_class_indices(base_class_names, new_class_folders):
     # Utwórz mapowanie nowych indeksów na indeksy bazowe
     index_mapping = {}
     for new_idx, folder_name in enumerate(sorted(new_class_folders)):
-        # Jeśli klasa występuje w modelu bazowym, użyj jej oryginalnego indeksu
+        # Sprawdzamy czy klasa istnieje w modelu bazowym
         if folder_name.lower() in base_names_to_idx:
             base_idx = base_names_to_idx[folder_name.lower()]
             index_mapping[new_idx] = base_idx
@@ -507,20 +507,38 @@ def fine_tune_model(
 
     # Zmodyfikowane mapowanie klas - zachowaj oryginalne klasy ORAZ dodaj nowe
     if prevent_forgetting and preserve_original_classes:
-        print("Zachowywanie oryginalnych klas w mapowaniu...")
+        print("Inteligentne mapowanie klas - zachowanie indeksów oryginalnych klas...")
+
+        # Mapowanie klas treningowych do oryginalnych indeksów
+        class_mapping = {}
+        for class_name in sorted(train_folders):
+            added = False
+            # Sprawdź czy klasa istnieje w modelu bazowym
+            for idx, base_name in base_classifier.class_names.items():
+                if class_name.lower() == base_name.lower():
+                    class_mapping[class_name] = idx
+                    print(
+                        f"  Klasa {class_name} już istnieje w modelu bazowym z indeksem {idx}"
+                    )
+                    added = True
+                    break
+
+            if not added:
+                # Dodajemy nową klasę z nowym indeksem
+                next_idx = str(
+                    max([int(idx) for idx in base_classifier.class_names.keys()]) + 1
+                )
+                class_mapping[class_name] = next_idx
+                print(f"  Dodajemy nową klasę {class_name} z indeksem {next_idx}")
+
         # Zachowaj wszystkie oryginalne klasy
-        merged_class_names = base_classifier.class_names.copy()
+        new_class_names = base_classifier.class_names.copy()
 
-        # Dodaj nowe klasy, kontynuując numerację
-        next_idx = max([int(idx) for idx in merged_class_names.keys()]) + 1
-        for i, class_name in enumerate(sorted(train_folders)):
-            # Sprawdź, czy ta klasa już istnieje w oryginalnym modelu
-            if class_name not in merged_class_names.values():
-                merged_class_names[str(next_idx)] = class_name
-                next_idx += 1
+        # Dodaj/zaktualizuj klasy treningowe zgodnie z mapowaniem
+        for class_name, idx in class_mapping.items():
+            new_class_names[idx] = class_name
 
-        # Użyj merged_class_names zamiast new_class_names
-        new_class_names = merged_class_names
+        print(f"  Finalne mapowanie klas: {len(new_class_names)} klas w modelu")
 
     # 4. Przygotowanie modelu do fine-tuningu
     print("\nPrzygotowanie modelu do fine-tuningu...")
@@ -539,6 +557,15 @@ def fine_tune_model(
 
     # Implementacja technik zapobiegających zapominaniu
     if prevent_forgetting:
+        # Domyślna konfiguracja dla EWC, jeśli nie została przekazana
+        if ewc_config is None:
+            ewc_config = {
+                "use": True,
+                "lambda": 5000.0,  # Współczynnik regularyzacji EWC
+                "fisher_sample_size": 200,  # Liczba przykładów do obliczenia macierzy Fishera
+            }
+            print(f"Używam domyślnej konfiguracji EWC: {ewc_config}")
+
         # 1. Rehearsal
         rehearsal_data = None
         if rehearsal_config and rehearsal_config.get("use", False):
@@ -568,12 +595,38 @@ def fine_tune_model(
             print("\n=== KONFIGURACJA EWC ===")
             fisher_sample_size = ewc_config.get("fisher_sample_size", 200)
 
-            # Tutaj należałoby zaimplementować wczytywanie przykładów dla oryginalnych klas
-            # aby obliczyć informację Fishera
-            # Przykład (wymaga implementacji data_loader_for_original_classes):
-            # fisher_diagonal = compute_fisher_information(
-            #     original_model, data_loader_for_original_classes, fisher_sample_size, device
-            # )
+            # Przygotuj data loader dla oryginalnych klas
+            print("Przygotowywanie data loadera dla oryginalnych klas...")
+            original_dataset = datasets.ImageFolder(
+                train_dir,
+                transform=get_default_transforms(),
+                target_transform=lambda x: (
+                    int(x) if x in base_classifier.class_names else -1
+                ),
+            )
+            data_loader_for_original_classes = DataLoader(
+                original_dataset,
+                batch_size=min(fisher_sample_size, len(original_dataset)),
+                shuffle=True,
+                num_workers=2,
+                pin_memory=torch.cuda.is_available(),
+            )
+
+            # Oblicz macierz Fishera dla oryginalnego modelu
+            print(f"Obliczanie macierzy Fishera dla {fisher_sample_size} próbek...")
+            fisher_diagonal = compute_fisher_information(
+                original_model, data_loader_for_original_classes, device
+            )
+            print("✓ Macierz Fishera obliczona pomyślnie")
+
+        # 3. Zapisz oryginalne parametry modelu dla EWC
+        original_params = {}
+        if ewc_config and ewc_config.get("use", False):
+            print("Zapisywanie oryginalnych parametrów modelu...")
+            for name, param in original_model.named_parameters():
+                if param.requires_grad:
+                    original_params[name] = param.data.clone()
+            print("✓ Parametry zapisane")
 
     # 6. Zmodyfikuj strategie zamrażania warstw
     if prevent_forgetting and layer_freezing_config:
@@ -848,12 +901,21 @@ def fine_tune_model(
                         # Dodaj regularyzację EWC do straty
                         ewc_loss = 0
                         for name, param in model.named_parameters():
-                            if name in fisher_diagonal:
-                                ewc_loss += torch.sum(
-                                    fisher_diagonal[name]
-                                    * (param - original_model.state_dict()[name]).pow(2)
-                                )
+                            if name in fisher_diagonal and name in original_params:
+                                # Oblicz kwadrat różnicy między aktualnymi parametrami a oryginalnymi
+                                diff = (param - original_params[name]) ** 2
+                                # Pomnóż przez ważoność parametru (macierz Fishera)
+                                ewc_loss += torch.sum(fisher_diagonal[name] * diff)
+
+                        # Dodaj ważoną stratę EWC do głównej straty
                         loss += ewc_lambda * ewc_loss
+
+                        if batch_idx % 10 == 0:  # Wyświetlaj co 10 batchy
+                            print(
+                                f"  EWC loss: {ewc_loss.item():.6f}, Lambda: {ewc_lambda}"
+                            )
+                    else:
+                        loss = criterion(outputs, targets)
 
                 # Backward pass z mixed precision
                 scaler.scale(loss).backward()
