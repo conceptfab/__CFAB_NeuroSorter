@@ -173,16 +173,16 @@
     "training_time_str": "0:01:31",
     "status": "W trakcie",
     "train_accuracy": 56.962025316455694,
-    "train_loss": 2.409593105316162,
+    "train_loss": 2.0711712111597476,
     "validation_accuracy": 0.0,
     "validation_loss": 0.0,
     "model_filename": "",
     "accuracy": 0.0,
     "epochs_trained": 0,
-    "progress": 40,
-    "current_epoch": 2,
+    "progress": 60,
+    "current_epoch": 3,
     "total_epochs": 5,
-    "train_acc": 60.47819971870605,
-    "val_loss": 2.067429522673289,
-    "val_acc": 65.0
+    "train_acc": 78.34036568213783,
+    "val_loss": 1.7805967132250469,
+    "val_acc": 74.44444444444444
 }
