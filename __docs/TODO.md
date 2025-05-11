@@ -1,6 +1,7 @@
 TODO 0.4
 
-- sortowanie poprawic - pliki o niskim ratingu do osobnego folderu
+- sortowanie poprawic - pliki o niskim ratingu do osobnego folderu - sprawdzic czy to dziala
+- sortw
 - pomoc dodatkowe narzędzia
 
 - skąd ten log?

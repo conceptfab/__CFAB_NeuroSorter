@@ -97,7 +97,7 @@ python <nazwa_pliku_uruchomieniowego>.py
 ### Zakładka Klasyfikacja wsadowa
 
 - Automatyczna klasyfikacja i sortowanie obrazów z wybranego folderu źródłowego do folderu docelowego.
-- Konfiguracja opcji (wybór modelu, akcja: kopiuj/przenieś, obsługa nieklasyfikowanych plików, tworzenie podfolderów dla klas, próg pewności).
+- Konfiguracja opcji (wybór modelu, akcja: kopiuj/przenieś, obsługa nieklasyfikowanych plików, tworzenie podfolderów dla klas, próg pewności), w tym opcja użycia osobnego folderu (`__bez_kategorii__`) dla plików, które nie zostały przypisane do żadnej kategorii (pliki te są kopiowane do wskazanego podfolderu w katalogu docelowym, gdy używana jest funkcja sortowania wszystkich obrazów).
 - Monitorowanie postępu przetwarzania dużych zbiorów danych.
 
 ### Zakładka Zbiory Danych

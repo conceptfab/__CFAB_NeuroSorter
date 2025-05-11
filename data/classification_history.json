@@ -1,74 +1,290 @@
 [
     {
-        "date": "2025-05-11T21:04:34.404429",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/2574200.5d9cf9ac407bf 1_copy_1.jpg",
-        "class_name": "deocorative_greenery",
-        "confidence": 0.94189453125
+        "class_name": "table_chair",
+        "confidence": 0.78955078125,
+        "date": "2025-05-11T21:21:27.469632",
+        "image_path": "F:/______training_database_V2/table_chair/133735.54606c6c3cb8d 1.jpg"
     },
     {
-        "date": "2025-05-11T21:05:05.978180",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/2751779.5e70eb6d113eb.jpg",
-        "class_name": "deocorative_greenery",
-        "confidence": 0.98046875
+        "class_name": "table_chair",
+        "confidence": 0.95068359375,
+        "date": "2025-05-11T21:21:31.217031",
+        "image_path": "F:/______training_database_V2/table_chair/251034.5552458ce14cb 1.jpg"
     },
     {
-        "date": "2025-05-11T21:05:09.818217",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/6177115.65c433d5cb711.jpg",
+        "class_name": "technology",
+        "confidence": 0.9990234375,
+        "date": "2025-05-11T21:21:35.835215",
+        "image_path": "F:/______training_database_V2/technology/1.jpg"
+    },
+    {
+        "class_name": "technology",
+        "confidence": 0.98779296875,
+        "date": "2025-05-11T21:21:38.413050",
+        "image_path": "F:/______training_database_V2/technology/3747453.617b29b7088bc.jpg"
+    },
+    {
+        "class_name": "technology",
+        "confidence": 0.83837890625,
+        "date": "2025-05-11T21:21:47.269784",
+        "image_path": "F:/______training_database_V2/technology/Miele G4203SC Active Dishwasher.jpg"
+    },
+    {
+        "class_name": "technology",
+        "confidence": 0.8251953125,
+        "date": "2025-05-11T21:21:50.291770",
+        "image_path": "F:/______training_database_V2/technology/legrand 2.jpg"
+    },
+    {
+        "class_name": "technology",
+        "confidence": 0.81103515625,
+        "date": "2025-05-11T21:21:53.059961",
+        "image_path": "F:/______training_database_V2/technology/Large Range Energy Storage System.jpg"
+    },
+    {
+        "class_name": "technology",
+        "confidence": 0.8935546875,
+        "date": "2025-05-11T21:21:57.161436",
+        "image_path": "F:/______training_database_V2/technology/Roomba 780.jpg"
+    },
+    {
+        "class_name": "arm_chair",
+        "confidence": 0.97802734375,
+        "date": "2025-05-11T21:35:49.098632",
+        "image_path": "F:/_sort_files/arm_chair/11813.5269914aa8644.jpg"
+    },
+    {
+        "class_name": "arm_chair",
+        "confidence": 0.96533203125,
+        "date": "2025-05-11T21:35:52.603991",
+        "image_path": "F:/_sort_files/arm_chair/1077079.5914c7a3d5cc3.jpg"
+    },
+    {
+        "class_name": "arm_chair",
+        "confidence": 0.9501953125,
+        "date": "2025-05-11T21:35:55.474895",
+        "image_path": "F:/_sort_files/arm_chair/18983.526b2f9ac52ee.jpg"
+    },
+    {
+        "class_name": "arm_chair",
+        "confidence": 0.931640625,
+        "date": "2025-05-11T21:35:58.661023",
+        "image_path": "F:/_sort_files/arm_chair/110725.53c195c2cd398.jpg"
+    },
+    {
+        "class_name": "arm_chair",
+        "confidence": 0.9912109375,
+        "date": "2025-05-11T21:36:01.280469",
+        "image_path": "F:/_sort_files/arm_chair/1312003.59a92a40ed1a0.jpg"
+    },
+    {
+        "class_name": "pillow",
+        "confidence": 0.9814453125,
+        "date": "2025-05-11T21:36:14.973461",
+        "image_path": "F:/_sort_files/pillow/104277.539c0f2dc8a65.jpg"
+    },
+    {
+        "class_name": "pillow",
+        "confidence": 0.9736328125,
+        "date": "2025-05-11T21:36:17.402760",
+        "image_path": "F:/_sort_files/pillow/107723.53b0d50d53d8e 1.jpg"
+    },
+    {
+        "class_name": "pillow",
+        "confidence": 0.94384765625,
+        "date": "2025-05-11T21:38:24.243223",
+        "image_path": "F:/_sort_files/pillow/Antique_Vase1_rough.jpg"
+    },
+    {
+        "class_name": "arm_chair",
+        "confidence": 0.9638671875,
+        "date": "2025-05-11T21:38:31.978581",
+        "image_path": "F:/_sort_files/arm_chair/2721428.5e5125234afec 2.jpg"
+    },
+    {
+        "class_name": "tree",
+        "confidence": 0.99169921875,
+        "date": "2025-05-11T21:51:40.628270",
+        "image_path": "F:/_sort_files/tree/1202029.59632a18e8509.jpg"
+    },
+    {
+        "class_name": "tree",
+        "confidence": 0.98779296875,
+        "date": "2025-05-11T21:51:43.259026",
+        "image_path": "F:/_sort_files/tree/1690570.5a807dcd38935.jpg"
+    },
+    {
+        "class_name": "tree",
+        "confidence": 0.9287109375,
+        "date": "2025-05-11T21:52:24.111845",
+        "image_path": "F:/_sort_files/tree/2538273.5d6e353ee7e75.jpg"
+    },
+    {
+        "class_name": "building",
+        "confidence": 0.9970703125,
+        "date": "2025-05-11T22:04:19.465025",
+        "image_path": "F:/_sort_files/building/800236.586d8ea5bbda0.jpg"
+    },
+    {
+        "class_name": "flower",
+        "confidence": 0.256591796875,
+        "date": "2025-05-11T22:05:30.246074",
+        "image_path": "F:/_sort_files/flower/143011.547e5427dcda1.jpg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.303466796875,
+        "date": "2025-05-11T22:17:04.873119",
+        "image_path": "F:/______training_database_V2/animal/73204.5304fbb771471.jpg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.396240234375,
+        "date": "2025-05-11T22:17:56.315879",
+        "image_path": "F:/_sort_files/animal/American Bullfrog.thumb.jpeg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.79248046875,
+        "date": "2025-05-11T22:18:05.261776",
+        "image_path": "F:/_sort_files/animal/bear-animations.jpeg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.93994140625,
+        "date": "2025-05-11T22:18:08.601895",
+        "image_path": "F:/_sort_files/animal/Baby Emperor Penguin ( Juvenile ).thumb.jpeg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.396240234375,
+        "date": "2025-05-11T22:18:11.151352",
+        "image_path": "F:/_sort_files/animal/American Bullfrog.thumb.jpeg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.89990234375,
+        "date": "2025-05-11T22:18:15.451357",
+        "image_path": "F:/_sort_files/animal/boar-animations.jpeg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.4619140625,
+        "date": "2025-05-11T22:18:34.302424",
+        "image_path": "F:/_sort_files/animal/Black Rhinoceros.thumb.jpeg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.44677734375,
+        "date": "2025-05-11T22:18:38.593529",
+        "image_path": "F:/_sort_files/animal/Bull ANIMATED.jpg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.96875,
+        "date": "2025-05-11T22:20:53.668814",
+        "image_path": "F:/_sort_files/animal/Animated Flying Monarch Butterfly Rigged for Cinema 4D.jpg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.90087890625,
+        "date": "2025-05-11T22:20:55.998728",
+        "image_path": "F:/_sort_files/animal/Horse Black Animated.jpg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.90283203125,
+        "date": "2025-05-11T22:20:58.652266",
+        "image_path": "F:/_sort_files/animal/Pair of Bird Wing [C4D].jpg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.92236328125,
+        "date": "2025-05-11T22:21:02.489352",
+        "image_path": "F:/_sort_files/animal/Snake.jpg"
+    },
+    {
+        "class_name": "food",
+        "confidence": 0.99951171875,
+        "date": "2025-05-11T22:25:51.043217",
+        "image_path": "F:/_sort_files/food/16.jpg"
+    },
+    {
+        "class_name": "food",
+        "confidence": 0.94287109375,
+        "date": "2025-05-11T22:25:58.850623",
+        "image_path": "F:/_sort_files/food/4999887.6404bc17d727f.jpg"
+    },
+    {
+        "class_name": "deocorative_greenery",
+        "confidence": 0.4072265625,
+        "date": "2025-05-11T22:35:09.478760",
+        "image_path": "F:/______training_database_V2/outdoor_plant/23617.526b873604833.jpg"
+    },
+    {
+        "class_name": "tree",
+        "confidence": 0.9306640625,
+        "date": "2025-05-11T22:35:13.501511",
+        "image_path": "F:/______training_database_V2/outdoor_plant/3D shrub flower includes growfx model https___p.turbosquid.com_ts-thumb_7w_wbrFdO_WUMVpR1S_mt_pm_v33_myrtle_01_0406_jpg_1605581660_1920x1080_fit_q87_82b1cb77b.jpg"
+    },
+    {
+        "class_name": "outdoor_plant",
+        "confidence": 0.9599609375,
+        "date": "2025-05-11T22:35:18.504088",
+        "image_path": "F:/______training_database_V2/outdoor_plant/Am204_004.jpg"
+    },
+    {
+        "class_name": "food",
+        "confidence": 0.89208984375,
+        "date": "2025-05-11T22:45:23.507171",
+        "image_path": "F:/_sort_files/food/11296.52698d2c0a22f.jpg"
+    },
+    {
+        "class_name": "food",
+        "confidence": 0.89794921875,
+        "date": "2025-05-11T22:45:30.469584",
+        "image_path": "F:/_sort_files/food/1423202.59eb2d5a23d28.jpeg"
+    },
+    {
+        "class_name": "food",
+        "confidence": 0.90966796875,
+        "date": "2025-05-11T22:45:36.290900",
+        "image_path": "F:/_sort_files/food/28231.526bce3f2b1d5.jpg"
+    },
+    {
+        "class_name": "lamp",
+        "confidence": 0.90283203125,
+        "date": "2025-05-11T22:45:46.453984",
+        "image_path": "F:/_sort_files/lamp/111541.53c68db68cec1.jpg"
+    },
+    {
+        "class_name": "lamp",
+        "confidence": 0.904296875,
+        "date": "2025-05-11T22:45:48.440142",
+        "image_path": "F:/_sort_files/lamp/191147.54f34342af64d.jpg"
+    },
+    {
+        "class_name": "lamp",
+        "confidence": 0.8974609375,
+        "date": "2025-05-11T22:45:50.901399",
+        "image_path": "F:/_sort_files/lamp/3392678.608013e2e4816.jpg"
+    },
+    {
+        "date": "2025-05-11T22:48:55.058289",
+        "image_path": "F:/_sort_files/indoor_plant/3DC_PDI_003_Monstera_06_CoronaPhysicalMtl_4K.jpg",
         "class_name": "indoor_plant",
-        "confidence": 0.5048828125
+        "confidence": 0.99658203125
     },
     {
-        "date": "2025-05-11T21:05:23.823675",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/6161825.65bf5aceceb8e.jpg",
-        "class_name": "deocorative_greenery",
-        "confidence": 0.95166015625
+        "date": "2025-05-11T22:49:03.168659",
+        "image_path": "F:/_sort_files/indoor_plant/2664673.5e14ce8f06683 4.jpg",
+        "class_name": "indoor_plant",
+        "confidence": 0.93505859375
     },
     {
-        "date": "2025-05-11T21:05:27.260577",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/4216245.628dfabdbeaf8.jpg",
-        "class_name": "deocorative_greenery",
-        "confidence": 0.9755859375
-    },
-    {
-        "date": "2025-05-11T21:05:30.856926",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/4216248.628dfabdc37af.jpg",
-        "class_name": "deocorative_greenery",
-        "confidence": 0.68505859375
-    },
-    {
-        "date": "2025-05-11T21:05:35.764374",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/4267941.62ad967ddcdb0.jpg",
-        "class_name": "deocorative_greenery",
-        "confidence": 0.99072265625
-    },
-    {
-        "date": "2025-05-11T21:05:39.447845",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/Barbaris Tunberga set №2.jpg",
-        "class_name": "deocorative_greenery",
-        "confidence": 0.99169921875
-    },
-    {
-        "date": "2025-05-11T21:05:48.717062",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/5999588.658181a839f0c.jpg",
-        "class_name": "deocorative_greenery",
-        "confidence": 0.6279296875
-    },
-    {
-        "date": "2025-05-11T21:05:55.017325",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/6161825.65bf5aceceb8e.jpg",
-        "class_name": "deocorative_greenery",
-        "confidence": 0.95166015625
-    },
-    {
-        "date": "2025-05-11T21:05:59.748306",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/2574200.5d9cf9ac407bf 4.jpg",
-        "class_name": "deocorative_greenery",
-        "confidence": 0.98974609375
-    },
-    {
-        "date": "2025-05-11T21:06:03.393048",
-        "image_path": "F:/______training_database_V2/deocorative_greenery/2574200.5d9cf9ac407bf 2.jpg",
-        "class_name": "deocorative_greenery",
-        "confidence": 0.72998046875
+        "date": "2025-05-11T22:50:28.828635",
+        "image_path": "F:/_sort_files/indoor_plant/Monstera-adansonii_PRV3.jpg",
+        "class_name": "indoor_plant",
+        "confidence": 0.9619140625
     }
 ]

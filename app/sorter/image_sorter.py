@@ -4,12 +4,10 @@ import os
 import shutil
 import traceback
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from ai.classifier import ImageClassifier
 from app.core.logger import Logger
-from app.metadata.metadata_manager import MetadataManager
 
 # Utworzenie katalogu na logi jeśli nie istnieje
 
@@ -47,9 +45,8 @@ class ImageSorter:
 
         # Zapisz oryginalne mapowanie klas przy inicjalizacji
         self.original_class_mapping = self.model.class_names.copy()
-        self.logger.info(
-            f"Załadowano model z {len(self.original_class_mapping)} klasami"
-        )
+        log_msg = f"Załadowano model z {len(self.original_class_mapping)} klasami"
+        self.logger.info(log_msg)
 
         # Zachowaj flagi konfiguracyjne
         self.preserve_original_classes = preserve_original_classes
@@ -60,11 +57,13 @@ class ImageSorter:
         # Sprawdź, czy model ma włączoną ochronę przed zapominaniem
         self.has_forgetting_prevention = self._check_forgetting_prevention(model_path)
         if not self.has_forgetting_prevention and preserve_original_classes:
-            self.logger.warning(
+            log_warning = (
                 "Model nie ma włączonych mechanizmów zapobiegających zapominaniu, "
                 "ale flaga preserve_original_classes jest włączona. "
-                "Może to prowadzić do nieprawidłowych klasyfikacji dla oryginalnych klas."
+                "Może to prowadzić do nieprawidłowych klasyfikacji dla "
+                "oryginalnych klas."
             )
+            self.logger.warning(log_warning)
 
     def _check_forgetting_prevention(self, model_path):
         """
@@ -79,7 +78,8 @@ class ImageSorter:
         # Próba wczytania pliku konfiguracyjnego modelu
         config_path = os.path.splitext(model_path)[0] + "_config.json"
         if not os.path.exists(config_path):
-            self.logger.warning(f"Nie znaleziono pliku konfiguracyjnego: {config_path}")
+            log_msg = f"Nie znaleziono pliku konfiguracyjnego: {config_path}"
+            self.logger.warning(log_msg)
             return False
 
         try:
@@ -99,12 +99,14 @@ class ImageSorter:
                 )
                 return True
             else:
-                self.logger.warning(
-                    "Model nie ma włączonych mechanizmów zapobiegających zapominaniu"
+                log_msg = (
+                    "Model nie ma włączonych mechanizmów zapobiegających " "zapominaniu"
                 )
+                self.logger.warning(log_msg)
                 return False
         except Exception as e:
-            self.logger.error(f"Błąd podczas sprawdzania konfiguracji modelu: {str(e)}")
+            log_msg = f"Błąd podczas sprawdzania konfiguracji modelu: {str(e)}"
+            self.logger.error(log_msg)
             return False
 
     def evaluate_on_original_classes(self, test_dir, batch_size=16):
@@ -183,7 +185,8 @@ class ImageSorter:
         self.logger.info(f"Ogólna dokładność: {results['overall']['accuracy']:.2%}")
         for class_name, data in results["classes"].items():
             self.logger.info(
-                f"  - {class_name}: {data['accuracy']:.2%} ({data['correct']}/{data['total']})"
+                f"  - {class_name}: {data['accuracy']:.2%} "
+                f"({data['correct']}/{data['total']})"
             )
 
         return results
@@ -386,18 +389,22 @@ class ImageSorter:
         self,
         input_dir: str,
         output_dir: str,
-        confidence_threshold: float = 0.5,
+        min_confidence_threshold: float = 0.5,
+        max_confidence_threshold: float = 1.0,
         callback: Optional[callable] = None,
         selected_classes: Optional[List[str]] = None,
+        category_callback: Optional[callable] = None,
     ) -> Dict:
         """Sortuje pliki w katalogu na podstawie klasyfikacji.
 
         Args:
             input_dir: Katalog źródłowy
             output_dir: Katalog docelowy
-            confidence_threshold: Minimalny próg pewności klasyfikacji
+            min_confidence_threshold: Minimalny próg pewności klasyfikacji
+            max_confidence_threshold: Maksymalny próg pewności klasyfikacji
             callback: Funkcja wywoływana po każdym przetworzonym pliku
             selected_classes: Lista wybranych klas do sortowania (None = wszystkie klasy)
+            category_callback: Funkcja wywoływana po przetworzeniu pliku dla kategorii
         """
         try:
             self._stop_requested = False  # Reset flagi przerwania
@@ -405,7 +412,8 @@ class ImageSorter:
             logger.info(f"Rozpoczęcie sortowania katalogu: {input_dir}")
             logger.info(
                 f"Parametry: output_dir={output_dir}, "
-                f"confidence_threshold={confidence_threshold}"
+                f"min_confidence_threshold={min_confidence_threshold}, "
+                f"max_confidence_threshold={max_confidence_threshold}"
             )
             if selected_classes:
                 logger.info(f"Wybrane klasy: {', '.join(selected_classes)}")
@@ -463,14 +471,60 @@ class ImageSorter:
 
                     if result["status"] == "success":
                         category = result["category"]
+                        confidence = result["confidence"]
 
-                        # Sprawdź czy kategoria jest na liście wybranych klas
-                        if selected_classes and category not in selected_classes:
+                        logger.info(
+                            f"DEBUG sort_directory: Plik: {image_path}, "
+                            f"Kategoria z _process_image: '{category}' "
+                            f"(typ: {type(category)}), Pewność: {confidence}"
+                        )
+                        logger.info(
+                            f"DEBUG sort_directory: Wybrane klasy (selected_classes): "
+                            f"{selected_classes} (typ pierwszego elementu, jeśli są: "
+                            f"{type(selected_classes[0]) if selected_classes and selected_classes[0] is not None else 'N/A'})"
+                        )
+
+                        # Sprawdź próg pewności
+                        if confidence is None or not (
+                            min_confidence_threshold
+                            <= confidence
+                            <= max_confidence_threshold
+                        ):
                             logger.info(
-                                f"Pominięto plik - kategoria {category} nie jest wybrana"
+                                f"Pominięto plik - pewność {confidence} "
+                                f"poza zakresem [{min_confidence_threshold} - {max_confidence_threshold}]"
                             )
                             stats["skipped"] += 1
+                            # Można dodać statystykę dla pominiętych z powodu niskiej pewności
+                            if "skipped_confidence" not in stats:
+                                stats["skipped_confidence"] = 0
+                            stats["skipped_confidence"] += 1
                             continue
+
+                        # Sprawdź czy kategoria jest na liście wybranych klas
+                        if selected_classes:
+                            logger.info(
+                                f"DEBUG sort_directory: Sprawdzanie czy '{category}' "
+                                f"jest w {selected_classes}"
+                            )
+                            if category not in selected_classes:
+                                logger.info(
+                                    f"Pominięto plik - kategoria '{category}' "
+                                    f"nie jest wybrana w {selected_classes}"
+                                )
+                                stats["skipped"] += 1
+                                continue
+                            else:
+                                logger.info(
+                                    f"DEBUG sort_directory: Kategoria '{category}' "
+                                    f"ZNALEZIONA w selected_classes."
+                                )
+                        else:  # Jeśli selected_classes jest None lub puste, nie filtrujemy
+                            logger.info(
+                                "DEBUG sort_directory: Brak wybranych klas "
+                                "(selected_classes is None/empty), "
+                                "nie filtruję po klasie."
+                            )
 
                         target_dir = os.path.join(output_dir, category)
                         os.makedirs(target_dir, exist_ok=True)
@@ -487,6 +541,19 @@ class ImageSorter:
                         )
                         stats["moved"] += 1
                         logger.info(f"Sukces - plik zaklasyfikowany jako: {category}")
+
+                        # Wywołaj category_callback jeśli podano
+                        if category_callback:
+                            try:
+                                category_callback(
+                                    category,
+                                    stats["categories"][category],
+                                    "Przetworzono",
+                                )
+                            except Exception as e_cb:
+                                logger.error(
+                                    f"Błąd w category_callback dla {category}: {e_cb}"
+                                )
                     else:
                         logger.warning(
                             f"Nie udało się sklasyfikować pliku: {image_path}"
@@ -528,8 +595,11 @@ class ImageSorter:
         self,
         input_directory,
         batch_size=16,
-        confidence_threshold=0.0,
+        min_confidence_threshold=0.0,
+        max_confidence_threshold=1.0,
+        use_uncategorized_folder: bool = True,
         callback: Optional[callable] = None,
+        category_callback: Optional[callable] = None,
     ):
         """
         Sortuje obrazy z katalogu wejściowego do podkatalogów na podstawie klasyfikacji.
@@ -537,8 +607,11 @@ class ImageSorter:
         Args:
             input_directory: Katalog z obrazami do sortowania.
             batch_size: Rozmiar wsadu do przetwarzania obrazów.
-            confidence_threshold: Minimalna pewność klasyfikacji, aby przenieść obraz.
+            min_confidence_threshold: Minimalna pewność klasyfikacji, aby przenieść obraz.
+            max_confidence_threshold: Maksymalna pewność klasyfikacji, aby przenieść obraz.
+            use_uncategorized_folder: Czy użyć katalogu nieskategoryzowanych obrazów.
             callback: Opcjonalna funkcja zwrotna do raportowania postępu (current, total).
+            category_callback: Opcjonalna funkcja zwrotna do raportowania postępu kategorii.
 
         Returns:
             dict: Statystyki sortowania.
@@ -550,10 +623,9 @@ class ImageSorter:
             self.logger.error(
                 "Katalog wyjściowy (output_directory) nie jest ustawiony."
             )
-            # Można rzucić wyjątek lub zwrócić błąd, zależnie od preferencji
             raise ValueError("Katalog wyjściowy (output_directory) nie jest ustawiony.")
 
-        self._is_running = True  # Użyj self._is_running zamiast self._stop_requested dla spójności z BatchProcessor
+        self._stop_requested = False  # Zainicjalizuj flagę stopu dla tej operacji
         stats = {
             "total_processed": 0,
             "total_moved_or_copied": 0,
@@ -565,11 +637,11 @@ class ImageSorter:
 
         image_paths = []
         for root, _, files in os.walk(input_directory):
-            if not self._is_running:
+            if self._stop_requested:  # Sprawdzaj _stop_requested
                 self.logger.info("Sortowanie przerwane podczas zbierania plików.")
                 return stats
             for file in files:
-                if not self._is_running:
+                if self._stop_requested:  # Sprawdzaj _stop_requested
                     self.logger.info("Sortowanie przerwane podczas zbierania plików.")
                     return stats
                 if file.lower().endswith((".jpg", ".jpeg", ".png", ".bmp")):
@@ -582,16 +654,14 @@ class ImageSorter:
             return stats
 
         for i in range(0, total_images, batch_size):
-            if not self._is_running:
+            if self._stop_requested:  # Sprawdzaj _stop_requested
                 self.logger.info(
                     "Sortowanie przerwane przed przetworzeniem kolejnego wsadu."
                 )
                 return stats
 
             batch_paths = image_paths[i : i + batch_size]
-            current_batch_size = len(
-                batch_paths
-            )  # Rzeczywista liczba obrazów w tym wsadzie
+            current_batch_size = len(batch_paths)
             self.logger.debug(
                 f"Przetwarzanie wsadu {i//batch_size + 1}/{(total_images + batch_size - 1)//batch_size} z {current_batch_size} obrazami."
             )
@@ -602,9 +672,7 @@ class ImageSorter:
                 self.logger.error(f"Błąd podczas batch_predict dla wsadu: {e}")
                 self.logger.error(traceback.format_exc())
                 stats["total_skipped_errors"] += current_batch_size
-                stats[
-                    "total_processed"
-                ] += current_batch_size  # Zliczamy jako przetworzone, mimo błędu
+                stats["total_processed"] += current_batch_size
                 if callback:
                     try:
                         callback(stats["total_processed"], total_images)
@@ -617,15 +685,13 @@ class ImageSorter:
             for idx_in_batch, (image_path, result) in enumerate(
                 zip(batch_paths, batch_results)
             ):
-                if not self._is_running:
+                if self._stop_requested:  # Sprawdzaj _stop_requested
                     self.logger.info(
                         "Sortowanie przerwane podczas przetwarzania wyników wsadu."
                     )
-                    # Zaktualizuj total_processed o te, które mogły zostać przetworzone przed przerwaniem w tym wsadzie
+
                     stats["total_processed"] += idx_in_batch
-                    if (
-                        callback and stats["total_processed"] <= total_images
-                    ):  # Upewnij się, że nie przekraczamy
+                    if callback and stats["total_processed"] <= total_images:
                         try:
                             callback(stats["total_processed"], total_images)
                         except Exception as cb_exc:
@@ -634,9 +700,7 @@ class ImageSorter:
                             )
                     return stats
 
-                stats[
-                    "total_processed"
-                ] += 1  # Przeniesiono tutaj, aby zliczać każdy obraz indywidualnie
+                stats["total_processed"] += 1
 
                 category = result.get("class_name")
                 confidence = result.get("confidence")
@@ -655,9 +719,12 @@ class ImageSorter:
                             )
                     continue
 
-                if confidence < confidence_threshold:
+                if not (
+                    min_confidence_threshold <= confidence <= max_confidence_threshold
+                ):
                     self.logger.info(
-                        f"Pominięto {image_path} (pewność: {confidence:.2f} < {confidence_threshold})"
+                        f"Pominięto {image_path} (pewność: {confidence:.2f} poza zakresem "
+                        f"[{min_confidence_threshold:.2f} - {max_confidence_threshold:.2f}])"
                     )
                     stats["total_skipped_confidence"] += 1
                 else:
@@ -669,7 +736,7 @@ class ImageSorter:
                     )
 
                     try:
-                        if self.preserve_original_classes:  # Użycie poprawnego atrybutu
+                        if self.preserve_original_classes:
                             shutil.copy2(image_path, unique_dest_path)
                             self.logger.info(
                                 f"Skopiowano: {image_path} -> {unique_dest_path}"
@@ -685,6 +752,19 @@ class ImageSorter:
                             stats["categories"][category] = 0
                         stats["categories"][category] += 1
 
+                        # Wywołaj category_callback jeśli podano
+                        if category_callback:
+                            try:
+                                category_callback(
+                                    category,
+                                    stats["categories"][category],
+                                    "Przetworzono",
+                                )
+                            except Exception as e_cb:
+                                logger.error(
+                                    f"Błąd w category_callback dla {category}: {e_cb}"
+                                )
+
                     except Exception as e:
                         self.logger.error(
                             f"Błąd podczas przenoszenia/kopiowania {image_path} do {unique_dest_path}: {e}"
@@ -692,7 +772,6 @@ class ImageSorter:
                         self.logger.error(traceback.format_exc())
                         stats["total_skipped_errors"] += 1
 
-                # Aktualizacja postępu po każdym obrazie, niezależnie od tego czy był przeniesiony/skopiowany
                 if callback:
                     try:
                         callback(stats["total_processed"], total_images)
@@ -707,7 +786,7 @@ class ImageSorter:
             f"Pominięto (pewność): {stats['total_skipped_confidence']}, "
             f"Pominięto (błędy): {stats['total_skipped_errors']}"
         )
-        self._is_running = False
+        # self._is_running = False # Usunięto - niepotrzebne
         return stats
 
     def get_available_classes(self):

@@ -23,7 +23,7 @@ Projekt NeuroSorter to aplikacja desktopowa z interfejsem graficznym (GUI) stwor
   - `training_manager.py`: Zarządzanie procesem trenowania modeli.
   - `settings_manager.py`: Konfiguracja ustawień aplikacji.
   - `help_tab.py`: Dostęp do pomocy i dokumentacji.
-  - `batch_processor.py`: Przetwarzanie wsadowe danych (np. obrazów).
+  - `batch_processor.py`: Przetwarzanie wsadowe danych (np. obrazów), w tym opcja automatycznego tworzenia dedykowanego podfolderu `__bez_kategorii__` w katalogu docelowym dla plików nieprzypisanych do żadnej kategorii (podczas sortowania wszystkich obrazów) oraz możliwość sortowania tylko wybranych kategorii.
   - `image_classifier.py`: Interfejs do klasyfikacji obrazów przy użyciu załadowanych modeli.
   - `dataset_manager.py`: Zarządzanie zbiorami danych (np. tworzenie, edycja, podział).
   - `report_generator.py`: Moduł odpowiedzialny za przyszłe generowanie raportów z przeprowadzonych operacji (np. klasyfikacji, treningu). **(Funkcjonalność w trakcie rozwoju, obecnie nieaktywna w UI)**.
