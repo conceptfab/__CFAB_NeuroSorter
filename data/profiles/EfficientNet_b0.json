@@ -1,0 +1,44 @@
+{
+    "type": "fine_tuning",
+    "info": "Profil dla EfficientNet b0",
+    "description": "Profil utworzony przez użytkownika",
+    "data_required": "Standardowe dane do doszkalania",
+    "hardware_required": "Standardowy sprzęt",
+    "config": {
+        "model": {
+            "architecture": "EfficientNet",
+            "variant": "b0",
+            "input_size": 224,
+            "num_classes": 2,
+            "pretrained": true,
+            "pretrained_weights": "imagenet",
+            "feature_extraction_only": false,
+            "activation": "relu",
+            "dropout_at_inference": false,
+            "global_pool": "avg",
+            "last_layer_activation": "softmax"
+        },
+        "training": {
+            "epochs": 100,
+            "batch_size": 32,
+            "learning_rate": 1e-06,
+            "optimizer": "Adam",
+            "scheduler": "None",
+            "num_workers": 4,
+            "warmup_epochs": 5,
+            "warmup_lr_init": 1e-06,
+            "mixed_precision": true,
+            "gradient_accumulation_steps": 1,
+            "gradient_clip": 1.0,
+            "validation_split": 0.2,
+            "evaluation_freq": 1,
+            "use_ema": false,
+            "ema_decay": 1.0,
+            "unfreeze_strategy": "unfreeze_all",
+            "unfreeze_after_epochs": 5,
+            "unfreeze_layers": 3,
+            "frozen_lr": 0.0,
+            "unfrozen_lr": 0.0
+        }
+    }
+}

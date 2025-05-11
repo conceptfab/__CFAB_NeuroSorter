@@ -1,0 +1,68 @@
+[
+    {
+        "class_name": "decoration",
+        "confidence": 0.127685546875,
+        "date": "2025-05-11T19:04:38.719670",
+        "image_path": "F:/_set_A/train/animal/1029843.58f9122dc9b53.jpg"
+    },
+    {
+        "class_name": "childroom",
+        "confidence": 0.12408447265625,
+        "date": "2025-05-11T19:16:42.389361",
+        "image_path": "F:/_set_A/train/animal/Bengal Tiger ANIMATED XGEN.jpg"
+    },
+    {
+        "class_name": "cabinet_shelf_wardrobe",
+        "confidence": 0.1090087890625,
+        "date": "2025-05-11T19:16:50.785103",
+        "image_path": "F:/_set_A/train/animal/Giant Panda  RIG XGEN-CORE.jpg"
+    },
+    {
+        "class_name": "building",
+        "confidence": 0.11236572265625,
+        "date": "2025-05-11T19:17:44.499209",
+        "image_path": "F:/_set_A/train/animal/1029298.58f8d5abeabbd.jpg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.99169921875,
+        "date": "2025-05-11T19:19:26.967832",
+        "image_path": "F:/_set_A/train/animal/1029298.58f8d5abeabbd.jpg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.724609375,
+        "date": "2025-05-11T19:23:04.505000",
+        "image_path": "F:/_set_A/train/animal/American Bald Eagle Animated.jpg"
+    },
+    {
+        "class_name": "animal",
+        "confidence": 0.9541015625,
+        "date": "2025-05-11T19:25:56.667618",
+        "image_path": "F:/_set_A/train/animal/Lion 2 Animated Polygonal Mane.jpg"
+    },
+    {
+        "class_name": "bathroom",
+        "confidence": 0.92041015625,
+        "date": "2025-05-11T19:42:16.488339",
+        "image_path": "F:/______training_database_V2/bathroom/3D classic victorian bathroom - https___p.turbosquid.com_ts-thumb_8P_16mNW4_I8imV4PK_preview_victorian_classic_wire_cam01_04_jpg_1601025428_1920x1080_fit_q87_.jpg"
+    },
+    {
+        "class_name": "bathroom",
+        "confidence": 0.98974609375,
+        "date": "2025-05-11T19:47:33.190231",
+        "image_path": "F:/______training_database_V2/bathroom/7290.526873a5d7f4a.jpg"
+    },
+    {
+        "date": "2025-05-11T20:26:08.618478",
+        "image_path": "F:/______training_database_V2/bathroom/3D classic victorian bathroom - https___p.turbosquid.com_ts-thumb_8P_16mNW4_I8imV4PK_preview_victorian_classic_wire_cam01_04_jpg_1601025428_1920x1080_fit_q87_.jpg",
+        "class_name": "scene",
+        "confidence": 0.61376953125
+    },
+    {
+        "date": "2025-05-11T20:26:14.080682",
+        "image_path": "F:/______training_database_V2/bathroom/11704.526990617cb19.jpg",
+        "class_name": "bathroom",
+        "confidence": 0.98291015625
+    }
+]

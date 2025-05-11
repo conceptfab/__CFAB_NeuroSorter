@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Klasyfikacja Wsadowa - Dokumentacja CFAB NeuroSorter</title>
+    <style>
+      /* Scrollbar styles */
+      ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1e1e1e;
+        border-radius: 6px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #404040;
+        border-radius: 6px;
+        border: 3px solid #1e1e1e;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #505050;
+      }
+
+      /* Firefox scrollbar */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #404040 #1e1e1e;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #e0e0e0;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #1e1e1e;
+      }
+      nav {
+        background-color: #2d2d2d;
+        padding: 10px 0;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        text-align: center;
+      }
+      nav a {
+        color: #e0e0e0;
+        margin: 0 15px;
+        text-decoration: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        transition: background-color 0.3s ease;
+      }
+      nav a:hover,
+      nav a.active {
+        background-color: #007acc;
+        color: #ffffff;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #ffffff;
+      }
+      h1 {
+        border-bottom: 2px solid #007acc;
+        padding-bottom: 10px;
+      }
+      h2 {
+        border-bottom: 1px solid #404040;
+        padding-bottom: 5px;
+        margin-top: 30px;
+      }
+      h3 {
+        margin-top: 25px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+        background-color: #2d2d2d;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+      th,
+      td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #404040;
+      }
+      th {
+        background-color: #007acc;
+        color: #ffffff;
+      }
+      tr:nth-child(even) {
+        background-color: #252525;
+      }
+      pre {
+        background-color: #2d2d2d;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        padding: 15px;
+        overflow: auto;
+        color: #e0e0e0;
+      }
+      code {
+        font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        background-color: #2d2d2d;
+        padding: 2px 4px;
+        border-radius: 4px;
+        color: #e0e0e0;
+      }
+      .section {
+        margin-bottom: 30px;
+        background: #2d2d2d;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      }
+      .note {
+        background-color: #1a3a4a;
+        border-left: 4px solid #007acc;
+        padding: 10px 15px;
+        margin: 15px 0;
+        color: #e0e0e0;
+      }
+      .placeholder {
+        font-style: italic;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="index.html">
+      <img
+        src="../img/splash_help.jpg"
+        alt="NeuroSorter Splash"
+        style="
+          display: block;
+          width: 100%;
+          max-width: 1000px;
+          margin: 0 auto 20px auto;
+          border-radius: 8px;
+        "
+      />
+    </a>
+
+    <nav>
+      <a href="modele.html">Modele</a>
+      <a href="trenowanie.html">Trenowanie</a>
+      <a href="klasyfikacja.html">Klasyfikacja</a>
+      <a href="klasyfikacja_wsadowa.html" class="active"
+        >Klasyfikacja wsadowa</a
+      >
+    </nav>
+
+    <div class="section">
+      <h2>Wprowadzenie do Klasyfikacji Wsadowej</h2>
+      <p>
+        Zakładka 'Klasyfikacja wsadowa' pozwala na automatyczną klasyfikację i
+        sortowanie dużych zbiorów obrazów. Jest to kluczowa funkcjonalność do
+        efektywnej pracy z wieloma plikami jednocześnie, bez potrzeby ręcznej
+        obsługi każdego z nich.
+      </p>
+
+      <h3>Główne funkcje zakładki:</h3>
+      <ul>
+        <li>Wybór folderu źródłowego zawierającego obrazy do przetworzenia.</li>
+        <li>
+          Wybór folderu docelowego, gdzie posortowane obrazy zostaną zapisane
+          (często z podziałem na podfoldery odpowiadające klasom).
+        </li>
+        <li>
+          Wybór modelu, który zostanie użyty do klasyfikacji obrazów w trybie
+          wsadowym.
+        </li>
+        <li>
+          Konfiguracja dodatkowych opcji (np. czy obrazy mają być kopiowane czy
+          przenoszone, co zrobić z obrazami, których nie udało się sklasyfikować
+          z wystarczającą pewnością).
+        </li>
+        <li>Uruchomienie procesu klasyfikacji wsadowej.</li>
+        <li>
+          Monitorowanie postępu operacji (np. liczba przetworzonych plików,
+          pozostały czas).
+        </li>
+        <li>Podsumowanie po zakończeniu.</li>
+      </ul>
+      <p>
+        Ta zakładka ściśle współpracuje z modułem sortującym aplikacji, który
+        wykonuje faktyczne operacje przenoszenia lub kopiowania plików na
+        podstawie wyników klasyfikacji.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Konfiguracja i Uruchomienie Klasyfikacji Wsadowej</h2>
+      <h3>Wybór Folderów</h3>
+      <p>
+        Interfejs zakładki 'Klasyfikacja wsadowa' umożliwia wskazanie folderu
+        źródłowego, z którego będą pobierane obrazy do analizy, oraz folderu
+        docelowego, do którego trafią posortowane pliki. Zazwyczaj odbywa się to
+        poprzez kliknięcie przycisków "Wybierz folder źródłowy" i "Wybierz
+        folder docelowy" (lub podobnie nazwanych), które otwierają standardowe
+        okna dialogowe systemu plików, pozwalające na nawigację i wybór
+        odpowiednich lokalizacji.
+      </p>
+
+      <h3>Wybór Modelu do Klasyfikacji</h3>
+      <p>
+        Należy wybrać model AI, który zostanie użyty do klasyfikacji wszystkich
+        obrazów w wybranym folderze źródłowym. Model ten jest zazwyczaj
+        wybierany z listy dostępnych, wcześniej załadowanych lub wytrenowanych
+        modeli, analogicznie jak w zakładce 'Modele' lub 'Klasyfikacja'. Od
+        jakości i dopasowania tego modelu do analizowanych obrazów zależy
+        skuteczność całego procesu.
+      </p>
+
+      <h3>Opcje</h3>
+      <p>
+        W tej sekcji użytkownik może skonfigurować szczegółowe parametry procesu
+        klasyfikacji wsadowej. Typowe opcje to:
+      </p>
+      <ul>
+        <li>
+          <strong>Akcja dla sklasyfikowanych plików:</strong> Możliwość wyboru,
+          czy obrazy po klasyfikacji mają być kopiowane do folderu docelowego
+          (oryginały pozostają w folderze źródłowym), czy przenoszone (oryginały
+          są usuwane z folderu źródłowego).
+        </li>
+        <li>
+          <strong
+            >Obsługa plików niesklasyfikowanych lub o niskiej pewności:</strong
+          >
+          Decyzja, co zrobić z obrazami, których model nie był w stanie
+          przypisać do żadnej klasy z wystarczającą pewnością (np. pozostawić je
+          w folderze źródłowym, przenieść do specjalnego podfolderu
+          'niesklasyfikowane' w folderze docelowym).
+        </li>
+        <li>
+          <strong>Tworzenie podfolderów dla klas:</strong> Opcja automatycznego
+          tworzenia w folderze docelowym podfolderów, których nazwy odpowiadają
+          nazwom klas przewidzianych przez model. Posortowane obrazy trafią
+          wówczas do odpowiednich podfolderów.
+        </li>
+        <li>
+          <strong>Minimalny próg pewności klasyfikacji:</strong> Ustalenie
+          minimalnego poziomu pewności (np. 80%), jaki musi osiągnąć predykcja
+          modelu, aby obraz został uznany za poprawnie sklasyfikowany i poddany
+          dalszemu sortowaniu.
+        </li>
+      </ul>
+      <p></p>
+
+      <h3>Rozpoczęcie Klasyfikacji Wsadowej</h3>
+      <p>
+        Po skonfigurowaniu wszystkich opcji, proces klasyfikacji wsadowej
+        uruchamia się poprzez kliknięcie odpowiedniego przycisku, np.
+        "Rozpocznij" lub "Uruchom zadanie". W zależności od architektury
+        aplikacji, zadanie może być dodawane do kolejki zadań, co pozwala na
+        monitorowanie jego statusu i ewentualne zarządzanie nim (np.
+        wstrzymanie, anulowanie) poprzez dedykowany menedżer kolejki.
+      </p>
+
+      <h3>Monitorowanie Postępu</h3>
+      <p>
+        Podczas trwania procesu klasyfikacji wsadowej, interfejs powinien
+        informować użytkownika o jego postępach. Może to być realizowane za
+        pomocą paska postępu, licznika przetworzonych/pozostałych plików,
+        szacowanego czasu do zakończenia, a także poprzez wyświetlanie
+        komunikatów o bieżących operacjach lub ewentualnych błędach w panelu
+        logów.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Sortowanie Obrazów</h2>
+      <p>
+        Moduł sortujący jest odpowiedzialny za fizyczne operacje na plikach po
+        ich sklasyfikowaniu. Na podstawie decyzji modelu i konfiguracji
+        użytkownika, obrazy są kopiowane lub przenoszone do odpowiednich
+        podfolderów w katalogu docelowym. Nazwy podfolderów zazwyczaj
+        odpowiadają nazwom klas przewidzianych przez model.
+      </p>
+      <p>
+        Logika sortowania dba również o takie aspekty jak obsługa ewentualnych
+        konfliktów nazw plików (np. przez dodanie unikalnego sufiksu, jeśli plik
+        o tej samej nazwie już istnieje w docelowej lokalizacji) oraz o
+        prawidłowe tworzenie całej struktury katalogów dla poszczególnych klas w
+        folderze docelowym, jeśli taka opcja została wybrana przez użytkownika.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Uwagi Dodatkowe</h2>
+      <p>
+        Przed uruchomieniem klasyfikacji wsadowej na bardzo dużych zbiorach
+        danych, zwłaszcza z wybraną opcją 'Przenieś', zaleca się przeprowadzenie
+        testu na mniejszej próbce danych. Pozwoli to zweryfikować poprawność
+        konfiguracji (wybór folderów, modelu, opcji sortowania) i upewnić się,
+        że model działa zgodnie z oczekiwaniami, minimalizując ryzyko utraty
+        danych lub niepoprawnego posortowania. Warto również upewnić się, że
+        dysponujemy wystarczającą ilością wolnego miejsca na dysku w lokalizacji
+        docelowej.
+      </p>
+      <div class="note">
+        <p>
+          <strong>Ważne:</strong> Przed uruchomieniem klasyfikacji wsadowej na
+          dużych zbiorach danych, zwłaszcza z opcją 'Przenieś', zaleca się
+          wykonanie testu na mniejszej próbce danych, aby upewnić się, że
+          konfiguracja jest poprawna i model działa zgodnie z oczekiwaniami.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+{
+    "data_dir": "data",
+    "models_dir": "data/models",
+    "reports_dir": "data/reports",
+    "log_level": "INFO",
+    "log_file": "app.log",
+    "chart_train_loss_color": "b",
+    "chart_val_loss_color": "r",
+    "chart_train_acc_color": "g",
+    "chart_val_acc_color": "m",
+    "chart_plot_area_background_color": "w",
+    "autosave": true,
+    "confirm_exit": true,
+    "notifications": true
+}

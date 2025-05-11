@@ -1,0 +1,145 @@
+{
+    "name": "EfficientNet-B2_33_2025-05-11_20-07",
+    "type": "training",
+    "status": "Zakończony",
+    "priority": 0,
+    "created_at": "2025-05-11 20:07:42",
+    "config": {
+        "train_dir": "F:/_set_A/training_data",
+        "data_dir": "F:/_set_A/training_data",
+        "val_dir": "F:/_set_A/validation_data",
+        "model": {
+            "architecture": "EfficientNet",
+            "variant": "EfficientNet-B2",
+            "input_size": 288,
+            "num_classes": 33
+        },
+        "training": {
+            "epochs": 120,
+            "batch_size": 32,
+            "learning_rate": 0.00015,
+            "optimizer": "AdamW",
+            "scheduler": "CosineAnnealingWarmRestarts",
+            "num_workers": 8,
+            "warmup_epochs": 8,
+            "mixed_precision": true,
+            "freeze_base_model": true,
+            "unfreeze_layers": 15,
+            "unfreeze_strategy": "unfreeze_all"
+        },
+        "regularization": {
+            "weight_decay": 0.00015,
+            "gradient_clip": 1.0,
+            "label_smoothing": 0.1,
+            "drop_connect_rate": 0.2,
+            "dropout_rate": 0.3,
+            "momentum": 0.9,
+            "epsilon": 1e-06,
+            "swa": {
+                "use": true,
+                "start_epoch": 60
+            }
+        },
+        "augmentation": {
+            "basic": {
+                "use": true,
+                "rotation": 25,
+                "brightness": 0.25,
+                "shift": 0.1,
+                "zoom": 0.15,
+                "horizontal_flip": true,
+                "vertical_flip": false
+            },
+            "mixup": {
+                "use": true,
+                "alpha": 0.3
+            },
+            "cutmix": {
+                "use": true,
+                "alpha": 0.7
+            },
+            "autoaugment": {
+                "use": false
+            },
+            "randaugment": {
+                "use": false,
+                "n": 2,
+                "m": 9
+            }
+        },
+        "preprocessing": {
+            "normalization": "RGB",
+            "scaling": {
+                "method": "Bilinear",
+                "maintain_aspect_ratio": true,
+                "pad_to_square": false,
+                "pad_mode": "constant",
+                "pad_value": 0
+            }
+        },
+        "monitoring": {
+            "metrics": {
+                "accuracy": true,
+                "precision": true,
+                "recall": true,
+                "f1": true,
+                "topk": true,
+                "confusion_matrix": true
+            },
+            "early_stopping": {
+                "patience": 20,
+                "min_delta": 0.001,
+                "monitor": "val_f1"
+            },
+            "checkpointing": {
+                "best_only": true,
+                "save_frequency": 1,
+                "metric": "val_f1"
+            },
+            "tensorboard": {
+                "use": false,
+                "log_dir": ""
+            },
+            "save_dir": "",
+            "save_logs": false
+        },
+        "advanced": {
+            "scheduler": {
+                "patience": 5,
+                "factor": 0.1,
+                "min_lr": 0.0,
+                "cooldown": 0
+            },
+            "weights": {
+                "init_method": "kaiming_normal",
+                "freeze_cnn": false
+            },
+            "cross_validation": {
+                "use": false,
+                "folds": 5
+            },
+            "distributed": {
+                "use": false,
+                "backend": "nccl",
+                "strategy": "ddp"
+            },
+            "gradients": {
+                "clip": 1.0,
+                "accumulation": 1
+            },
+            "online_validation": {
+                "use": false,
+                "frequency": 10
+            }
+        }
+    },
+    "training_time": 0,
+    "training_time_str": "0:00:00",
+    "train_accuracy": 0.7327272727272728,
+    "train_loss": 1.434543442267638,
+    "validation_accuracy": 0.7355371900826446,
+    "validation_loss": 1.597443828980128,
+    "model_filename": "",
+    "accuracy": 0.0,
+    "epochs_trained": 0
+}

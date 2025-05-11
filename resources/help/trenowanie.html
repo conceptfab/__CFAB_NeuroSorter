@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trenowanie Modeli - Dokumentacja CFAB NeuroSorter</title>
+    <style>
+      /* Scrollbar styles */
+      ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1e1e1e;
+        border-radius: 6px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #404040;
+        border-radius: 6px;
+        border: 3px solid #1e1e1e;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #505050;
+      }
+
+      /* Firefox scrollbar */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #404040 #1e1e1e;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #e0e0e0;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #1e1e1e;
+      }
+      nav {
+        background-color: #2d2d2d;
+        padding: 10px 0;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        text-align: center;
+      }
+      nav a {
+        color: #e0e0e0;
+        margin: 0 15px;
+        text-decoration: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        transition: background-color 0.3s ease;
+      }
+      nav a:hover,
+      nav a.active {
+        background-color: #007acc;
+        color: #ffffff;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #ffffff;
+      }
+      h1 {
+        border-bottom: 2px solid #007acc;
+        padding-bottom: 10px;
+      }
+      h2 {
+        border-bottom: 1px solid #404040;
+        padding-bottom: 5px;
+        margin-top: 30px;
+      }
+      h3 {
+        margin-top: 25px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+        background-color: #2d2d2d;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+      th,
+      td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #404040;
+      }
+      th {
+        background-color: #007acc;
+        color: #ffffff;
+      }
+      tr:nth-child(even) {
+        background-color: #252525;
+      }
+      pre {
+        background-color: #2d2d2d;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        padding: 15px;
+        overflow: auto;
+        color: #e0e0e0;
+      }
+      code {
+        font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        background-color: #2d2d2d;
+        padding: 2px 4px;
+        border-radius: 4px;
+        color: #e0e0e0;
+      }
+      .section {
+        margin-bottom: 30px;
+        background: #2d2d2d;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      }
+      .note {
+        background-color: #1a3a4a;
+        border-left: 4px solid #007acc;
+        padding: 10px 15px;
+        margin: 15px 0;
+        color: #e0e0e0;
+      }
+      .checkmark {
+        color: #4caf50;
+        font-weight: bold;
+      }
+      .x-mark {
+        color: #666666;
+      }
+      .half-mark {
+        color: #ff9800;
+      }
+      a {
+        color: #007acc;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      ul,
+      ol {
+        color: #e0e0e0;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="index.html">
+      <img
+        src="../img/splash_help.jpg"
+        alt="NeuroSorter Splash"
+        style="
+          display: block;
+          width: 100%;
+          max-width: 1000px;
+          margin: 0 auto 20px auto;
+          border-radius: 8px;
+        "
+      />
+    </a>
+
+    <nav>
+      <a href="modele.html">Modele</a>
+      <a href="trenowanie.html" class="active">Trenowanie</a>
+      <a href="klasyfikacja.html">Klasyfikacja</a>
+      <a href="klasyfikacja_wsadowa.html">Klasyfikacja wsadowa</a>
+    </nav>
+
+    <div class="section">
+      <h2>Wprowadzenie do Trenowania i Fine-tuningu</h2>
+      <p>
+        Zakładka 'Trenowanie' jest centralnym miejscem do zarządzania procesem
+        uczenia modeli sieci neuronowych. Umożliwia zarówno trenowanie modeli od
+        podstaw (from scratch), jak i doszkalanie (fine-tuning) istniejących
+        modeli na nowych danych.
+      </p>
+
+      <h3>Trening od podstaw</h3>
+      <p>
+        Trening od podstaw (from scratch) polega na trenowaniu modelu z losowo
+        zainicjalizowanymi wagami. Jest to proces wymagający dużych zasobów
+        obliczeniowych i dużych zbiorów danych treningowych. Ta opcja jest
+        odpowiednia, gdy chcesz stworzyć całkowicie nowy model dostosowany do
+        specyficznego zbioru danych i zadania.
+      </p>
+
+      <h3>Fine-tuning</h3>
+      <p>
+        Fine-tuning (doszkalanie) polega na dostosowaniu już wytrenowanego
+        modelu (tzw. modelu bazowego lub pre-trained model) do nowego, często
+        bardziej specyficznego zadania. Proces ten polega na aktualizacji wag
+        modelu na nowym zbiorze danych. Fine-tuning jest zazwyczaj mniej
+        wymagający obliczeniowo i pozwala osiągnąć dobre wyniki nawet z mniejszą
+        ilością danych, ponieważ model wykorzystuje wiedzę zdobytą podczas
+        pierwotnego treningu.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Konfiguracja Zadań Treningowych i Fine-tuningu</h2>
+      <p>
+        Przed rozpoczęciem treningu lub fine-tuningu, konieczne jest
+        skonfigurowanie parametrów zadania. Służą do tego dedykowane okna
+        dialogowe dostępne z poziomu zakładki 'Trenowanie':
+      </p>
+      <ul>
+        <li>
+          <strong>Konfiguracja Zadania Treningowego</strong>: Uruchamiane
+          podczas tworzenia nowego zadania treningu od podstaw. Pozwala na
+          ustawienie wszystkich kluczowych hiperparametrów, takich jak
+          architektura modelu, liczba epok, współczynnik uczenia, optymalizator,
+          itd.
+        </li>
+        <li>
+          <strong>Konfiguracja Zadania Fine-tuningu</strong>: Uruchamiane przy
+          tworzeniu zadania doszkalania. Oprócz standardowych parametrów
+          treningowych, pozwala wybrać model bazowy do fine-tuningu oraz
+          zdecydować o zamrożeniu niektórych warstw.
+        </li>
+      </ul>
+      <p>
+        Szczegółowy opis poszczególnych parametrów dostępnych w tych oknach
+        znajduje się poniżej.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Parametry Treningu Modeli Sieci Neuronowych</h2>
+
+      <h3>Architektura modelu (<code>model_arch</code>)</h3>
+      <table>
+        <tr>
+          <th>Wartość</th>
+          <th>Trening od podstaw</th>
+          <th>Fine-tuning</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td><code>50</code> (ResNet-50)</td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Model o dobrej równowadze między wydajnością a dokładnością.
+            Sprawdzona architektura, dobrze sprawuje się w wielu zadaniach
+            klasyfikacji.
+          </td>
+        </tr>
+        <tr>
+          <td><code>b0</code> (EfficientNet-B0)</td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Efektywna architektura zaprojektowana pod kątem optymalnej równowagi
+            między wydajnością (dokładnością) a zasobami obliczeniowymi.
+            Zalecana dla większości zadań. Istnieją również większe warianty
+            (B1-B7) oferujące lepszą dokładność kosztem większych zasobów.
+          </td>
+        </tr>
+        <tr>
+          <td><code>mobile3l</code> (MobileNetV3 Large)</td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Lekka architektura zoptymalizowana pod kątem urządzeń mobilnych i
+            środowisk o ograniczonych zasobach. Dobra, gdy priorytetem jest
+            szybkość wnioskowania i mały rozmiar modelu.
+          </td>
+        </tr>
+        <tr>
+          <td><code>vitb16</code> (Vision Transformer Base, patch 16)</td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Vision Transformer - nowoczesna architektura oparta na mechanizmie
+            uwagi (self-attention), inspirowana sukcesem Transformerów w NLP.
+            Dobra dla złożonych zadań i dużych zbiorów danych. Wymaga zazwyczaj
+            więcej danych treningowych niż modele konwolucyjne.
+          </td>
+        </tr>
+        <tr>
+          <td><code>tiny</code> (ConvNeXt Tiny)</td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Nowoczesna architektura konwolucyjna inspirowana Transformerami,
+            osiągająca wysoką wydajność. Dobra dla złożonych zadań klasyfikacji,
+            często przewyższająca tradycyjne CNN przy podobnej liczbie
+            parametrów.
+          </td>
+        </tr>
+      </table>
+
+      <h3>Liczba epok (<code>epochs</code>)</h3>
+      <table>
+        <tr>
+          <th>Kontekst</th>
+          <th>Zalecana wartość</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td>Trening od podstaw</td>
+          <td>30-100 (lub więcej)</td>
+          <td>
+            Liczba pełnych przejść przez cały zbiór danych treningowych. Wyższa
+            liczba epok pozwala modelowi lepiej nauczyć się wzorców z danych.
+            Zalecane 50-100 dla złożonych zadań, ale wartość optymalna zależy od
+            wielkości zbioru i złożoności modelu. Należy monitorować krzywe
+            uczenia, aby uniknąć przeuczenia.
+          </td>
+        </tr>
+        <tr>
+          <td>Fine-tuning</td>
+          <td>10-30</td>
+          <td>
+            Zazwyczaj mniejsza liczba epok jest wystarczająca przy doszkalaniu
+            istniejącego modelu, ponieważ model startuje z już nauczonymi
+            cechami. Zalecane 10-20 dla większości przypadków.
+          </td>
+        </tr>
+      </table>
+
+      <h3>Rozmiar wsadu (<code>batch_size</code>)</h3>
+      <table>
+        <tr>
+          <th>Kontekst</th>
+          <th>Zalecana wartość</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td>Trening od podstaw</td>
+          <td>Zależna od GPU VRAM</td>
+          <td>
+            Liczba próbek danych przetwarzanych jednocześnie w jednej iteracji
+            treningu. Większe wartości przyspieszają trening (lepsze
+            wykorzystanie GPU), ale wymagają więcej pamięci VRAM. Może również
+            wpływać na proces generalizacji modelu.
+          </td>
+        </tr>
+        <tr>
+          <td>Fine-tuning</td>
+          <td>Zależna od GPU VRAM</td>
+          <td>
+            Podobnie jak w treningu od podstaw, ale często można użyć nieco
+            większych wartości, jeśli część modelu jest zamrożona.
+          </td>
+        </tr>
+      </table>
+      <p>
+        Typowe wartości dla różnych GPU (przykładowe, mogą się różnić w
+        zależności od modelu i innych ustawień):
+      </p>
+      <ul>
+        <li>16-32: GPU z ~4GB VRAM</li>
+        <li>32-64: GPU z ~8GB VRAM</li>
+        <li>64-128: GPU z ~12GB VRAM</li>
+        <li>128-256 lub więcej: GPU z 16GB+ VRAM</li>
+      </ul>
+
+      <h3>Współczynnik uczenia (<code>learning_rate</code>)</h3>
+      <table>
+        <tr>
+          <th>Kontekst</th>
+          <th>Zalecana wartość</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td>Trening od podstaw</td>
+          <td><code>1e-3</code> do <code>1e-4</code></td>
+          <td>
+            Określa, jak bardzo wagi modelu są aktualizowane w odpowiedzi na
+            oszacowany błąd za każdym razem, gdy model jest trenowany. Wyższe
+            wartości pozwalają na szybsze uczenie się, ale mogą prowadzić do
+            niestabilności treningu lub "przeskoczenia" optimum.
+          </td>
+        </tr>
+        <tr>
+          <td>Fine-tuning</td>
+          <td><code>1e-4</code> do <code>1e-6</code></td>
+          <td>
+            Zazwyczaj znacznie niższe wartości niż przy treningu od podstaw.
+            Zapewniają subtelne dostrajanie wag modelu, zachowując wcześniej
+            nauczone cechy i unikając ich "zapomnienia".
+          </td>
+        </tr>
+      </table>
+
+      <h3>Optymalizator (<code>optimizer</code>)</h3>
+      <table>
+        <tr>
+          <th>Wartość</th>
+          <th>Trening od podstaw</th>
+          <th>Fine-tuning</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td><code>Adam</code></td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Popularny, uniwersalny optymalizator z adaptacyjnymi momentami.
+            Łączy zalety AdaGrad i RMSprop. Dobry wybór dla większości
+            przypadków jako punkt wyjścia.
+          </td>
+        </tr>
+        <tr>
+          <td><code>SGD</code> (Stochastic Gradient Descent)</td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Klasyczny optymalizator. Może dawać lepsze wyniki generalizacji przy
+            odpowiednim dostrojeniu harmonogramu uczenia i momentu, ale często
+            wolniej zbiega i jest trudniejszy w konfiguracji.
+          </td>
+        </tr>
+        <tr>
+          <td><code>AdamW</code></td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Wersja Adam z poprawionym mechanizmem regularyzacji wag (oddziela
+            L2-regularyzację od adaptacyjnej aktualizacji współczynnika
+            uczenia). Często zalecana dla modeli Transformerów i jako domyślny
+            wybór w wielu nowoczesnych frameworkach.
+          </td>
+        </tr>
+        <tr>
+          <td><code>RMSprop</code></td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Adaptacyjny optymalizator, który dzieli współczynnik uczenia przez
+            średnią kwadratów ostatnich gradientów. Dobry w zadaniach z dużą
+            zmiennością gradientów i dla sieci rekurencyjnych.
+          </td>
+        </tr>
+      </table>
+
+      <h3>Harmonogram uczenia (<code>scheduler</code>)</h3>
+      <table>
+        <tr>
+          <th>Wartość</th>
+          <th>Trening od podstaw</th>
+          <th>Fine-tuning</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td><code>None</code></td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Brak harmonogramu - stały współczynnik uczenia przez cały trening.
+            Proste, ale rzadko optymalne.
+          </td>
+        </tr>
+        <tr>
+          <td><code>StepLR</code></td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Zmniejsza współczynnik uczenia (learning rate) o stały współczynnik
+            (gamma) co określoną liczbę epok (step_size).
+          </td>
+        </tr>
+        <tr>
+          <td><code>CosineAnnealingLR</code></td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Płynnie zmienia współczynnik uczenia według funkcji kosinusowej, od
+            wartości początkowej do minimalnej (często bliskiej zeru) w ciągu
+            określonej liczby epok lub iteracji.
+          </td>
+        </tr>
+        <tr>
+          <td><code>ReduceLROnPlateau</code></td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Zmniejsza współczynnik uczenia, gdy określona metryka (np. strata
+            walidacyjna) przestaje się poprawiać przez zdefiniowaną liczbę epok
+            ("patience"). Zalecane dla wielu przypadków, ponieważ dynamicznie
+            adaptuje LR.
+          </td>
+        </tr>
+        <tr>
+          <td><code>OneCycleLR</code></td>
+          <td class="checkmark">✓</td>
+          <td class="x-mark">✗ (rzadziej)</td>
+          <td>
+            Zaawansowany harmonogram, który cyklicznie zmienia współczynnik
+            uczenia: najpierw rośnie od małej wartości do maksymalnej, a
+            następnie maleje do wartości znacznie niższej niż początkowa. Często
+            stosowany z SGD. Może prowadzić do szybszej zbieżności. Dobry dla
+            treningu od podstaw.
+          </td>
+        </tr>
+      </table>
+
+      <h3>Regularyzacja wag (<code>weight_decay</code>)</h3>
+      <table>
+        <tr>
+          <th>Kontekst</th>
+          <th>Zalecana wartość</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td>Trening od podstaw</td>
+          <td><code>1e-4</code> do <code>1e-5</code></td>
+          <td>
+            Technika regularyzacji L2, która dodaje karę do funkcji straty
+            proporcjonalną do kwadratu wartości wag modelu. Zapobiega
+            przeuczeniu modelu poprzez "zachęcanie" modelu do posiadania
+            mniejszych wag.
+          </td>
+        </tr>
+        <tr>
+          <td>Fine-tuning</td>
+          <td><code>1e-5</code> do <code>1e-6</code> (lub nawet 0)</td>
+          <td>
+            Zazwyczaj mniejsze wartości niż przy treningu od podstaw, aby
+            zapobiec nadmiernym zmianom w już wyuczonych wagach, zwłaszcza jeśli
+            zbiór danych do fine-tuningu jest mały.
+          </td>
+        </tr>
+      </table>
+
+      <h3>Przycinanie gradientu (<code>gradient_clip_val</code>)</h3>
+      <table>
+        <tr>
+          <th>Kontekst</th>
+          <th>Zalecana wartość</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td>Trening od podstaw</td>
+          <td><code>0.5</code> - <code>1.0</code> (lub więcej)</td>
+          <td>
+            Technika zapobiegająca problemowi eksplodujących gradientów, który
+            może wystąpić zwłaszcza w głębokich sieciach lub sieciach
+            rekurencyjnych. Polega na ograniczeniu maksymalnej normy gradientów.
+          </td>
+        </tr>
+        <tr>
+          <td>Fine-tuning</td>
+          <td><code>0.1</code> - <code>0.5</code></td>
+          <td>
+            Mniejsze wartości mogą być odpowiednie, aby zapewnić bardziej
+            subtelne aktualizacje wag podczas dostrajania.
+          </td>
+        </tr>
+      </table>
+
+      <h3>
+        Cierpliwość wczesnego zatrzymania (<code>early_stopping_patience</code>)
+      </h3>
+      <table>
+        <tr>
+          <th>Kontekst</th>
+          <th>Zalecana wartość</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td>Trening od podstaw</td>
+          <td>8-15 (lub więcej)</td>
+          <td>
+            Liczba epok, przez które model może nie wykazywać poprawy metryki
+            walidacyjnej (np. straty lub dokładności) zanim trening zostanie
+            automatycznie zatrzymany. Pomaga uniknąć przeuczenia i oszczędza
+            czas.
+          </td>
+        </tr>
+        <tr>
+          <td>Fine-tuning</td>
+          <td>5-10</td>
+          <td>
+            Zazwyczaj krótszy okres cierpliwości, ponieważ fine-tuning powinien
+            szybciej osiągnąć optimum na mniejszym zbiorze danych lub przy
+            mniejszych zmianach w modelu.
+          </td>
+        </tr>
+      </table>
+
+      <h3>Podział walidacyjny (<code>validation_split</code>)</h3>
+      <table>
+        <tr>
+          <th>Kontekst</th>
+          <th>Zalecana wartość</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td>Trening od podstaw / Fine-tuning</td>
+          <td><code>0.1</code> - <code>0.2</code> (tj. 10%-20%)</td>
+          <td>
+            Określa, jaka część danych treningowych (z katalogu podanego do
+            treningu) zostanie odłożona i użyta jako zbiór walidacyjny. Zbiór
+            walidacyjny służy do monitorowania wydajności modelu na danych,
+            których nie widział podczas treningu, co pomaga w ocenie
+            generalizacji i wczesnym zatrzymywaniu.
+          </td>
+        </tr>
+      </table>
+
+      <h3>Augmentacja danych (<code>augmentation</code>)</h3>
+      <table>
+        <tr>
+          <th>Wartość</th>
+          <th>Trening od podstaw</th>
+          <th>Fine-tuning</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td><code>basic</code></td>
+          <td class="checkmark">✓</td>
+          <td class="checkmark">✓</td>
+          <td>
+            Stosowanie podstawowych technik augmentacji danych, takich jak
+            losowe obroty, przesunięcia, odbicia lustrzane, zmiany
+            jasności/kontrastu. Zwiększa różnorodność danych treningowych i
+            pomaga w generalizacji modelu. Zalecane dla większości przypadków.
+          </td>
+        </tr>
+        <tr>
+          <td><code>advanced</code></td>
+          <td class="checkmark">✓</td>
+          <td class="half-mark">○ (ostrożnie)</td>
+          <td>
+            Stosowanie bardziej zaawansowanych technik augmentacji, np. losowe
+            wymazywanie (cutout/random erasing), mieszanie obrazów (mixup,
+            cutmix), zniekształcenia perspektywiczne. Przydatne przy małych
+            zbiorach danych, ale należy stosować ostrożnie, aby nie wprowadzić
+            zbyt dużych artefaktów niezgodnych z rzeczywistymi danymi. W
+            fine-tuningu może być mniej agresywna.
+          </td>
+        </tr>
+      </table>
+
+      <h3>
+        Mieszana precyzja (<code>mixed_precision</code> /
+        <code>use_mixed_precision</code>)
+      </h3>
+      <table>
+        <tr>
+          <th>Kontekst</th>
+          <th>Zalecana wartość</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td>Trening od podstaw / Fine-tuning</td>
+          <td><code>True</code> (dla wspieranych GPU, np. NVIDIA RTX)</td>
+          <td>
+            Użycie mieszanej precyzji (np. FP16 zamiast FP32 dla niektórych
+            operacji) podczas treningu. Przyspiesza trening i zmniejsza zużycie
+            pamięci VRAM, często zachowując podobną dokładność modelu. Wymaga
+            wsparcia sprzętowego (karty graficzne z rdzeniami Tensor) i
+            programowego.
+          </td>
+        </tr>
+      </table>
+
+      <h3>
+        Zamrożenie warstw (<code>freeze_backbone</code>) - tylko dla
+        fine-tuningu
+      </h3>
+      <table>
+        <tr>
+          <th>Kontekst</th>
+          <th>Zalecana wartość</th>
+          <th>Opis</th>
+        </tr>
+        <tr>
+          <td>Fine-tuning</td>
+          <td><code>True</code></td>
+          <td>
+            Zamrożenie wag głównej części modelu (tzw. backbone, np. warstwy
+            konwolucyjne w CNN), a trenowanie tylko nowo dodanych lub ostatnich
+            warstw klasyfikacyjnych. Zalecane, gdy zbiór danych do fine-tuningu
+            jest mały lub bardzo podobny do danych, na których trenowano model
+            bazowy. Oszczędza zasoby i zapobiega "zapomnieniu" przez model
+            dobrze nauczonych cech niskiego poziomu.
+          </td>
+        </tr>
+        <tr>
+          <td>Fine-tuning</td>
+          <td><code>False</code></td>
+          <td>
+            Trenowanie (odmrażanie) wszystkich warstw modelu, włącznie z
+            backbone. Lepsze, gdy zbiór danych do fine-tuningu jest większy
+            i/lub znacząco różni się od oryginalnych danych treningowych modelu
+            bazowego, co pozwala na głębszą adaptację modelu. Wymaga niższego
+            współczynnika uczenia.
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Wizualizacja Treningu</h2>
+      <p>
+        Podczas procesu treningu modelu, aplikacja może oferować dynamiczną
+        wizualizację kluczowych metryk za pomocą dedykowanego widżetu lub panelu
+        w zakładce 'Trenowanie'. Pozwala to na śledzenie postępów w czasie
+        rzeczywistym.
+      </p>
+      <p>Typowe wizualizowane metryki to:</p>
+      <ul>
+        <li>
+          <strong>Strata (Loss)</strong>: Wartość funkcji straty dla zbioru
+          treningowego i walidacyjnego. Obserwacja jej spadku jest kluczowa.
+        </li>
+        <li>
+          <strong>Dokładność (Accuracy)</strong>: Procent poprawnie
+          sklasyfikowanych próbek dla zbioru treningowego i walidacyjnego.
+        </li>
+        <li>
+          Inne metryki specyficzne dla zadania (np. Precision, Recall,
+          F1-score).
+        </li>
+      </ul>
+      <p>
+        Analiza tych wykresów pomaga zdiagnozować problemy takie jak przeuczenie
+        (gdy strata treningowa maleje, a walidacyjna rośnie) lub niedouczenie
+        (gdy obie straty pozostają wysokie).
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Zalecane konfiguracje startowe</h2>
+
+      <h3>Dla treningu od podstaw:</h3>
+      <pre><code>{
+  "model_arch": "b0", // lub inna np. "tiny", "50"
+  "epochs": 50,
+  "batch_size": 64, // dostosuj do VRAM
+  "learning_rate": 1e-3,
+  "optimizer": "AdamW",
+  "scheduler": "ReduceLROnPlateau", // lub "CosineAnnealingLR"
+  "weight_decay": 1e-4,
+  "gradient_clip_val": 0.5,
+  "early_stopping_patience": 10,
+  "validation_split": 0.2,
+  "augmentation": { // W ustawieniach aplikacji można włączyć/wyłączyć poszczególne transformacje
+    "basic": true, 
+    "advanced": false // Zacznij od false, włącz jeśli potrzebne
+  },
+  "use_mixed_precision": true // Jeśli wspierane przez GPU
+}</code></pre>
+
+      <h3>Dla fine-tuningu:</h3>
+      <pre><code>{
+  "model_arch": "b0", // Wybierz architekturę zgodną z modelem bazowym
+  "epochs": 15,
+  "batch_size": 64, // dostosuj do VRAM
+  "learning_rate": 1e-5, // Znacznie niższy niż w treningu od podstaw
+  "optimizer": "AdamW",
+  "scheduler": "ReduceLROnPlateau",
+  "weight_decay": 1e-5,
+  "gradient_clip_val": 0.1,
+  "early_stopping_patience": 5,
+  "validation_split": 0.2,
+  "augmentation": {
+    "basic": true,
+    "advanced": false 
+  },
+  "use_mixed_precision": true, // Jeśli wspierane
+  "freeze_backbone": true // Zacznij od true, zmień na false jeśli masz duży zbiór lub zadanie mocno odbiega od oryginalnego
+}</code></pre>
+    </div>
+
+    <div class="section">
+      <h2>Uwagi dodatkowe dotyczące treningu</h2>
+      <ul>
+        <li>
+          Powyższe wartości parametrów są jedynie sugestiami i punktem wyjścia.
+          Należy je dostosować do konkretnego zadania, wielkości i
+          charakterystyki zbioru danych oraz dostępnych zasobów sprzętowych.
+        </li>
+        <li>
+          Zawsze monitoruj metryki walidacyjne (strata, dokładność) podczas
+          treningu, aby wykryć potencjalne problemy (np. przeuczenie,
+          niedouczenie) i odpowiednio zareagować (np. zatrzymać trening, zmienić
+          parametry).
+        </li>
+        <li>
+          Dla najlepszych wyników, zalecane jest eksperymentowanie z różnymi
+          konfiguracjami parametrów (np. przy użyciu technik takich jak Grid
+          Search lub Random Search, jeśli aplikacja wspiera automatyzację tego
+          procesu).
+        </li>
+        <li>
+          <strong>Liczba klas</strong> dla modelu jest zazwyczaj automatycznie
+          wykrywana na podstawie struktury katalogów z danymi treningowymi
+          (każdy podkatalog w głównym folderze zbioru danych reprezentuje jedną
+          klasę). Upewnij się, że dane są poprawnie zorganizowane.
+        </li>
+      </ul>
+
+      <div class="note">
+        <p>
+          <strong>Uwaga:</strong> Kategorie treningu (klasy) są pobierane
+          automatycznie z nazw folderów w katalogu treningowym. Każdy folder
+          pierwszego poziomu w ścieżce do zbioru danych reprezentuje jedną
+          kategorię/klasę.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

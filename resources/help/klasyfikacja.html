@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Klasyfikacja Obrazów - Dokumentacja CFAB NeuroSorter</title>
+    <style>
+      /* Scrollbar styles */
+      ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1e1e1e;
+        border-radius: 6px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #404040;
+        border-radius: 6px;
+        border: 3px solid #1e1e1e;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #505050;
+      }
+
+      /* Firefox scrollbar */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #404040 #1e1e1e;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #e0e0e0;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #1e1e1e;
+      }
+      nav {
+        background-color: #2d2d2d;
+        padding: 10px 0;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        text-align: center;
+      }
+      nav a {
+        color: #e0e0e0;
+        margin: 0 15px;
+        text-decoration: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        transition: background-color 0.3s ease;
+      }
+      nav a:hover,
+      nav a.active {
+        background-color: #007acc;
+        color: #ffffff;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #ffffff;
+      }
+      h1 {
+        border-bottom: 2px solid #007acc;
+        padding-bottom: 10px;
+      }
+      h2 {
+        border-bottom: 1px solid #404040;
+        padding-bottom: 5px;
+        margin-top: 30px;
+      }
+      h3 {
+        margin-top: 25px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+        background-color: #2d2d2d;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+      th,
+      td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #404040;
+      }
+      th {
+        background-color: #007acc;
+        color: #ffffff;
+      }
+      tr:nth-child(even) {
+        background-color: #252525;
+      }
+      pre {
+        background-color: #2d2d2d;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        padding: 15px;
+        overflow: auto;
+        color: #e0e0e0;
+      }
+      code {
+        font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        background-color: #2d2d2d;
+        padding: 2px 4px;
+        border-radius: 4px;
+        color: #e0e0e0;
+      }
+      .section {
+        margin-bottom: 30px;
+        background: #2d2d2d;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      }
+      .note {
+        background-color: #1a3a4a;
+        border-left: 4px solid #007acc;
+        padding: 10px 15px;
+        margin: 15px 0;
+        color: #e0e0e0;
+      }
+      .placeholder {
+        font-style: italic;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="index.html">
+      <img
+        src="../img/splash_help.jpg"
+        alt="NeuroSorter Splash"
+        style="
+          display: block;
+          width: 100%;
+          max-width: 1000px;
+          margin: 0 auto 20px auto;
+          border-radius: 8px;
+        "
+      />
+    </a>
+
+    <nav>
+      <a href="modele.html">Modele</a>
+      <a href="trenowanie.html">Trenowanie</a>
+      <a href="klasyfikacja.html" class="active">Klasyfikacja</a>
+      <a href="klasyfikacja_wsadowa.html">Klasyfikacja wsadowa</a>
+    </nav>
+
+    <div class="section">
+      <h2>Wprowadzenie do Klasyfikacji Obrazów</h2>
+      <p>
+        Zakładka 'Klasyfikacja' umożliwia klasyfikację pojedynczych obrazów przy
+        użyciu wybranego, wcześniej wytrenowanego modelu. Jest to narzędzie do
+        szybkiej analizy i weryfikacji działania modeli na konkretnych
+        przykładach.
+      </p>
+
+      <h3>Główne funkcje zakładki:</h3>
+      <ul>
+        <li>
+          Wybór aktywnego modelu do klasyfikacji (zazwyczaj dziedziczony z
+          zakładki 'Modele' lub możliwość wyboru bezpośrednio tutaj).
+        </li>
+        <li>Ładowanie pojedynczego obrazu z dysku.</li>
+        <li>Wyświetlanie załadowanego obrazu.</li>
+        <li>Uruchomienie procesu klasyfikacji dla załadowanego obrazu.</li>
+        <li>
+          Prezentacja wyników klasyfikacji (np. przewidziana klasa,
+          prawdopodobieństwo przynależności do poszczególnych klas).
+        </li>
+        <li>
+          Możliwość sortowania obrazu do odpowiedniego folderu na podstawie
+          wyniku klasyfikacji (jeśli zintegrowane z modułem sortującym).
+        </li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Proces Klasyfikacji Pojedynczego Obrazu</h2>
+      <h3>Wybór Modelu</h3>
+      <p>
+        Przed rozpoczęciem klasyfikacji, upewnij się, że odpowiedni model AI
+        jest załadowany i aktywny. Zazwyczaj model jest wybierany w zakładce
+        'Modele' i staje się dostępny globalnie w aplikacji, w tym w zakładce
+        'Klasyfikacja'. Jeśli interfejs zakładki 'Klasyfikacja' oferuje
+        bezpośredni wybór modelu, możesz skorzystać z tej opcji, aby szybko
+        przełączać się między dostępnymi modelami.
+      </p>
+
+      <h3>Ładowanie Obrazu</h3>
+      <p>
+        Aby załadować obraz, użyj przycisku "Otwórz zdjęcie" (lub podobnie
+        nazwanego elementu interfejsu). Pojawi się standardowe okno dialogowe
+        systemu plików, które pozwoli Ci wybrać plik graficzny z dysku.
+        Aplikacja powinna wspierać popularne formaty obrazów, takie jak JPEG,
+        PNG, BMP itp.
+      </p>
+
+      <h3>Wyświetlanie Obrazu</h3>
+      <p>
+        Po pomyślnym załadowaniu, wybrany obraz zostanie wyświetlony w
+        dedykowanym obszarze podglądu w zakładce 'Klasyfikacja'. Umożliwi to
+        wizualną weryfikację obrazu przed uruchomieniem analizy.
+      </p>
+
+      <h3>Uruchomienie Klasyfikacji</h3>
+      <p>
+        Aby rozpocząć proces klasyfikacji, kliknij przycisk "Klasyfikuj" (lub o
+        podobnym znaczeniu). Aplikacja przetworzy załadowany obraz przy użyciu
+        aktywnego modelu AI.
+      </p>
+
+      <h3>Wyniki Klasyfikacji</h3>
+      <p>
+        Po zakończeniu analizy, wyniki zostaną zaprezentowane w przejrzysty
+        sposób. Możesz oczekiwać informacji takich jak: przewidywana klasa
+        (etykieta) dla obrazu, lista wszystkich możliwych klas wraz z
+        przypisanymi im prawdopodobieństwami (pewnością predykcji). W niektórych
+        przypadkach mogą być dostępne również wizualizacje, np. mapy ciepła
+        (heatmaps) wskazujące, które fragmenty obrazu miały największy wpływ na
+        decyzję modelu. Interfejs może wykorzystywać specjalny widżet listy klas
+        do wyświetlania tych informacji.
+      </p>
+
+      <h3>Sortowanie Obrazu (Opcjonalne)</h3>
+      <p>
+        Jeśli aplikacja oferuje taką funkcjonalność, po klasyfikacji obrazu
+        możesz mieć możliwość jego automatycznego posortowania. Oznacza to
+        przeniesienie lub skopiowanie pliku obrazu do predefiniowanego folderu
+        odpowiadającego przewidzianej klasie. Interfejs powinien pozwolić na
+        wybór folderu docelowego oraz potwierdzenie operacji sortowania.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Uwagi Dodatkowe</h2>
+      <p>
+        Pamiętaj, że interpretacja wyników klasyfikacji wymaga pewnej wiedzy
+        domenowej. Niska pewność predykcji dla wszystkich klas może wskazywać,
+        że model ma trudności z danym obrazem lub obraz nie pasuje do żadnej z
+        nauczonych kategorii. Wybór odpowiedniego modelu, który został
+        wytrenowany na danych zbliżonych do tych, które analizujesz, jest
+        kluczowy dla uzyskania wiarygodnych wyników.
+      </p>
+      <div class="note">
+        <p>
+          <strong>Wskazówka:</strong> Zakładka 'Klasyfikacja' jest idealna do
+          szybkiego testowania modeli na wybranych przykładach i zrozumienia,
+          jak model podejmuje decyzje dla konkretnych obrazów.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

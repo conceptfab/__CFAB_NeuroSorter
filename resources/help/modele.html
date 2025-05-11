@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zarządzanie Modelami - Dokumentacja CFAB NeuroSorter</title>
+    <style>
+      /* Scrollbar styles */
+      ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1e1e1e;
+        border-radius: 6px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #404040;
+        border-radius: 6px;
+        border: 3px solid #1e1e1e;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #505050;
+      }
+
+      /* Firefox scrollbar */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #404040 #1e1e1e;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #e0e0e0;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #1e1e1e;
+      }
+      nav {
+        background-color: #2d2d2d;
+        padding: 10px 0;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        text-align: center;
+      }
+      nav a {
+        color: #e0e0e0;
+        margin: 0 15px;
+        text-decoration: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        transition: background-color 0.3s ease;
+      }
+      nav a:hover,
+      nav a.active {
+        background-color: #007acc;
+        color: #ffffff;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #ffffff;
+      }
+      h1 {
+        border-bottom: 2px solid #007acc;
+        padding-bottom: 10px;
+      }
+      h2 {
+        border-bottom: 1px solid #404040;
+        padding-bottom: 5px;
+        margin-top: 30px;
+      }
+      h3 {
+        margin-top: 25px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+        background-color: #2d2d2d;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+      th,
+      td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #404040;
+      }
+      th {
+        background-color: #007acc;
+        color: #ffffff;
+      }
+      tr:nth-child(even) {
+        background-color: #252525;
+      }
+      pre {
+        background-color: #2d2d2d;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        padding: 15px;
+        overflow: auto;
+        color: #e0e0e0;
+      }
+      code {
+        font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        background-color: #2d2d2d;
+        padding: 2px 4px;
+        border-radius: 4px;
+        color: #e0e0e0;
+      }
+      .section {
+        margin-bottom: 30px;
+        background: #2d2d2d;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      }
+      .note {
+        background-color: #1a3a4a;
+        border-left: 4px solid #007acc;
+        padding: 10px 15px;
+        margin: 15px 0;
+        color: #e0e0e0;
+      }
+      .placeholder {
+        font-style: italic;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="index.html">
+      <img
+        src="../img/splash_help.jpg"
+        alt="NeuroSorter Splash"
+        style="
+          display: block;
+          width: 100%;
+          max-width: 1000px;
+          margin: 0 auto 20px auto;
+          border-radius: 8px;
+        "
+      />
+    </a>
+
+    <nav>
+      <a href="modele.html" class="active">Modele</a>
+      <a href="trenowanie.html">Trenowanie</a>
+      <a href="klasyfikacja.html">Klasyfikacja</a>
+      <a href="klasyfikacja_wsadowa.html">Klasyfikacja wsadowa</a>
+    </nav>
+
+    <div class="section">
+      <h2>Wprowadzenie do Zarządzania Modelami</h2>
+      <p>
+        Zakładka 'Modele' służy do zarządzania modelami sztucznej inteligencji
+        wykorzystywanymi w aplikacji. Umożliwia przeglądanie dostępnych modeli,
+        importowanie nowych, eksportowanie, a także usuwanie istniejących. Jest
+        to centralne repozytorium modeli, z którego korzystają inne moduły
+        aplikacji, takie jak 'Klasyfikacja' czy 'Trenowanie' (do fine-tuningu).
+      </p>
+
+      <h3>Główne funkcje zakładki:</h3>
+      <ul>
+        <li>
+          Wyświetlanie listy dostępnych modeli wraz z ich podstawowymi
+          informacjami (np. nazwa, architektura, data utworzenia, rozmiar).
+        </li>
+        <li>
+          Importowanie modeli z plików (np. wcześniej wytrenowanych i
+          wyeksportowanych).
+        </li>
+        <li>
+          Eksportowanie wybranych modeli do plików w celu archiwizacji lub
+          przeniesienia na inny system.
+        </li>
+        <li>Usuwanie modeli, które nie są już potrzebne.</li>
+        <li>
+          Wybór aktywnego modelu do użycia w innych częściach aplikacji (np. do
+          klasyfikacji).
+        </li>
+        <li>Szczegółowe informacje o wybranym modelu.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Operacje na Modelach</h2>
+      <h3>Lista Modeli</h3>
+      <p>
+        W centralnej części zakładki 'Modele' znajduje się lista wszystkich
+        dostępnych modeli AI. Każdy wpis na liście zazwyczaj prezentuje kluczowe
+        informacje o modelu, takie jak jego nazwa (nadana przez użytkownika lub
+        system), typ architektury (np. ResNet-50, EfficientNet-B0), data
+        utworzenia lub importu, oraz ewentualnie rozmiar na dysku czy liczba
+        klas, na które został wytrenowany. Interfejs może oferować opcje
+        sortowania listy według różnych kryteriów (np. po nazwie, dacie) oraz
+        filtrowania, aby ułatwić odnalezienie konkretnego modelu, szczególnie
+        przy dużej ich liczbie. Wybranie modelu z listy często powoduje
+        wyświetlenie jego szczegółowych informacji w dedykowanym panelu.
+      </p>
+
+      <h3>Importowanie Modelu</h3>
+      <p>
+        Funkcja importu pozwala na dodanie do aplikacji modeli AI, które zostały
+        wcześniej wytrenowane i zapisane (np. w tej samej aplikacji na innym
+        stanowisku, lub pobrane z zewnętrznego źródła). Po wybraniu opcji
+        "Importuj model" (lub podobnej), użytkownik jest proszony o wskazanie
+        pliku modelu (np. w formacie .pth, .pt, .onnx, w zależności od
+        wspieranych przez aplikację). Podczas importu aplikacja może prosić o
+        dodatkowe informacje, jak nazwa dla modelu w systemie, czy weryfikować
+        kompatybilność importowanego pliku. Po pomyślnym imporcie, model pojawia
+        się na liście dostępnych modeli.
+      </p>
+
+      <h3>Eksportowanie Modelu</h3>
+      <p>
+        Eksportowanie modelu umożliwia zapisanie wybranego modelu AI (wraz z
+        jego wagami i konfiguracją) do pliku na dysku. Jest to przydatne do
+        tworzenia kopii zapasowych, przenoszenia modeli między systemami, lub
+        przygotowania modelu do wdrożenia w innym środowisku. Po wybraniu modelu
+        i opcji "Eksportuj model", aplikacja zazwyczaj pyta o lokalizację i
+        nazwę pliku docelowego oraz ewentualnie o format eksportu (jeśli
+        wspieranych jest kilka).
+      </p>
+
+      <h3>Usuwanie Modelu</h3>
+      <p>
+        Aby usunąć model, który nie jest już potrzebny, należy go zaznaczyć na
+        liście i wybrać opcję "Usuń model". Ze względu na to, że jest to
+        operacja nieodwracalna, aplikacja zazwyczaj prosi o potwierdzenie tej
+        akcji, wyświetlając stosowne ostrzeżenie. Usunięcie modelu zwalnia
+        miejsce na dysku i usuwa go z listy dostępnych modeli w aplikacji.
+      </p>
+
+      <h3>Wybór Aktywnego Modelu</h3>
+      <p>
+        Wiele funkcji aplikacji, takich jak klasyfikacja pojedynczych obrazów
+        czy przetwarzanie wsadowe, wymaga aktywnego modelu AI. W zakładce
+        'Modele' użytkownik może wybrać, który z dostępnych modeli ma być
+        aktualnie używany. Wybrany model staje się domyślnym modelem dla
+        operacji klasyfikacji lub może służyć jako model bazowy do zadań
+        fine-tuningu w zakładce 'Trenowanie'. Interfejs zazwyczaj wyraźnie
+        wskazuje, który model jest obecnie aktywny.
+      </p>
+
+      <h3>Szczegóły Modelu</h3>
+      <p>
+        Po wybraniu konkretnego modelu z listy, w dedykowanym panelu lub oknie
+        dialogowym wyświetlane są szczegółowe informacje na jego temat. Mogą to
+        być m.in.: pełna nazwa modelu, jego architektura, data
+        utworzenia/importu, data ostatniej modyfikacji, rozmiar, liczba klas, na
+        które został wytrenowany, lista tych klas, a także parametry użyte
+        podczas jego treningu (np. liczba epok, współczynnik uczenia, użyty
+        optymalizator) oraz metryki wydajności osiągnięte na zbiorze
+        walidacyjnym (np. dokładność, funkcja straty). Dostęp do tych informacji
+        jest kluczowy dla oceny przydatności modelu do konkretnego zadania.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Uwagi Dodatkowe</h2>
+      <p>
+        Efektywne zarządzanie modelami AI jest kluczowe dla utrzymania porządku
+        i wydajności pracy z aplikacją. Zaleca się stosowanie spójnych konwencji
+        nazewnictwa dla modeli, aby łatwo można było je identyfikować. Regularne
+        przeglądanie listy modeli i usuwanie tych, które nie są już używane lub
+        są przestarzałe, pomaga zwolnić zasoby i unikać pomyłek. Warto również
+        dokumentować (np. w nazwie modelu lub w zewnętrznym systemie) kluczowe
+        informacje o procesie treningu i przeznaczeniu każdego modelu.
+      </p>
+      <div class="note">
+        <p>
+          <strong>Pamiętaj:</strong> Regularne zarządzanie modelami, usuwanie
+          niepotrzebnych wersji i odpowiednie opisywanie modeli pomaga utrzymać
+          porządek i efektywność pracy.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

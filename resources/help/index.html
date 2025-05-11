@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dokumentacja CFAB NeuroSorter</title>
+    <style>
+      /* Scrollbar styles */
+      ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1e1e1e;
+        border-radius: 6px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #404040;
+        border-radius: 6px;
+        border: 3px solid #1e1e1e;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #505050;
+      }
+
+      /* Firefox scrollbar */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #404040 #1e1e1e;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #e0e0e0;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #1e1e1e;
+      }
+      nav {
+        background-color: #2d2d2d;
+        padding: 10px 0;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        text-align: center;
+      }
+      nav a {
+        color: #e0e0e0;
+        margin: 0 15px;
+        text-decoration: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        transition: background-color 0.3s ease;
+      }
+      nav a:hover,
+      nav a.active {
+        background-color: #007acc;
+        color: #ffffff;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #ffffff;
+      }
+      h1 {
+        border-bottom: 2px solid #007acc;
+        padding-bottom: 10px;
+      }
+      h2 {
+        border-bottom: 1px solid #404040;
+        padding-bottom: 5px;
+        margin-top: 30px;
+      }
+      h3 {
+        margin-top: 25px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+        background-color: #2d2d2d;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+      th,
+      td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #404040;
+      }
+      th {
+        background-color: #007acc;
+        color: #ffffff;
+      }
+      tr:nth-child(even) {
+        background-color: #252525;
+      }
+      pre {
+        background-color: #2d2d2d;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        padding: 15px;
+        overflow: auto;
+        color: #e0e0e0;
+      }
+      code {
+        font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        background-color: #2d2d2d;
+        padding: 2px 4px;
+        border-radius: 4px;
+        color: #e0e0e0;
+      }
+      .section {
+        margin-bottom: 30px;
+        background: #2d2d2d;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      }
+      .note {
+        background-color: #1a3a4a;
+        border-left: 4px solid #007acc;
+        padding: 10px 15px;
+        margin: 15px 0;
+        color: #e0e0e0;
+      }
+      .checkmark {
+        color: #4caf50;
+        font-weight: bold;
+      }
+      .x-mark {
+        color: #666666;
+      }
+      .half-mark {
+        color: #ff9800;
+      }
+      a {
+        color: #007acc;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      ul,
+      ol {
+        color: #e0e0e0;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="index.html">
+      <img
+        src="../img/splash_help.jpg"
+        alt="NeuroSorter Splash"
+        style="
+          display: block;
+          width: 100%;
+          max-width: 1000px;
+          margin: 0 auto 20px auto;
+          border-radius: 8px;
+        "
+      />
+    </a>
+
+    <nav>
+      <a href="modele.html">Modele</a>
+      <a href="trenowanie.html">Trenowanie</a>
+      <a href="klasyfikacja.html">Klasyfikacja</a>
+      <a href="klasyfikacja_wsadowa.html">Klasyfikacja wsadowa</a>
+    </nav>
+
+    <div class="section intro">
+      <h2>Wprowadzenie</h2>
+      <p>
+        CFAB NeuroSorter to aplikacja, która posiada rozbudowaną mechanikę
+        szkolenia i doszkalania modeli (fine-tuningu). Pozwala zautomatyzować
+        procesy, wykorzystując wsadowe przetwarzanie zadań. Umożliwia wydajne
+        testowanie wielu wariantów ustawień treningu i fine-tuningu modeli.
+        System kategoryzowania obrazów pozwala w efektywny sposób testować
+        modele.
+      </p>
+
+      <h3>Główne funkcje</h3>
+      <ul>
+        <li>Klasyfikacja pojedynczych obrazów</li>
+        <li>Przetwarzanie wsadowe dużych zbiorów</li>
+        <li>Trenowanie własnych modeli</li>
+        <li>Zarządzanie modelami</li>
+        <li>Generowanie raportów (funkcjonalność opisana w aplikacji)</li>
+      </ul>
+
+      <h3>Szybki start</h3>
+      <ol>
+        <li>
+          Wybierz lub wytrenuj model w zakładce
+          <a href="modele.html">'Modele'</a>
+        </li>
+        <li>
+          Przejdź do zakładki <a href="trenowanie.html">'Trenowanie'</a>, aby
+          skonfigurować proces uczenia lub dostrajania.
+        </li>
+        <li>
+          Użyj zakładki <a href="klasyfikacja.html">'Klasyfikacja'</a> do
+          analizy pojedynczych obrazów.
+        </li>
+        <li>
+          Wykorzystaj
+          <a href="klasyfikacja_wsadowa.html">'Klasyfikacja wsadowa'</a> do
+          pracy z większymi zbiorami.
+        </li>
+        <li>Generuj raporty w dedykowanej zakładce 'Raporty' w aplikacji.</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>Poznaj Główne Funkcje Menu</h2>
+      <p>
+        Nawiguj po aplikacji i odkryj jej możliwości dzięki intuicyjnemu menu
+        głównemu:
+      </p>
+
+      <h3>Menu Plik</h3>
+      <ul>
+        <li><strong>Zakończ:</strong> Bezpiecznie zamknij aplikację.</li>
+      </ul>
+
+      <h3>Menu Ustawienia</h3>
+      <ul>
+        <li>
+          <strong>Ustawienia globalne:</strong> Dostosuj globalne parametry
+          aplikacji, takie jak domyślne ścieżki, limity zasobów czy preferencje
+          interfejsu użytkownika.
+        </li>
+      </ul>
+
+      <h3>Menu Narzędzia</h3>
+      <ul>
+        <li>
+          <strong>Profilowanie sprzętu:</strong> Uruchom analizę wydajności
+          Twojego komputera, aby zoptymalizować ustawienia aplikacji dla
+          szybszego działania.
+        </li>
+        <li>
+          <strong>Wyczyść pamięć podręczną:</strong> Usuń tymczasowe pliki
+          modeli przechowywane w pamięci podręcznej, aby zwolnić miejsce na
+          dysku lub rozwiązać potencjalne problemy z modelami.
+        </li>
+        <li>
+          <strong>Optymalizuj wydajność:</strong> Uruchom proces, który
+          dostosowuje różne parametry aplikacji w celu jej efektywniejszego
+          działania.
+        </li>
+        <li>
+          <strong>Przygotowanie danych AI:</strong> Skorzystaj z dedykowanego
+          narzędzia, które ułatwia przygotowanie zbiorów danych na potrzeby
+          treningu modeli. Funkcje obejmują importowanie i organizację danych,
+          automatyczny podział na zbiory treningowe, walidacyjne i testowe z
+          zachowaniem proporcji klas, walidację poprawności struktury katalogów
+          oraz eksport przygotowanych zbiorów gotowych do użycia w procesie
+          treningowym.
+        </li>
+      </ul>
+
+      <h3>Menu Pomoc</h3>
+      <ul>
+        <li>
+          <strong>O programie:</strong> Wyświetl informacje o wersji aplikacji,
+          jej twórcach oraz podstawowe informacje licencyjne.
+        </li>
+      </ul>
+    </div>
+  </body>
+</html>
