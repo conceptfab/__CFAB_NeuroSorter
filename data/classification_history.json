@@ -1,68 +1,74 @@
 [
     {
-        "class_name": "decoration",
-        "confidence": 0.127685546875,
-        "date": "2025-05-11T19:04:38.719670",
-        "image_path": "F:/_set_A/train/animal/1029843.58f9122dc9b53.jpg"
+        "date": "2025-05-11T21:04:34.404429",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/2574200.5d9cf9ac407bf 1_copy_1.jpg",
+        "class_name": "deocorative_greenery",
+        "confidence": 0.94189453125
     },
     {
-        "class_name": "childroom",
-        "confidence": 0.12408447265625,
-        "date": "2025-05-11T19:16:42.389361",
-        "image_path": "F:/_set_A/train/animal/Bengal Tiger ANIMATED XGEN.jpg"
+        "date": "2025-05-11T21:05:05.978180",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/2751779.5e70eb6d113eb.jpg",
+        "class_name": "deocorative_greenery",
+        "confidence": 0.98046875
     },
     {
-        "class_name": "cabinet_shelf_wardrobe",
-        "confidence": 0.1090087890625,
-        "date": "2025-05-11T19:16:50.785103",
-        "image_path": "F:/_set_A/train/animal/Giant Panda  RIG XGEN-CORE.jpg"
+        "date": "2025-05-11T21:05:09.818217",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/6177115.65c433d5cb711.jpg",
+        "class_name": "indoor_plant",
+        "confidence": 0.5048828125
     },
     {
-        "class_name": "building",
-        "confidence": 0.11236572265625,
-        "date": "2025-05-11T19:17:44.499209",
-        "image_path": "F:/_set_A/train/animal/1029298.58f8d5abeabbd.jpg"
+        "date": "2025-05-11T21:05:23.823675",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/6161825.65bf5aceceb8e.jpg",
+        "class_name": "deocorative_greenery",
+        "confidence": 0.95166015625
     },
     {
-        "class_name": "animal",
-        "confidence": 0.99169921875,
-        "date": "2025-05-11T19:19:26.967832",
-        "image_path": "F:/_set_A/train/animal/1029298.58f8d5abeabbd.jpg"
+        "date": "2025-05-11T21:05:27.260577",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/4216245.628dfabdbeaf8.jpg",
+        "class_name": "deocorative_greenery",
+        "confidence": 0.9755859375
     },
     {
-        "class_name": "animal",
-        "confidence": 0.724609375,
-        "date": "2025-05-11T19:23:04.505000",
-        "image_path": "F:/_set_A/train/animal/American Bald Eagle Animated.jpg"
+        "date": "2025-05-11T21:05:30.856926",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/4216248.628dfabdc37af.jpg",
+        "class_name": "deocorative_greenery",
+        "confidence": 0.68505859375
     },
     {
-        "class_name": "animal",
-        "confidence": 0.9541015625,
-        "date": "2025-05-11T19:25:56.667618",
-        "image_path": "F:/_set_A/train/animal/Lion 2 Animated Polygonal Mane.jpg"
+        "date": "2025-05-11T21:05:35.764374",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/4267941.62ad967ddcdb0.jpg",
+        "class_name": "deocorative_greenery",
+        "confidence": 0.99072265625
     },
     {
-        "class_name": "bathroom",
-        "confidence": 0.92041015625,
-        "date": "2025-05-11T19:42:16.488339",
-        "image_path": "F:/______training_database_V2/bathroom/3D classic victorian bathroom - https___p.turbosquid.com_ts-thumb_8P_16mNW4_I8imV4PK_preview_victorian_classic_wire_cam01_04_jpg_1601025428_1920x1080_fit_q87_.jpg"
+        "date": "2025-05-11T21:05:39.447845",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/Barbaris Tunberga set №2.jpg",
+        "class_name": "deocorative_greenery",
+        "confidence": 0.99169921875
     },
     {
-        "class_name": "bathroom",
-        "confidence": 0.98974609375,
-        "date": "2025-05-11T19:47:33.190231",
-        "image_path": "F:/______training_database_V2/bathroom/7290.526873a5d7f4a.jpg"
+        "date": "2025-05-11T21:05:48.717062",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/5999588.658181a839f0c.jpg",
+        "class_name": "deocorative_greenery",
+        "confidence": 0.6279296875
     },
     {
-        "date": "2025-05-11T20:26:08.618478",
-        "image_path": "F:/______training_database_V2/bathroom/3D classic victorian bathroom - https___p.turbosquid.com_ts-thumb_8P_16mNW4_I8imV4PK_preview_victorian_classic_wire_cam01_04_jpg_1601025428_1920x1080_fit_q87_.jpg",
-        "class_name": "scene",
-        "confidence": 0.61376953125
+        "date": "2025-05-11T21:05:55.017325",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/6161825.65bf5aceceb8e.jpg",
+        "class_name": "deocorative_greenery",
+        "confidence": 0.95166015625
     },
     {
-        "date": "2025-05-11T20:26:14.080682",
-        "image_path": "F:/______training_database_V2/bathroom/11704.526990617cb19.jpg",
-        "class_name": "bathroom",
-        "confidence": 0.98291015625
+        "date": "2025-05-11T21:05:59.748306",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/2574200.5d9cf9ac407bf 4.jpg",
+        "class_name": "deocorative_greenery",
+        "confidence": 0.98974609375
+    },
+    {
+        "date": "2025-05-11T21:06:03.393048",
+        "image_path": "F:/______training_database_V2/deocorative_greenery/2574200.5d9cf9ac407bf 2.jpg",
+        "class_name": "deocorative_greenery",
+        "confidence": 0.72998046875
     }
 ]
