@@ -173,7 +173,7 @@ class BatchProcessor(QWidget, TabInterface):
         self.min_confidence_slider.setToolTip(
             "Ustaw minimalny próg pewności dla klasyfikacji (0.00 - 1.00)"
         )
-        self.min_confidence_slider.setMinimumWidth(480)
+        self.min_confidence_slider.setMinimumWidth(768)
         min_confidence_layout.addWidget(self.min_confidence_slider, 2)
 
         self.min_confidence_value_label = QLabel(
@@ -193,7 +193,7 @@ class BatchProcessor(QWidget, TabInterface):
         self.max_confidence_slider.setToolTip(
             "Ustaw maksymalny próg pewności dla klasyfikacji (0.00 - 1.00)"
         )
-        self.max_confidence_slider.setMinimumWidth(480)
+        self.max_confidence_slider.setMinimumWidth(768)
         max_confidence_layout.addWidget(self.max_confidence_slider, 2)
 
         self.max_confidence_value_label = QLabel(

@@ -270,21 +270,183 @@
         "image_path": "F:/_sort_files/lamp/3392678.608013e2e4816.jpg"
     },
     {
+        "class_name": "indoor_plant",
+        "confidence": 0.99658203125,
         "date": "2025-05-11T22:48:55.058289",
-        "image_path": "F:/_sort_files/indoor_plant/3DC_PDI_003_Monstera_06_CoronaPhysicalMtl_4K.jpg",
-        "class_name": "indoor_plant",
-        "confidence": 0.99658203125
+        "image_path": "F:/_sort_files/indoor_plant/3DC_PDI_003_Monstera_06_CoronaPhysicalMtl_4K.jpg"
     },
     {
+        "class_name": "indoor_plant",
+        "confidence": 0.93505859375,
         "date": "2025-05-11T22:49:03.168659",
-        "image_path": "F:/_sort_files/indoor_plant/2664673.5e14ce8f06683 4.jpg",
-        "class_name": "indoor_plant",
-        "confidence": 0.93505859375
+        "image_path": "F:/_sort_files/indoor_plant/2664673.5e14ce8f06683 4.jpg"
     },
     {
-        "date": "2025-05-11T22:50:28.828635",
-        "image_path": "F:/_sort_files/indoor_plant/Monstera-adansonii_PRV3.jpg",
         "class_name": "indoor_plant",
-        "confidence": 0.9619140625
+        "confidence": 0.9619140625,
+        "date": "2025-05-11T22:50:28.828635",
+        "image_path": "F:/_sort_files/indoor_plant/Monstera-adansonii_PRV3.jpg"
+    },
+    {
+        "date": "2025-05-12T00:34:59.426054",
+        "image_path": "D:/___test_SET/3.jpg",
+        "class_name": "technology",
+        "confidence": 0.9931640625
+    },
+    {
+        "date": "2025-05-12T00:35:02.565310",
+        "image_path": "D:/___test_SET/0002.jpg",
+        "class_name": "food",
+        "confidence": 0.93115234375
+    },
+    {
+        "date": "2025-05-12T00:35:05.252181",
+        "image_path": "D:/___test_SET/01.jpg",
+        "class_name": "pouffe_or_other_seat",
+        "confidence": 0.912109375
+    },
+    {
+        "date": "2025-05-12T00:35:08.018041",
+        "image_path": "D:/___test_SET/0001.jpg",
+        "class_name": "food",
+        "confidence": 0.96630859375
+    },
+    {
+        "date": "2025-05-12T00:35:10.422413",
+        "image_path": "D:/___test_SET/3DC_PDI_008_Calathea_05_CoronaPhysicalMtl_4K.jpg",
+        "class_name": "indoor_plant",
+        "confidence": 0.912109375
+    },
+    {
+        "date": "2025-05-12T00:35:14.474785",
+        "image_path": "D:/___test_SET/3DC_Pilea_Opacity_4k.jpg",
+        "class_name": "texture_alpha",
+        "confidence": 0.7685546875
+    },
+    {
+        "date": "2025-05-12T00:35:18.073275",
+        "image_path": "D:/___test_SET/801 D4 Tower Speaker.jpg",
+        "class_name": "technology",
+        "confidence": 0.4541015625
+    },
+    {
+        "date": "2025-05-12T00:35:23.213200",
+        "image_path": "D:/___test_SET/786.52683d5fcb854.jpg",
+        "class_name": "animal",
+        "confidence": 0.859375
+    },
+    {
+        "date": "2025-05-12T00:35:28.772792",
+        "image_path": "D:/___test_SET/1041.52683e6bf0cd9.jpg",
+        "class_name": "bathroom",
+        "confidence": 0.62939453125
+    },
+    {
+        "date": "2025-05-12T00:35:32.423012",
+        "image_path": "D:/___test_SET/1900S BOULANGERIE DINING TABLES.jpg",
+        "class_name": "table_chair",
+        "confidence": 0.9599609375
+    },
+    {
+        "date": "2025-05-12T00:35:35.206509",
+        "image_path": "D:/___test_SET/1333 Flamingo Zanotta Sofa.jpeg",
+        "class_name": "sofa",
+        "confidence": 0.6689453125
+    },
+    {
+        "date": "2025-05-12T00:35:39.707962",
+        "image_path": "D:/___test_SET/38.png",
+        "class_name": "table_chair",
+        "confidence": 0.288818359375
+    },
+    {
+        "date": "2025-05-12T00:35:45.911415",
+        "image_path": "D:/___test_SET/35.png",
+        "class_name": "texture_color",
+        "confidence": 0.49755859375
+    },
+    {
+        "date": "2025-05-12T00:35:48.962912",
+        "image_path": "D:/___test_SET/39.png",
+        "class_name": "texture_metallic",
+        "confidence": 0.290771484375
+    },
+    {
+        "date": "2025-05-12T00:35:52.925116",
+        "image_path": "D:/___test_SET/40.png",
+        "class_name": "texture_color",
+        "confidence": 0.424072265625
+    },
+    {
+        "date": "2025-05-12T00:35:55.553447",
+        "image_path": "D:/___test_SET/46bae30964b8cf0cb499f72ebba8a981.jpg",
+        "class_name": "texture_color",
+        "confidence": 0.8271484375
+    },
+    {
+        "date": "2025-05-12T00:35:58.941209",
+        "image_path": "D:/___test_SET/32.png",
+        "class_name": "texture_color",
+        "confidence": 0.275390625
+    },
+    {
+        "date": "2025-05-12T00:36:06.017096",
+        "image_path": "D:/___test_SET/5776.526860e9194eb.jpg",
+        "class_name": "car",
+        "confidence": 0.859375
+    },
+    {
+        "date": "2025-05-12T00:36:09.250308",
+        "image_path": "D:/___test_SET/7309.526873f27348a.jpg",
+        "class_name": "table_chair",
+        "confidence": 0.8564453125
+    },
+    {
+        "date": "2025-05-12T00:36:14.222708",
+        "image_path": "D:/___test_SET/12777.52699c205d76c.jpg",
+        "class_name": "lamp",
+        "confidence": 0.9033203125
+    },
+    {
+        "date": "2025-05-12T00:36:18.337259",
+        "image_path": "D:/___test_SET/11773.526990f518983.jpg",
+        "class_name": "childroom",
+        "confidence": 0.287841796875
+    },
+    {
+        "date": "2025-05-12T00:36:28.758780",
+        "image_path": "D:/___test_SET/12558.5269994cc6245.jpg",
+        "class_name": "cabinet_shelf_wardrobe",
+        "confidence": 0.6513671875
+    },
+    {
+        "date": "2025-05-12T00:36:32.225952",
+        "image_path": "D:/___test_SET/14080.5269b050669e4.jpg",
+        "class_name": "childroom",
+        "confidence": 0.28515625
+    },
+    {
+        "date": "2025-05-12T00:36:40.648271",
+        "image_path": "D:/___test_SET/book102.jpg",
+        "class_name": "texture_color",
+        "confidence": 0.5791015625
+    },
+    {
+        "date": "2025-05-12T00:36:44.773011",
+        "image_path": "D:/___test_SET/book21.jpg",
+        "class_name": "texture_color",
+        "confidence": 0.66845703125
+    },
+    {
+        "date": "2025-05-12T00:36:51.193042",
+        "image_path": "D:/___test_SET/BOOK52.jpg",
+        "class_name": "technology",
+        "confidence": 0.421142578125
+    },
+    {
+        "date": "2025-05-12T00:36:54.391224",
+        "image_path": "D:/___test_SET/BOOK53.png",
+        "class_name": "technology",
+        "confidence": 0.29296875
     }
 ]

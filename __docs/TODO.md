@@ -4,6 +4,7 @@ TODO 0.4
 - sortw
 - pomoc dodatkowe narzędzia
 
+- skalowanie i skaner w jednej zakładce
 - skąd ten log?
         Konfiguracja modelu:
         - Architektura: b0
