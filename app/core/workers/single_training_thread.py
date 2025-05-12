@@ -140,22 +140,57 @@ class SingleTrainingThread(QThread):
             self.logger.info("Używam skryptu: optimized_training.py")
             self.logger.info(f"Zadanie: {task_name}")
             self.logger.info(f"Ścieżka zadania: {task_path}")
+
             # Pobierz sekcję config z danych zadania
             config = task_data.get("config", {})
 
-            # Pobierz parametry zadania z sekcji config
-            model_type = config.get("model_arch", "resnet18")
-            training_dir = config.get("data_dir", "")
+            # Pobierz parametry modelu z konfiguracji
+            model_config = config.get("model", {})
+            model_type = model_config.get("architecture", "resnet18")
+            model_variant = model_config.get("variant", "")
+            if model_variant:
+                model_type = f"{model_type}-{model_variant}"
+
+            # Pobierz parametry treningu
+            training_config = config.get("training", {})
+            epochs = training_config.get("epochs", 10)
+            batch_size = training_config.get("batch_size", 32)
+            learning_rate = training_config.get("learning_rate", 0.001)
+            optimizer_type = training_config.get("optimizer", "AdamW").lower()
+            scheduler_type = training_config.get(
+                "scheduler", "CosineAnnealingWarmRestarts"
+            ).lower()
+            num_workers = training_config.get("num_workers", 0)
+            freeze_base_model = training_config.get("freeze_base_model", False)
+            mixed_precision = training_config.get("mixed_precision", False)
+
+            # Pobierz parametry regularizacji
+            reg_config = config.get("regularization", {})
+            weight_decay = reg_config.get("weight_decay", 0.00015)
+            label_smoothing = reg_config.get("label_smoothing", 0.1)
+
+            # Pobierz parametry augmentacji
+            aug_config = config.get("augmentation", {})
+            mixup_config = aug_config.get("mixup", {})
+            mixup = mixup_config.get("use", False)
+
+            # Pobierz parametry monitorowania
+            monitoring_config = config.get("monitoring", {})
+            early_stopping_config = monitoring_config.get("early_stopping", {})
+            early_stopping = early_stopping_config.get("use", True)
+            patience = early_stopping_config.get("patience", 5)
+
+            # Pobierz parametry zaawansowane
+            advanced_config = config.get("advanced", {})
+            cross_validation_config = advanced_config.get("cross_validation", {})
+            use_cross_validation = cross_validation_config.get("use", False)
+            k_folds = cross_validation_config.get("folds", 5)
+
+            # Pobierz katalogi danych
+            training_dir = config.get("train_dir", "")
             if not training_dir:
-                training_dir = config.get("train_dir", "")
-            if not training_dir or training_dir.strip() == "":
-                error_msg = "Ścieżka do katalogu treningowego jest pusta"
-                self.logger.error(f"BŁĄD w _run_training_task: {error_msg}")
-                raise ValueError(error_msg)
+                training_dir = config.get("data_dir", "")
             validation_dir = config.get("val_dir", None)
-            epochs = config.get("epochs", 10)
-            batch_size = config.get("batch_size", 32)
-            learning_rate = config.get("learning_rate", 0.001)
 
             # Walidacja ścieżek
             is_valid, error_msg = validate_training_directory(training_dir)
@@ -268,6 +303,7 @@ class SingleTrainingThread(QThread):
                     f"EMITOWANO task_progress dla: {task_name}, epoka: {epoch}"
                 )
 
+            # Wywołanie funkcji trenującej z wszystkimi parametrami z konfiguracji
             result = train_model_optimized(
                 model=model.model,
                 train_dir=training_dir,
@@ -277,6 +313,16 @@ class SingleTrainingThread(QThread):
                 learning_rate=learning_rate,
                 progress_callback=progress_callback,
                 should_stop_callback=lambda: self._stopped,
+                freeze_backbone=freeze_base_model,
+                lr_scheduler_type=scheduler_type,
+                early_stopping=early_stopping,
+                mixup=mixup,
+                label_smoothing=label_smoothing,
+                weight_decay=weight_decay,
+                optimizer_type=optimizer_type,
+                augmentation_mode="extended",  # To można również sparametryzować
+                use_cross_validation=use_cross_validation,
+                k_folds=k_folds,
             )
 
             training_time = time.time() - start_time

@@ -51,6 +51,7 @@ def train_model_optimized(
 ):
     """
     Trenuje model na podanym zbiorze danych z wykorzystaniem optymalnych parametrów sprzętowych.
+    Wszystkie parametry powinny być pobierane z pliku konfiguracyjnego JSON.
     """
     # print("\n=== INICJALIZACJA OPTYMALIZOWANEGO TRENINGU ===")
     # print(f"Data rozpoczęcia: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -84,15 +85,16 @@ def train_model_optimized(
 
     # Ustaw optymalną liczbę workerów
     # print("DEBUG: TYMCZASOWE USTAWIANIE num_workers NA 0 DLA TESTU!")
-    recommended_workers = 0  # <--- USTAW NA 0 DLA TESTU
+    recommended_workers = hardware_profile.get("recommended_workers", 0)
 
     # Ustaw mixed precision
     use_mixed_precision = hardware_profile.get("use_mixed_precision", False)
     if use_mixed_precision and torch.cuda.is_available():
         # print("Używam mixed precision (zalecane przez profiler)")
-        pass
+        scaler = torch.amp.GradScaler()
     else:
         use_mixed_precision = False
+        scaler = None
         # print("Mixed precision wyłączone (brak GPU lub niezalecane przez profiler)")
 
     # Inicjalizacja historii treningu
@@ -228,12 +230,6 @@ def train_model_optimized(
 
     # Konfiguracja schedulera
     scheduler = configure_scheduler(optimizer, lr_scheduler_type, num_epochs, patience)
-
-    # Konfiguracja scaler dla mixed precision
-    scaler = None
-    if use_mixed_precision and torch.cuda.is_available():
-        scaler = torch.amp.GradScaler()
-        # print("Włączono mixed precision z GradScaler")
 
     # print("\n=== ROZPOCZYNAM TRENING ===")
 

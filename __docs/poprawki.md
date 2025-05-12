@@ -1,71 +1,153 @@
-Oto proponowane zmiany:
+Przeanalizuję kod plików single_training_thread.py i optimized_training.py pod kątem sztywno wpisanych wartości parametrów, które powinny być pobierane z pliku zadania (JSON).
+Analiza kodu i proponowane zmiany
+1. Zmiany w pliku single_training_thread.py
+python# Zmiana w funkcji _run_training_task
+# Linia: 218-219 - Należy pobrać model_type zgodnie z hierarchią w pliku JSON
 
-Wyłączenie logowania do pliku:
+model_type = config.get("model_arch", "resnet18")
+Powinno być:
+python# Poprawiona struktura pobierania model_type zgodnie ze strukturą JSON
+model_info = config.get("model", {})
+model_type = model_info.get("architecture", "resnet18")
+model_variant = model_info.get("variant", "")
+model_type = f"{model_type}-{model_variant}" if model_variant else model_type
+2. Zmiany w funkcji train_model_optimized w pliku optimized_training.py
+python# Linia 42-48 - Parametry domyślne, które powinny pochodzić z konfiguracji
+freeze_backbone=False,
+lr_scheduler_type="plateau",
+early_stopping=True,
+mixup=True,
+label_smoothing=0.1,
+weight_decay=0.03,
+optimizer_type="adamw",
+Poniżej znajduje się lista zmian, które należy wprowadzić w funkcji _run_training_task w pliku single_training_thread.py:
+pythondef _run_training_task(self, task_data, task_name, task_path):
+    """Wykonuje zadanie treningu modelu."""
+    try:
+        # ...istniejący kod...
+        
+        # Pobierz sekcję config z danych zadania
+        config = task_data.get("config", {})
+        
+        # Pobierz parametry modelu z konfiguracji
+        model_config = config.get("model", {})
+        model_type = model_config.get("architecture", "resnet18")
+        model_variant = model_config.get("variant", "")
+        if model_variant:
+            model_type = f"{model_type}-{model_variant}"
+        
+        # Pobierz parametry treningu
+        training_config = config.get("training", {})
+        epochs = training_config.get("epochs", 10)
+        batch_size = training_config.get("batch_size", 32)
+        learning_rate = training_config.get("learning_rate", 0.001)
+        optimizer_type = training_config.get("optimizer", "AdamW").lower()
+        scheduler_type = training_config.get("scheduler", "CosineAnnealingWarmRestarts").lower()
+        num_workers = training_config.get("num_workers", 0)
+        freeze_base_model = training_config.get("freeze_base_model", False)
+        mixed_precision = training_config.get("mixed_precision", False)
+        
+        # Pobierz parametry regularizacji
+        reg_config = config.get("regularization", {})
+        weight_decay = reg_config.get("weight_decay", 0.00015)
+        label_smoothing = reg_config.get("label_smoothing", 0.1)
+        
+        # Pobierz parametry augmentacji
+        aug_config = config.get("augmentation", {})
+        mixup_config = aug_config.get("mixup", {})
+        mixup = mixup_config.get("use", False)
+        
+        # Pobierz parametry monitorowania
+        monitoring_config = config.get("monitoring", {})
+        early_stopping_config = monitoring_config.get("early_stopping", {})
+        early_stopping = early_stopping_config.get("use", True)
+        patience = early_stopping_config.get("patience", 5)
+        
+        # Pobierz parametry zaawansowane
+        advanced_config = config.get("advanced", {})
+        cross_validation_config = advanced_config.get("cross_validation", {})
+        use_cross_validation = cross_validation_config.get("use", False)
+        k_folds = cross_validation_config.get("folds", 5)
+        
+        # Pobierz katalogi danych
+        training_dir = config.get("train_dir", "")
+        if not training_dir:
+            training_dir = config.get("data_dir", "")
+        validation_dir = config.get("val_dir", None)
+        
+        # ...reszta istniejącego kodu walidacji katalogów...
+        
+        # Wywołanie funkcji trenującej z wszystkimi parametrami z konfiguracji
+        result = train_model_optimized(
+            model=model.model,
+            train_dir=training_dir,
+            val_dir=validation_dir,
+            num_epochs=epochs,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            progress_callback=progress_callback,
+            should_stop_callback=lambda: self._stopped,
+            freeze_backbone=freeze_base_model,
+            lr_scheduler_type=scheduler_type,
+            early_stopping=early_stopping,
+            mixup=mixup,
+            label_smoothing=label_smoothing,
+            weight_decay=weight_decay,
+            optimizer_type=optimizer_type,
+            augmentation_mode="extended",  # To można również sparametryzować
+            use_cross_validation=use_cross_validation,
+            k_folds=k_folds,
+        )
+        
+        # ...reszta kodu...
+3. Poprawka w generowaniu nazwy modelu (bardziej zgodna z formatem JSON)
+python# Linia 343-365 - generowanie nazwy modelu
+model_filename = f"{model_type}_{model_version}_{num_classes}klas_{accuracy:.2f}acc_{epochs}epok_{timestamp}.pt"
+Poprawka:
+python# Bardziej zgodne z konfiguracją w JSON
+model_architecture = model_config.get("architecture", "")
+model_variant = model_config.get("variant", "")
+model_filename = f"{model_architecture}_{model_variant}_{num_classes}klas_{accuracy:.2f}acc_{epochs}epok_{timestamp}.pt"
+4. Poprawki w pliku optimized_training.py
+Funkcja train_model_optimized powinna być zmieniona, aby uwzględniała wszystkie parametry z pliku JSON:
+pythondef train_model_optimized(
+    model,
+    train_dir,
+    val_dir=None,
+    num_epochs=10,
+    batch_size=None,
+    learning_rate=0.001,
+    device=None,
+    progress_callback=None,
+    freeze_backbone=False,
+    lr_scheduler_type="plateau",  # Uwaga: W JSONie jest "CosineAnnealingWarmRestarts"
+    early_stopping=True,
+    mixup=True,  # Powinno być pobierane z JSON
+    label_smoothing=0.1,
+    weight_decay=0.03,  # Powinno być pobierane z JSON
+    optimizer_type="adamw",
+    profiler=None,
+    augmentation_mode="extended",
+    augmentation_params=None,
+    should_stop_callback=None,
+    use_cross_validation=False,
+    k_folds=5,
+    freeze_layers_ratio=0.7,  # Powinno być pobierane z JSON
+):
+Podsumowanie zaproponowanych zmian:
 
-python# Plik: data_splitter_gui.py
-# Linia ~2775-2798 (metoda _setup_main_logger_and_qt_handler)
+W pliku single_training_thread.py:
 
-def _setup_main_logger_and_qt_handler(self):
-    self.global_logger = logging.getLogger("CombinedApp")  # Use the global one
-    self.global_logger.handlers.clear()  # Clear any existing handlers from previous runs if any
-    self.global_logger.setLevel(logging.DEBUG)
-    self.global_logger.propagate = False
+Poprawne pobieranie informacji o architekturze i wariancie modelu zgodnie ze strukturą JSON
+Dodanie pobierania wszystkich parametrów treningu z odpowiednich sekcji pliku JSON
+Poprawienie generowania nazwy pliku modelu, aby używało poprawnych wartości z JSONa
 
-    # QtLogHandler for UI console
-    self.qt_log_handler = QtLogHandler(self)
-    formatter = logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(message)s", "%H:%M:%S"
-    )
-    self.qt_log_handler.setFormatter(formatter)
-    self.qt_log_handler.log_signal.connect(self._append_log_to_console)
-    self.global_logger.addHandler(self.qt_log_handler)
 
-    # Wyłączenie logowania do pliku
-    # Optional: Add a file handler for persistent logs
-    # try:
-    #     log_dir = Path("logs")
-    #     log_dir.mkdir(exist_ok=True)
-    #     file_handler = logging.FileHandler(
-    #         log_dir / "combined_app.log", mode="a", encoding="utf-8"
-    #     )
-    #     file_handler.setFormatter(formatter)
-    #     self.global_logger.addHandler(file_handler)
-    #     self.global_logger.info("File logging to combined_app.log enabled.")
-    # except Exception as e:
-    #     self.global_logger.error(f"Could not set up file logger: {e}")
+W pliku optimized_training.py:
 
-Ustalenie stałej wysokości dla grupy konsoli:
+Dostosowanie funkcji train_model_optimized, aby w pełni wykorzystywała parametry przekazane z pliku JSON
+Uwzględnienie mapowania między nazwami w JSON a parametrami funkcji (np. scheduler_type)
 
-python# Plik: data_splitter_gui.py
-# Linia ~2872-2886 (metoda _create_console_panel)
 
-def _create_console_panel(self, parent_layout):
-    # Simplified from main_window.py for brevity, can be expanded
-    console_group = QGroupBox("Konsola Aplikacji")
-    console_group.setFixedHeight(125)  # MODIFIED: Ustawienie stałej wysokości dla całej grupy
-    console_layout_internal = QVBoxLayout(console_group)
 
-    self.console_text = QTextEdit()
-    self.console_text.setReadOnly(True)
-    # Usunięto: self.console_text.setMinimumHeight(75)
-    # Usunięto: self.console_text.setMaximumHeight(100)
-    self.console_text.setStyleSheet(
-        "font-family: 'Consolas', 'Courier New', monospace; font-size: 10px;"
-    )
-    console_layout_internal.addWidget(self.console_text)
-
-    button_row_layout = QHBoxLayout()
-    clear_btn = QPushButton("Wyczyść konsolę")
-    clear_btn.clicked.connect(self.console_text.clear)
-    button_row_layout.addWidget(clear_btn)
-    button_row_layout.addStretch(1)
-    console_layout_internal.addLayout(button_row_layout)
-
-    parent_layout.addWidget(console_group)
-Te zmiany zapewnią, że:
-
-Logowanie do pliku jest wyłączone (zakomentowane)
-Grupa konsoli ma ustaloną stałą wysokość 125px, co obejmuje zarówno obszar konsoli jak i przycisk "Wyczyść konsolę"
-Usunięte zostały niepotrzebne ograniczenia wysokości dla samego pola konsoli, ponieważ teraz cała grupa ma stałą wysokość
-
-Proponowana wartość 125px powinna zapewnić odpowiednią wysokość dla grupy, ale można ją dostosować w zależności od potrzeb interfejsu.
+Wszystkie sztywno wpisane wartości powinny być zastąpione wartościami pobieranymi z pliku zadania (JSON). Dzięki tym zmianom kod będzie elastyczny i będzie pozwalał na konfigurowanie trening modelu całkowicie poprzez plik JSON, bez konieczności modyfikacji kodu.

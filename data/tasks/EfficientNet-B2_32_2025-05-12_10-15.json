@@ -1,9 +1,9 @@
 {
-    "name": "EfficientNet-B2_32_2025-05-12_00-23",
+    "name": "EfficientNet-B2_32_2025-05-12_10-15",
     "type": "training",
-    "status": "Zakończony",
+    "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-12 00:23:51",
+    "created_at": "2025-05-12 10:15:28",
     "config": {
         "train_dir": "F:/_set_A/training_data",
         "data_dir": "F:/_set_A/training_data",
@@ -132,14 +132,5 @@
                 "frequency": 10
             }
         }
-    },
-    "training_time": 0,
-    "training_time_str": "0:00:00",
-    "train_accuracy": 0.879294491348324,
-    "train_loss": 1.022974830419622,
-    "validation_accuracy": 0.909903201787044,
-    "validation_loss": 0.9694368399324871,
-    "model_filename": "",
-    "accuracy": 0.0,
-    "epochs_trained": 0
+    }
 }
