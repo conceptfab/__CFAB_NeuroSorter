@@ -69,15 +69,15 @@ from PyQt6.QtWidgets import (
 
 # --- Global Logger Setup ---
 # Main logger for the combined application
-global_logger = logging.getLogger("CombinedApp")
-global_logger.setLevel(logging.DEBUG)  # Set to DEBUG to catch everything
-# Prevent duplicate messages if root logger also has handlers
-global_logger.propagate = False
+global_logger = logging.getLogger("DataSplitterApp")
+global_logger.setLevel(logging.DEBUG)
 
 # Basic console handler for debugging during development
-# stream_handler = logging.StreamHandler(sys.stdout)
-# stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-# global_logger.addHandler(stream_handler)
+stream_handler = logging.StreamHandler(sys.stdout)
+stream_handler.setFormatter(
+    logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+)
+global_logger.addHandler(stream_handler)
 
 
 # --- QtLogHandler (from main_window.py) ---
@@ -85,34 +85,40 @@ class QtLogHandler(logging.Handler, QObject):
     log_signal = pyqtSignal(str)
 
     def __init__(self, parent=None):
-        super().__init__()
-        QObject.__init__(self, parent)
+        super().__init__()  # Wywołanie konstruktora klasy bazowej
+        QObject.__init__(self, parent)  # Wywołanie konstruktora QObject
 
     def emit(self, record):
-        msg = self.format(record)
-        self.log_signal.emit(msg)
+        try:
+            msg = self.format(record)
+            self.log_signal.emit(msg)
+        except Exception:
+            self.handleError(record)
 
 
 # --- BEGIN: data_splitter_gui.py components ---
 # Simplified config for data_splitter_gui.py to avoid external file dependency for this example
 data_splitter_config_values = {
-    "log_file": "data_splitter_app.log",
     "folders": {
-        "train_folder_name": "training_data",
-        "valid_folder_name": "validation_data",
-    },  # MODIFIED HERE
+        "input": "",
+        "output": "",
+    },
     "defaults": {"train_split_percent": 80, "files_per_category": 10},
     "extensions": {
         "allowed_image_extensions": [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"]
     },
     "ui": {
         "colors": {
-            "primary_color": "#007ACC",
-            "background": "#1E1E1E",
-            "surface": "#252526",
-            "border_color": "#3F3F46",
-            "text_color": "#CCCCCC",
-            "highlight_color": "#00AACC",  # A light blue for highlights
+            "primary_color": "#2196F3",
+            "secondary_color": "#757575",
+            "success_color": "#4CAF50",
+            "warning_color": "#FFC107",
+            "error_color": "#F44336",
+            "background": "#FFFFFF",
+            "surface": "#F5F5F5",
+            "border_color": "#E0E0E0",
+            "text_color": "#212121",
+            "highlight_color": "#2196F3",
         }
     },
 }
@@ -127,36 +133,13 @@ class DS_Config:  # Renamed to DS_Config to avoid potential conflicts
             return self.values.get(section)
         if section in self.values and key in self.values[section]:
             return self.values[section][key]
-        # Fallback for original structure config.get("log_file", "app.log")
-        if (
-            section in self.values
-            and isinstance(self.values[section], str)
-            and key is not None
-        ):
-            return self.values.get(section, key)  # key here is default_value
-        # Fallback for config.get("ui", "colors")["primary_color"]
-        if (
-            section in self.values
-            and isinstance(self.values[section], dict)
-            and key in self.values[section]
-        ):
-            return self.values[section][key]
-
-        global_logger.warning(
-            f"DS_Config: Key '{key}' in section '{section}' not found. Returning None or default."
-        )
-        # Handle cases like config.get("log_file", "app.log") where key is default
-        if (
-            isinstance(key, str) and section not in self.values
-        ):  # if section itself is the key like "log_file"
-            return self.values.get(section, key)
         return None
 
 
 config = DS_Config(data_splitter_config_values)
 
 # DataSplitter specific logger
-ds_logger = logging.getLogger("DataSplitter")  # Use a specific name
+ds_logger = logging.getLogger("DataSplitterApp")  # Use a specific name
 ds_logger.setLevel(logging.DEBUG)
 # Note: FileHandler for DataSplitter logs will be set up inside DataSplitterApp if needed
 # For UI, it should emit signals or use the global_logger with QtLogHandler
@@ -638,6 +621,9 @@ class DS_ScannerSignals(QObject):  # Renamed
     finished = pyqtSignal(dict)
     progress = pyqtSignal(int, str)
     error = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
 
 class DS_FolderScanner(QRunnable):  # Renamed
@@ -2891,41 +2877,37 @@ Unikalne rozdzielczości: {len(resolution_counts) if self.all_resolution_points 
 class CombinedApp(QMainWindow):
     def __init__(self, settings=None):
         super().__init__()
-        self.settings = settings if settings is not None else {}
-        self._setup_main_logger_and_qt_handler()  # Setup logger first
-
-        self.global_logger.info("CombinedApp __init__: Start")
-
-        # Load settings if not provided
-        if not self.settings:  # if settings is empty or None
-            self._load_app_settings()  # Renamed to avoid conflict
-
+        self.settings = settings or {}
+        self._setup_main_logger_and_qt_handler()
         self._apply_material_theme()
-        self._create_main_menu()  # Renamed
-        self._create_main_central_widget()  # Renamed
-        self._create_main_status_bar()  # Renamed
+        self._create_main_menu()
+        self._create_main_central_widget()
+        self._create_main_status_bar()
+        self._load_app_settings()
 
-        self.setWindowTitle("Zestaw Narzędzi Graficznych")
-        # Icon setting
-        try:
-            # Path relative to the script file
-            script_dir = Path(__file__).resolve().parent
-            icon_path = script_dir.parent / "resources" / "img" / "icon.png"
+    def _load_app_settings(self):
+        """Wczytuje ustawienia aplikacji."""
+        # Ustawienia domyślne
+        self.settings = {
+            "theme": "light",
+            "language": "pl",
+            "autosave": False,
+            "last_directory": "",
+            "window": {"width": 1200, "height": 800, "x": 100, "y": 100},
+        }
 
-            if icon_path.exists():
-                self.setWindowIcon(QIcon(str(icon_path)))
-                self.global_logger.info(f"Użyto ikony: {icon_path}")
-            else:
-                self.global_logger.warning(f"Nie znaleziono pliku ikony: {icon_path}")
-        except Exception as e:
-            self.global_logger.error(f"Błąd ustawiania ikony: {e}")
+    def _save_app_settings(self):
+        """Wyłączone zapisywanie ustawień."""
+        pass
 
-        self.setMinimumSize(1000, 700)  # Adjusted for combined tools
-        self.global_logger.info("CombinedApp __init__: Zakończono")
+    def closeEvent(self, event):
+        """Obsługa zamknięcia aplikacji."""
+        # Wyłączone zapisywanie ustawień
+        event.accept()
 
     def _setup_main_logger_and_qt_handler(self):
-        self.global_logger = logging.getLogger("CombinedApp")  # Use the global one
-        self.global_logger.handlers.clear()  # Clear any existing handlers from previous runs if any
+        self.global_logger = logging.getLogger("CombinedApp")
+        self.global_logger.handlers.clear()
         self.global_logger.setLevel(logging.DEBUG)
         self.global_logger.propagate = False
 
@@ -2937,20 +2919,6 @@ class CombinedApp(QMainWindow):
         self.qt_log_handler.setFormatter(formatter)
         self.qt_log_handler.log_signal.connect(self._append_log_to_console)
         self.global_logger.addHandler(self.qt_log_handler)
-
-        # Wyłączenie logowania do pliku
-        # Optional: Add a file handler for persistent logs
-        # try:
-        #     log_dir = Path("logs")
-        #     log_dir.mkdir(exist_ok=True)
-        #     file_handler = logging.FileHandler(
-        #         log_dir / "combined_app.log", mode="a", encoding="utf-8"
-        #     )
-        #     file_handler.setFormatter(formatter)
-        #     self.global_logger.addHandler(file_handler)
-        #     self.global_logger.info("File logging to combined_app.log enabled.")
-        # except Exception as e:
-        #     self.global_logger.error(f"Could not set up file logger: {e}")
 
     def _apply_material_theme(self):
         primary_color = "#007ACC"
@@ -3033,40 +3001,6 @@ class CombinedApp(QMainWindow):
         self.statusBar().showMessage("Gotowy")
         # Could add more info here if needed, e.g., from main_window.py's system info
 
-    def _load_app_settings(self):  # Renamed from _load_settings
-        # Simplified settings for the combined app
-        self.settings_filepath = "combined_app_settings.json"
-        try:
-            if os.path.exists(self.settings_filepath):
-                with open(self.settings_filepath, "r", encoding="utf-8") as f:
-                    self.settings = json.load(f)
-                self.global_logger.info(
-                    f"Ustawienia załadowane z {self.settings_filepath}"
-                )
-            else:
-                self.settings = {
-                    "last_splitter_input_dir": str(Path.home()),
-                    "last_splitter_output_dir": str(Path.home()),
-                    "last_scaller_dir": str(Path.home()),
-                    "last_fixpng_dir": str(Path.home()),
-                    "last_resscan_dir": str(Path.home()),
-                }
-                self.global_logger.info("Utworzono domyślne ustawienia.")
-                self._save_app_settings()
-        except Exception as e:
-            self.global_logger.error(
-                f"Błąd ładowania ustawień: {e}. Używam domyślnych."
-            )
-            self.settings = {}  # Fallback to empty
-
-    def _save_app_settings(self):  # Renamed from _save_settings
-        try:
-            with open(self.settings_filepath, "w", encoding="utf-8") as f:
-                json.dump(self.settings, f, indent=4)
-            self.global_logger.info(f"Ustawienia zapisane do {self.settings_filepath}")
-        except Exception as e:
-            self.global_logger.error(f"Błąd zapisywania ustawień: {e}")
-
     def _create_console_panel(self, parent_layout):
         # Simplified from main_window.py for brevity, can be expanded
         console_group = QGroupBox("Konsola Aplikacji")
@@ -3109,42 +3043,6 @@ class CombinedApp(QMainWindow):
             "- Naprawa PNG (PNG Fixer)\n"
             "- Skaner Rozdzielczości",
         )
-
-    def closeEvent(self, event):
-        self.global_logger.info("Zamykanie CombinedApp...")
-        self._save_app_settings()
-
-        # Perform cleanup for each tab
-        if hasattr(self, "data_splitter_tab") and hasattr(
-            self.data_splitter_tab, "cleanup"
-        ):
-            self.data_splitter_tab.cleanup()
-        if hasattr(self, "scaller_tab") and hasattr(self.scaller_tab, "cleanup"):
-            self.scaller_tab.cleanup()
-        if hasattr(self, "fix_png_tab") and hasattr(self.fix_png_tab, "cleanup"):
-            self.fix_png_tab.cleanup()
-        if hasattr(self, "resolution_scanner_tab") and hasattr(
-            self.resolution_scanner_tab, "cleanup"
-        ):
-            self.resolution_scanner_tab.cleanup()
-
-        # Finalize QtLogHandler
-        if hasattr(self, "qt_log_handler") and self.qt_log_handler:
-            self.global_logger.removeHandler(self.qt_log_handler)
-            if hasattr(
-                self.qt_log_handler, "close"
-            ):  # Standard handler does not have close
-                self.qt_log_handler.close()
-            self.qt_log_handler = None
-
-        # Close all file handlers for the global logger
-        for handler in list(self.global_logger.handlers):  # Iterate over a copy
-            if isinstance(handler, logging.FileHandler):
-                handler.close()
-                self.global_logger.removeHandler(handler)
-
-        self.global_logger.info("CombinedApp zamknięta.")
-        event.accept()
 
 
 if __name__ == "__main__":

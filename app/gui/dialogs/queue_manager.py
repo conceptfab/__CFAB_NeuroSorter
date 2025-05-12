@@ -188,11 +188,13 @@ class QueueManager(QtWidgets.QDialog):
 
     def load_new_tasks(self):
         """Wczytuje zadania ze statusem 'Nowy' z katalogu tasks."""
+        self.parent.logger.info("Rozpoczynam wczytywanie nowych zadań...")
         self.new_tasks = []
         self.tasks_table.setRowCount(0)
         self.current_task_index = 0
 
         if not self.tasks_dir.exists():
+            self.parent.logger.warning("Katalog zadań nie istnieje")
             return
 
         for task_file in self.tasks_dir.glob("*.json"):
@@ -200,10 +202,12 @@ class QueueManager(QtWidgets.QDialog):
                 with open(task_file, "r", encoding="utf-8") as f:
                     task_data = json.load(f)
                     if task_data.get("status") == "Nowy":
+                        self.parent.logger.info(
+                            f"Znaleziono nowe zadanie: {task_data.get('name')}"
+                        )
                         self.new_tasks.append(task_data)
                         row = self.tasks_table.rowCount()
                         self.tasks_table.insertRow(row)
-                        # Poprawiono długość linii dla QTableWidgetItem
                         item_name = QtWidgets.QTableWidgetItem(
                             task_data.get("name", "")
                         )
@@ -219,10 +223,11 @@ class QueueManager(QtWidgets.QDialog):
                         )
                         self.tasks_table.setItem(row, 3, item_created_at)
             except Exception as e:
-                print(f"Błąd wczytywania pliku {task_file}: {e}")
+                self.parent.logger.error(f"Błąd wczytywania pliku {task_file}: {e}")
 
         self.tasks_table.resizeColumnsToContents()
         self.update_progress_bar()
+        self.parent.logger.info(f"Wczytano {len(self.new_tasks)} nowych zadań")
 
     def update_progress_bar(self):
         """Aktualizuje ustawienia progress bara na podstawie liczby zadań."""
@@ -233,16 +238,18 @@ class QueueManager(QtWidgets.QDialog):
     def start_queue(self):
         """Uruchamia kolejkę zadań."""
         if not self.new_tasks:
-            print("Brak zadań do wykonania")
+            self.parent.logger.warning("Brak zadań do wykonania")
             return
 
         self.current_task_index = 0
         self.update_progress_bar()
         self.training_visualization.clear_data()
-        print("Uruchamianie kolejki zadań...")
+        self.parent.logger.info("Uruchamianie kolejki zadań...")
 
         # Utwórz i skonfiguruj wątek dla pierwszego zadania
-        self.training_thread = SingleTrainingThread(self.new_tasks[0])
+        task_file = os.path.join("data", "tasks", f"{self.new_tasks[0]['name']}.json")
+        self.parent.logger.info(f"Przygotowuję pierwsze zadanie: {task_file}")
+        self.training_thread = SingleTrainingThread(task_file)
 
         # Podłącz sygnały
         self.training_thread.task_started.connect(self._on_task_started)
@@ -252,15 +259,21 @@ class QueueManager(QtWidgets.QDialog):
 
         # Uruchom wątek
         self.training_thread.start()
+        self.parent.logger.info("Wątek treningu uruchomiony")
 
     def _on_task_started(self, task_name, task_type):
         """Obsługa rozpoczęcia zadania."""
-        print(f"Rozpoczęto zadanie: {task_name} ({task_type})")
+        self.parent.logger.info(f"Rozpoczęto zadanie: {task_name} (typ: {task_type})")
         self.start_queue_button.setEnabled(False)
         self.stop_training_button.setEnabled(True)
 
     def _on_task_progress(self, task_name, progress, details):
         """Obsługa postępu zadania."""
+        self.parent.logger.debug(
+            f"Postęp zadania {task_name}: epoka {details.get('epoch', 0)}, "
+            f"strata: {details.get('train_loss'):.4f}, "
+            f"dokładność: {details.get('train_acc'):.4f}"
+        )
         # Aktualizuj wizualizację
         self.update_training_progress(
             epoch=details.get("epoch", 0),
@@ -279,6 +292,7 @@ class QueueManager(QtWidgets.QDialog):
     def _on_task_completed(self, task_name, result):
         """Obsługa zakończenia zadania."""
         self.parent.logger.info(f"Zakończono zadanie: {task_name}")
+        self.parent.logger.debug(f"Wyniki zadania: {json.dumps(result, indent=2)}")
 
         # Aktualizuj status zadania w pliku
         base_task_name = task_name.replace(".json", "")
@@ -290,6 +304,9 @@ class QueueManager(QtWidgets.QDialog):
                 task_data["status"] = "Zakończony"
                 with open(task_file, "w", encoding="utf-8") as f:
                     json.dump(task_data, f, indent=4)
+                self.parent.logger.info(
+                    f"Zaktualizowano status zadania {task_name} na 'Zakończony'"
+                )
             except Exception as e:
                 self.parent.logger.error(f"Błąd aktualizacji statusu zadania: {e}")
 
@@ -302,7 +319,7 @@ class QueueManager(QtWidgets.QDialog):
 
                 # Generuj nazwę pliku wykresu
                 timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-                plot_filename = f"{task_name}_{timestamp}.png"
+                plot_filename = f"{base_task_name}_{timestamp}.png"
                 plot_path = os.path.join(plots_dir, plot_filename)
 
                 # Zapisz wykres
@@ -321,16 +338,22 @@ class QueueManager(QtWidgets.QDialog):
         # Przejdź do następnego zadania
         self.current_task_index += 1
         self.update_progress_bar()
+        self.parent.logger.info(
+            f"Przejście do zadania {self.current_task_index + 1} z {len(self.new_tasks)}"
+        )
 
         if self.current_task_index < len(self.new_tasks):
             # Uruchom następne zadanie
             next_task = self.new_tasks[self.current_task_index]
-            self.training_thread = SingleTrainingThread(next_task)
+            next_task_file = os.path.join("data", "tasks", f"{next_task['name']}.json")
+            self.parent.logger.info(f"Przygotowuję następne zadanie: {next_task_file}")
+            self.training_thread = SingleTrainingThread(next_task_file)
             self.training_thread.task_started.connect(self._on_task_started)
             self.training_thread.task_progress.connect(self._on_task_progress)
             self.training_thread.task_completed.connect(self._on_task_completed)
             self.training_thread.error.connect(self._on_task_error)
             self.training_thread.start()
+            self.parent.logger.info("Wątek treningu uruchomiony")
         else:
             # Wszystkie zadania zakończone
             self.parent.logger.info("Wszystkie zadania zostały zakończone")
@@ -340,7 +363,7 @@ class QueueManager(QtWidgets.QDialog):
 
     def _on_task_error(self, task_name, error_message):
         """Obsługa błędu zadania."""
-        print(f"Błąd w zadaniu {task_name}: {error_message}")
+        self.parent.logger.error(f"Błąd w zadaniu {task_name}: {error_message}")
         self.start_queue_button.setEnabled(True)
         self.stop_training_button.setEnabled(False)
         # Zatrzymaj kolejkę w przypadku błędu
@@ -350,9 +373,10 @@ class QueueManager(QtWidgets.QDialog):
     def stop_training(self):
         """Zatrzymuje aktualnie wykonywany trening i całą kolejkę."""
         if self.training_thread and self.training_thread.isRunning():
-            print("Zatrzymywanie treningu...")
+            self.parent.logger.info("Zatrzymywanie treningu...")
             self.training_thread.stop()
             self.training_thread.wait()
+            self.parent.logger.info("Wątek treningu zatrzymany")
 
             if self.current_task_index < len(self.new_tasks):
                 task_name_to_update = self.new_tasks[self.current_task_index].get(
@@ -370,15 +394,20 @@ class QueueManager(QtWidgets.QDialog):
                         task_data["status"] = "Przerwany"
                         with open(task_file_to_update, "w", encoding="utf-8") as f:
                             json.dump(task_data, f, indent=4)
+                        self.parent.logger.info(
+                            f"Zaktualizowano status zadania {task_name_to_update} na 'Przerwany'"
+                        )
                     except Exception as e:
-                        print(f"Błąd aktualizacji statusu zadania: {e}")
+                        self.parent.logger.error(
+                            f"Błąd aktualizacji statusu zadania: {e}"
+                        )
 
             self.start_queue_button.setEnabled(True)
             self.stop_training_button.setEnabled(False)
             self.training_visualization.clear_data()
             self.current_task_index = len(self.new_tasks)
             self.update_progress_bar()
-            print("Trening został zatrzymany")
+            self.parent.logger.info("Trening został zatrzymany")
 
     def next_task(self):
         """Przechodzi do następnego zadania w kolejce."""
