@@ -438,7 +438,14 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 self.precision_check.setChecked(metrics_config.get("precision", True))
                 self.recall_check.setChecked(metrics_config.get("recall", True))
                 self.f1_check.setChecked(metrics_config.get("f1", True))
-                self.topk_check.setChecked(metrics_config.get("topk", False))
+
+                # Poprawiona obsługa topk
+                topk_value = metrics_config.get("topk", False)
+                if isinstance(topk_value, list):
+                    self.topk_check.setChecked(len(topk_value) > 0)
+                else:
+                    self.topk_check.setChecked(bool(topk_value))
+
                 self.confusion_matrix_check.setChecked(
                     metrics_config.get("confusion_matrix", False)
                 )
