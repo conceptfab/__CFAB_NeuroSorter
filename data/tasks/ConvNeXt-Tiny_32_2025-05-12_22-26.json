@@ -1,7 +1,7 @@
 {
     "name": "ConvNeXt-Tiny_32_2025-05-12_22-26",
     "type": "training",
-    "status": "Nowy",
+    "status": "Zakończony",
     "priority": 0,
     "created_at": "2025-05-12 22:26:46",
     "config": {
@@ -132,5 +132,11 @@
                 "frequency": 10
             }
         }
-    }
+    },
+    "training_time": 3193.63,
+    "training_time_str": "0:53:13",
+    "train_accuracy": 0.819659239842726,
+    "train_loss": 1.1657766562433882,
+    "validation_accuracy": 0.8369944211994421,
+    "validation_loss": 1.1055341412623723
 }

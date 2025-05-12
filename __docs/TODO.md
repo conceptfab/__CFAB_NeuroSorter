@@ -1,8 +1,9 @@
 TODO 0.4
 
 
-- plik log w JSON
+- plik log w JSON classifier.py
 - uprządkować strukturę JSON razem z logiem
+- nie dziala wsadowe przetwarzanie
 
 - optymalizacja CUDA w tworzeniu zadań
 - kolejka wsadowa nie zmienia statusu zadadani, nie zapisuje renderu treningu
