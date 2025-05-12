@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 from pathlib import Path
@@ -277,10 +278,9 @@ class QueueManager(QtWidgets.QDialog):
 
     def _on_task_completed(self, task_name, result):
         """Obsługa zakończenia zadania."""
-        print(f"Zakończono zadanie: {task_name}")
+        self.parent.logger.info(f"Zakończono zadanie: {task_name}")
 
         # Aktualizuj status zadania w pliku
-        # Poprawiono długość linii
         base_task_name = task_name.replace(".json", "")
         task_file = os.path.join("data", "tasks", f"{base_task_name}.json")
         if os.path.exists(task_file):
@@ -291,7 +291,32 @@ class QueueManager(QtWidgets.QDialog):
                 with open(task_file, "w", encoding="utf-8") as f:
                     json.dump(task_data, f, indent=4)
             except Exception as e:
-                print(f"Błąd aktualizacji statusu zadania: {e}")
+                self.parent.logger.error(f"Błąd aktualizacji statusu zadania: {e}")
+
+        # Zapisz wykres treningu
+        if hasattr(self, "training_visualization") and self.training_visualization:
+            try:
+                # Utwórz katalog na wykresy jeśli nie istnieje
+                plots_dir = os.path.join("data", "plots")
+                os.makedirs(plots_dir, exist_ok=True)
+
+                # Generuj nazwę pliku wykresu
+                timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+                plot_filename = f"{task_name}_{timestamp}.png"
+                plot_path = os.path.join(plots_dir, plot_filename)
+
+                # Zapisz wykres
+                if self.training_visualization.save_plot(plot_path):
+                    self.parent.logger.info(f"Wykres treningu zapisany w: {plot_path}")
+                    # Reset wizualizacji po zapisaniu
+                    self.training_visualization.clear_data()
+                    self.training_visualization.reset_plot()
+                else:
+                    self.parent.logger.error("Nie udało się zapisać wykresu treningu")
+            except Exception as plot_error:
+                self.parent.logger.error(
+                    f"Błąd podczas zapisywania wykresu: {plot_error}"
+                )
 
         # Przejdź do następnego zadania
         self.current_task_index += 1
@@ -303,13 +328,12 @@ class QueueManager(QtWidgets.QDialog):
             self.training_thread = SingleTrainingThread(next_task)
             self.training_thread.task_started.connect(self._on_task_started)
             self.training_thread.task_progress.connect(self._on_task_progress)
-            # Poprawiono długość linii
             self.training_thread.task_completed.connect(self._on_task_completed)
             self.training_thread.error.connect(self._on_task_error)
             self.training_thread.start()
         else:
             # Wszystkie zadania zakończone
-            print("Wszystkie zadania zostały zakończone")
+            self.parent.logger.info("Wszystkie zadania zostały zakończone")
             self.start_queue_button.setEnabled(True)
             self.stop_training_button.setEnabled(False)
             self.training_visualization.clear_data()

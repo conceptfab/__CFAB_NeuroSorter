@@ -1,0 +1,136 @@
+{
+    "name": "ConvNeXt-Tiny_32_2025-05-12_22-26",
+    "type": "training",
+    "status": "Nowy",
+    "priority": 0,
+    "created_at": "2025-05-12 22:26:46",
+    "config": {
+        "train_dir": "F:/__SET_V3/training_data",
+        "data_dir": "F:/__SET_V3/training_data",
+        "val_dir": "F:/__SET_V3/validation_data",
+        "model": {
+            "architecture": "ConvNeXt",
+            "variant": "ConvNeXt-Tiny",
+            "input_size": 256,
+            "num_classes": 32
+        },
+        "training": {
+            "epochs": 120,
+            "batch_size": 32,
+            "learning_rate": 0.0002,
+            "optimizer": "AdamW",
+            "scheduler": "CosineAnnealingWarmRestarts",
+            "num_workers": 8,
+            "warmup_epochs": 5,
+            "mixed_precision": true,
+            "freeze_base_model": true,
+            "unfreeze_layers": "all",
+            "unfreeze_strategy": "unfreeze_all"
+        },
+        "regularization": {
+            "weight_decay": 0.05,
+            "gradient_clip": 1.0,
+            "label_smoothing": 0.1,
+            "drop_connect_rate": 0.2,
+            "dropout_rate": 0.3,
+            "momentum": 0.9,
+            "epsilon": 1e-06,
+            "swa": {
+                "use": true,
+                "start_epoch": 90
+            }
+        },
+        "augmentation": {
+            "basic": {
+                "use": true,
+                "rotation": 20,
+                "brightness": 0.2,
+                "shift": 0.1,
+                "zoom": 0.15,
+                "horizontal_flip": true,
+                "vertical_flip": false
+            },
+            "mixup": {
+                "use": true,
+                "alpha": 0.8
+            },
+            "cutmix": {
+                "use": true,
+                "alpha": 1.0
+            },
+            "autoaugment": {
+                "use": false
+            },
+            "randaugment": {
+                "use": false,
+                "n": 2,
+                "m": 9
+            }
+        },
+        "preprocessing": {
+            "normalization": "RGB",
+            "scaling": {
+                "method": "Bilinear",
+                "maintain_aspect_ratio": true,
+                "pad_to_square": false,
+                "pad_mode": "constant",
+                "pad_value": 0
+            }
+        },
+        "monitoring": {
+            "metrics": {
+                "accuracy": true,
+                "precision": true,
+                "recall": true,
+                "f1": true,
+                "topk": true,
+                "confusion_matrix": false
+            },
+            "early_stopping": {
+                "patience": 15,
+                "min_delta": 0.0005,
+                "monitor": "val_loss"
+            },
+            "checkpointing": {
+                "best_only": true,
+                "save_frequency": 1,
+                "metric": "val_loss"
+            },
+            "tensorboard": {
+                "use": false,
+                "log_dir": ""
+            },
+            "save_dir": "",
+            "save_logs": false
+        },
+        "advanced": {
+            "scheduler": {
+                "patience": 5,
+                "factor": 0.1,
+                "min_lr": 0.0,
+                "cooldown": 0
+            },
+            "weights": {
+                "init_method": "kaiming_normal",
+                "freeze_cnn": false
+            },
+            "cross_validation": {
+                "use": false,
+                "folds": 5
+            },
+            "distributed": {
+                "use": false,
+                "backend": "nccl",
+                "strategy": "ddp"
+            },
+            "gradients": {
+                "clip": 1.0,
+                "accumulation": 1
+            },
+            "online_validation": {
+                "use": false,
+                "frequency": 10
+            }
+        }
+    }
+}
