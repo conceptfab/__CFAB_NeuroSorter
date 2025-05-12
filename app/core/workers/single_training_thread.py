@@ -268,6 +268,21 @@ class SingleTrainingThread(QThread):
 
             start_time = time.time()
 
+            # Zbuduj ścieżkę zapisu modelu na podstawie nazwy zadania
+            output_dir = os.path.join("data", "models")
+            os.makedirs(output_dir, exist_ok=True)
+            # Upewnij się, że nazwa zadania jest bezpieczna dla systemu plików
+            safe_task_name = (
+                task_name.replace(":", "_")
+                .replace(" ", "_")
+                .replace("/", "_")
+                .replace("\\", "_")
+            )
+            model_save_path = os.path.join(
+                output_dir, f"{safe_task_name}.pt"
+            )  # Użyj rozszerzenia .pt (lub .pth)
+            self.logger.info(f"Wygenerowano ścieżkę zapisu modelu: {model_save_path}")
+
             def progress_callback(
                 epoch,
                 num_epochs,
@@ -323,6 +338,7 @@ class SingleTrainingThread(QThread):
                 augmentation_mode="extended",  # To można również sparametryzować
                 use_cross_validation=use_cross_validation,
                 k_folds=k_folds,
+                model_save_path=model_save_path,
             )
 
             training_time = time.time() - start_time
@@ -431,21 +447,71 @@ class SingleTrainingThread(QThread):
             # Obsługa różnych struktur danych wejściowych
             config = task_data.get("config", {})
 
-            # Jeśli dane są w polu config, używamy ich, w przeciwnym razie używamy bezpośrednio task_data
+            # Podstawowe parametry (już istniejące)
             base_model_path = config.get("base_model", task_data.get("model_path", ""))
             training_dir = config.get(
                 "train_dir",
                 config.get("training_dir", task_data.get("training_dir", "")),
             )
             validation_dir = config.get("val_dir", task_data.get("val_dir", None))
-            epochs = config.get("epochs", task_data.get("epochs", 5))
-            batch_size = config.get("batch_size", task_data.get("batch_size", 32))
-            learning_rate = config.get(
+
+            # Parametry treningu
+            training_config = config.get("training", {})
+            epochs = training_config.get("epochs", task_data.get("epochs", 5))
+            batch_size = training_config.get(
+                "batch_size", task_data.get("batch_size", 32)
+            )
+            learning_rate = training_config.get(
                 "learning_rate", task_data.get("learning_rate", 0.0001)
             )
-            freeze_ratio = config.get(
+            optimizer_type = training_config.get("optimizer", "adamw").lower()
+            scheduler_type = training_config.get("scheduler", "plateau").lower()
+            warmup_epochs = training_config.get("warmup_epochs", 1)
+            use_mixed_precision = training_config.get("mixed_precision", True)
+
+            # Parametry regularizacji
+            reg_config = config.get("regularization", {})
+            weight_decay = reg_config.get("weight_decay", 0.01)
+            label_smoothing = reg_config.get("label_smoothing", 0.1)
+
+            # Parametry zapobiegania zapominaniu katastroftalnemu
+            advanced_config = config.get("advanced", {})
+            cf_prevention = advanced_config.get(
+                "catastrophic_forgetting_prevention", {}
+            )
+            prevent_forgetting = cf_prevention.get("enable", True)
+            preserve_original_classes = cf_prevention.get(
+                "preserve_original_classes", True
+            )
+
+            # Konfiguracja EWC
+            ewc_config = cf_prevention.get("ewc_regularization")
+
+            # Konfiguracja destylacji wiedzy
+            knowledge_distillation_config = cf_prevention.get("knowledge_distillation")
+
+            # Konfiguracja rehearsal
+            rehearsal_config = cf_prevention.get("rehearsal")
+
+            # Konfiguracja zamrażania warstw
+            layer_freezing_config = cf_prevention.get("layer_freezing", {})
+            freeze_ratio = layer_freezing_config.get(
                 "freeze_ratio", task_data.get("freeze_ratio", 0.8)
             )
+
+            # Parametry augmentacji
+            augmentation_params = config.get("augmentation", {})
+
+            # Parametry preprocessingu
+            preprocessing_params = config.get("preprocessing", {})
+
+            # Parametry monitorowania
+            monitoring_config = config.get("monitoring", {})
+            early_stopping_config = monitoring_config.get("early_stopping", {})
+            early_stopping_patience = early_stopping_config.get("patience", 5)
+
+            # Parametr użycia green diffusion
+            use_green_diffusion = False  # Brak bezpośredniego odpowiednika w JSON
 
             self.logger.info("[FINETUNE] ===== PARAMETRY DOSZKALANIA =====")
             self.logger.info(f"[FINETUNE] Ścieżka modelu bazowego: {base_model_path}")
@@ -508,9 +574,25 @@ class SingleTrainingThread(QThread):
                 batch_size=batch_size,
                 learning_rate=learning_rate,
                 freeze_ratio=freeze_ratio,
+                optimizer_type=optimizer_type,
+                scheduler_type=scheduler_type,
+                label_smoothing=label_smoothing,
+                weight_decay=weight_decay,
+                warmup_epochs=warmup_epochs,
+                use_mixed_precision=use_mixed_precision,
+                prevent_forgetting=prevent_forgetting,
+                preserve_original_classes=preserve_original_classes,
+                rehearsal_config=rehearsal_config,
+                knowledge_distillation_config=knowledge_distillation_config,
+                ewc_config=ewc_config,
+                layer_freezing_config=layer_freezing_config,
+                augmentation_params=augmentation_params,
+                preprocessing_params=preprocessing_params,
+                early_stopping_patience=early_stopping_patience,
+                use_green_diffusion=use_green_diffusion,
+                task_name=task_name,
                 progress_callback=progress_callback,
                 should_stop_callback=lambda: self._stopped,
-                task_name=task_name,
             )
 
             training_time = time.time() - start_time

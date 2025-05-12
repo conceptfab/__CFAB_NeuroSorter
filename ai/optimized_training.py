@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import time
@@ -25,6 +26,27 @@ from .preprocessing import (
 )
 
 
+def log_model_info(model, log_path, extra_info=None):
+    """Zapisuje informacje o modelu do pliku log."""
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(
+            f"\n=== INFORMACJE O MODELU ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ===\n"
+        )
+        f.write(f"Typ modelu: {type(model)}\n")
+        if hasattr(model, "classifier"):
+            f.write(f"Głowica classifier: {model.classifier}\n")
+        if hasattr(model, "fc"):
+            f.write(f"Głowica fc: {model.fc}\n")
+        if hasattr(model, "class_names"):
+            f.write(f"class_names: {getattr(model, 'class_names', None)}\n")
+        if hasattr(model, "num_classes"):
+            f.write(f"num_classes: {getattr(model, 'num_classes', None)}\n")
+        f.write(f"Parametry modelu: {sum(p.numel() for p in model.parameters())}\n")
+        if extra_info:
+            f.write(f"Dodatkowe info: {extra_info}\n")
+        f.write("=== KONIEC INFO ===\n\n")
+
+
 def train_model_optimized(
     model,
     train_dir,
@@ -48,11 +70,33 @@ def train_model_optimized(
     use_cross_validation=False,
     k_folds=5,
     freeze_layers_ratio=0.7,
+    model_log_path=None,
+    model_source_info=None,
+    output_dir=None,
+    model_save_path=None,
 ):
     """
     Trenuje model na podanym zbiorze danych z wykorzystaniem optymalnych parametrów sprzętowych.
     Wszystkie parametry powinny być pobierane z pliku konfiguracyjnego JSON.
     """
+    # Ustal ścieżkę logu modelu: zawsze w folderze docelowym modelu
+    if model_save_path is not None:
+        base, _ = os.path.splitext(model_save_path)
+        model_log_path = base + ".log"
+    else:
+        # Jeśli ścieżka zapisu nie jest podana, użyj domyślnej nazwy z timestampem
+        models_dir = os.path.join("data", "models")
+        os.makedirs(models_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"training_log_{timestamp}.log"
+        model_log_path = os.path.join(models_dir, log_filename)
+
+    print(
+        f"[INFO] Rozpoczynam logowanie informacji o modelu do pliku: {model_log_path}"
+    )
+    # Logowanie informacji o modelu na początku treningu
+    log_model_info(model, model_log_path, extra_info=model_source_info)
+
     # print("\n=== INICJALIZACJA OPTYMALIZOWANEGO TRENINGU ===")
     # print(f"Data rozpoczęcia: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
@@ -503,6 +547,9 @@ def train_model_optimized(
     if val_loader:
         print(f"Najlepsza epoka: {history['best_epoch'] + 1}")
         print(f"Najlepsza strata walidacyjna: {history['best_val_loss']:.4f}")
+
+    # Po zakończeniu treningu zapisz jeszcze raz info o modelu (np. po fine-tuningu)
+    log_model_info(model, model_log_path, extra_info="Stan modelu po treningu")
 
     result = {
         "history": history,

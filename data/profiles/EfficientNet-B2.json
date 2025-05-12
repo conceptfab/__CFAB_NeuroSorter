@@ -9,7 +9,7 @@
       "architecture": "EfficientNet",
       "variant": "EfficientNet-B2",
       "input_size": 288,
-      "num_classes": 33,
+      "num_classes": 32,
       "pretrained": true,
       "pretrained_weights": "imagenet",
       "feature_extraction_only": false,

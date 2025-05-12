@@ -35,6 +35,8 @@ warnings.filterwarnings(
 )
 warnings.filterwarnings("ignore", category=UserWarning, message="Recall is ill-defined")
 
+from ai.optimized_training import log_model_info  # <<< DODANY IMPORT
+
 # Załóżmy, że te importy działają w Twoim środowunku
 from .catastrophic_forgetting import compute_fisher_information
 from .classifier import ImageClassifier
@@ -467,6 +469,44 @@ def fine_tune_model(
     # ... (logowanie parametrów wejściowych - bez zmian)
     start_training_time = time.time()
 
+    # <<< POCZĄTEK DODANEGO KODU DLA LOGOWANIA >>>
+    # Ustalenie ścieżki logu
+    os.makedirs(output_dir, exist_ok=True)  # Upewnij się, że katalog wyjściowy istnieje
+    safe_task_name = ""
+    if task_name:
+        safe_task_name = (
+            task_name.replace(":", "_")
+            .replace(" ", "_")
+            .replace("/", "_")
+            .replace("\\\\", "_")
+        )
+        log_filename = f"{safe_task_name}_finetuning.log"
+    else:
+        base_model_filename_stem = os.path.splitext(os.path.basename(base_model_path))[
+            0
+        ]
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"{base_model_filename_stem}_finetuning_{timestamp}.log"
+
+    model_log_path = os.path.join(output_dir, log_filename)
+    print(f"Plik logu dla fine-tuningu zostanie zapisany w: {model_log_path}")
+
+    # Przygotowanie informacji dodatkowych dla log_model_info
+    initial_log_extra_info = {
+        "task_type": "fine-tuning",
+        "task_name": task_name,
+        "base_model_path": base_model_path,
+        "train_dir": train_dir,
+        "val_dir": val_dir,
+        "num_epochs_config": num_epochs,
+        "batch_size_config": batch_size,
+        "learning_rate_config": learning_rate,
+        "freeze_ratio_config": freeze_ratio,
+        "optimizer_type_config": optimizer_type,
+        # Można dodać więcej parametrów konfiguracyjnych
+    }
+    # <<< KONIEC DODANEGO KODU DLA LOGOWANIA >>>
+
     print("\n=== WERYFIKACJA STRUKTURY KATALOGÓW ===")
     dir_ver_result = verify_training_directories(train_dir, val_dir)
     display_directory_structure(dir_ver_result)
@@ -487,6 +527,15 @@ def fine_tune_model(
         base_classifier.model.to(
             device
         )  # Kluczowe: przenieś model na urządzenie OD RAZU
+        # Logowanie informacji o modelu bazowym PRZED modyfikacjami
+        log_model_info(
+            base_classifier.model,
+            model_log_path,
+            extra_info={
+                **initial_log_extra_info,
+                "stage": "Przed modyfikacją głowicy i fine-tuningiem",
+            },
+        )
     except Exception as e:
         raise RuntimeError(
             f"Nie udało się załadować modelu bazowego z {base_model_path}: {e}"
@@ -1849,6 +1898,19 @@ def fine_tune_model(
         print(f"Zapisano końcowy model: {final_model_path}")
         print(
             f"  Konfiguracja zapisana w: {os.path.splitext(final_model_path)[0] + '_config.json'}"
+        )
+        # Logowanie informacji o modelu PO fine-tuningu
+        final_log_extra_info = {
+            **initial_log_extra_info,
+            "stage": "Po fine-tuningu i zapisie",
+            "final_model_path": final_model_path,
+            "best_epoch_achieved": history["best_epoch"] + 1,
+            "best_val_loss_achieved": history["best_val_loss"],
+        }
+        log_model_info(
+            final_classifier_to_save.model,
+            model_log_path,
+            extra_info=final_log_extra_info,
         )
     except Exception as e_save:
         print(f"BŁĄD podczas zapisu modelu z ImageClassifier.save(): {e_save}")

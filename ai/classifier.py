@@ -12,6 +12,26 @@ from ai.models import get_model
 
 class ImageClassifier:
     def __init__(self, model_type="b0", num_classes=10, weights_path=None):
+        # Jeśli istnieje plik konfiguracyjny, pobierz z niego model_type i num_classes
+        config_file_name = "_config.json"
+        config_path = None
+        if weights_path:
+            config_path = os.path.splitext(weights_path)[0] + config_file_name
+        config_data = None
+        if config_path and os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config_data = json.load(f)
+                # Nadpisz model_type i num_classes z configu
+                if "model_type" in config_data:
+                    model_type = config_data["model_type"]
+                if "num_classes" in config_data:
+                    num_classes = config_data["num_classes"]
+            except Exception as e:
+                print(
+                    f"BŁĄD: Nie udało się wczytać pliku konfiguracyjnego {config_path}: {e}"
+                )
+
         # Normalizacja nazwy modelu
         self.model_type = model_type.lower()
         self.model_type = self.model_type.replace("efficientnet-", "").replace(
@@ -197,102 +217,55 @@ class ImageClassifier:
                 )
                 print(
                     f"  > Plik '{config_file_name}' jest preferowanym "
-                    "źródłem mapowania klas. Rozważ jego "
-                    "utworzenie/aktualizację."
+                    "źródłem mapowania klas. Rozważ jego utworzenie."
                 )
             else:
-                self.class_names = {}
                 print(
-                    "[KRYTYCZNE OSTRZEŻENIE] Nie udało się załadować "
-                    "mapowania klas ani z pliku checkpointu, "
-                    "ani z pliku konfiguracyjnego!"
+                    "[BŁĄD] Nie znaleziono mapowania klas ani w pliku "
+                    "konfiguracyjnym, ani w checkpointu!"
                 )
+                print("  > Tworzenie domyślnego mapowania klas...")
+                self.class_names = {
+                    str(i): f"Kategoria_{i}" for i in range(self.num_classes)
+                }
+                print(f"  > Utworzono {len(self.class_names)} domyślnych kategorii.")
+
+            # --- Krok 4: Weryfikacja mapowania klas ---
+            if not self.class_names:
+                print("[BŁĄD] Mapowanie klas jest puste!")
+                raise ValueError("Nie udało się załadować mapowania klas.")
+
+            print("\nWczytane mapowanie klas:")
+            for idx, name in sorted(self.class_names.items(), key=lambda x: int(x[0])):
+                print(f"  {idx}: {name}")
+
+            # Załaduj wagi modelu
+            if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+                self.model.load_state_dict(checkpoint["model_state_dict"])
+            elif not isinstance(checkpoint, dict):
+                self.model.load_state_dict(checkpoint)
+            else:
                 print(
-                    "  > Użyte zostaną domyślne nazwy klas "
-                    "(np. 'Kategoria_0'), co może prowadzić do "
-                    "niepoprawnych wyników."
+                    f"[OSTRZEŻENIE] Próba załadowania wag z pliku o "
+                    f"nieoczekiwanej strukturze (brak klucza 'model_state_dict'). "
+                    f"Plik: {weights_path}"
                 )
-                print("  > Sprawdź pliki modelu i konfiguracji!")
-            print("=" * 60 + "\n")
-
-            # Aktualizacja typu modelu i liczby klas na podstawie checkpointu (jeśli to DICT)
-            if isinstance(checkpoint, dict):
-                if (
-                    "model_type" in checkpoint
-                    and checkpoint["model_type"] != self.model_type
-                ):
-                    print(
-                        f"INFO: Aktualizacja typu modelu z checkpointu: {checkpoint['model_type']}"
-                    )
-                    self.model_type = checkpoint["model_type"]
-                    self.model = (
-                        self._create_model()
-                    )  # Utwórz nowy model z odpowiednim typem
-
-                if "num_classes" in checkpoint:
-                    if checkpoint["num_classes"] != self.num_classes:
-                        print(
-                            f"INFO: Aktualizacja liczby klas z checkpointu: {checkpoint['num_classes']}"
-                        )
-                        self.num_classes = checkpoint["num_classes"]
-                        self.model = self._create_model()  # Utwórz nowy model
-
-                # Próba ładowania wag modelu
                 try:
-                    if "model_state_dict" in checkpoint:
-                        self.model.load_state_dict(
-                            checkpoint["model_state_dict"], strict=False
-                        )
-                    elif "state_dict" in checkpoint:
-                        self.model.load_state_dict(
-                            checkpoint["state_dict"], strict=False
-                        )
-                    else:
-                        # Zakładamy, że checkpoint to bezpośrednio state_dict, jeśli nie jest to dict
-                        # lub nie ma kluczy 'model_state_dict'/'state_dict'
-                        # Ta gałąź jest mniej prawdopodobna po dodaniu obsługi class_names powyżej
-                        # dla przypadku gdy checkpoint nie jest słownikiem.
-                        if not isinstance(checkpoint, dict):
-                            self.model.load_state_dict(checkpoint, strict=False)
-                        else:
-                            # Jeśli to dict, ale nie ma kluczy wag, to może być problem
-                            print(
-                                "OSTRZEŻENIE: Checkpoint jest słownikiem, ale nie zawiera kluczy 'model_state_dict' ani 'state_dict'. Wagi mogły nie zostać załadowane."
-                            )
-
-                except Exception as e_load:
+                    self.model.load_state_dict(checkpoint)
+                except RuntimeError as e_load:
                     print(
-                        "UWAGA: Niektóre wagi nie mogły zostać załadowane: "
-                        f"{str(e_load)}"
+                        f"[BŁĄD] Nie udało się załadować wag nawet po "
+                        f"ostrzeżeniu. Błąd: {e_load}"
                     )
-                    print("Kontynuuję z częściowo załadowanym modelem...")
+                    # Rzucamy oryginalny wyjątek, aby zachować ślad błędu
+                    raise  # Rzucenie oryginalnego wyjątku przechwyconego wcześniej
 
-            else:  # Jeśli checkpoint nie jest słownikiem, zakładamy, że to bezpośrednio state_dict
-                try:
-                    self.model.load_state_dict(checkpoint, strict=False)
-                except Exception as e_direct_load:
-                    print(
-                        "UWAGA: Niektóre wagi nie mogły zostać załadowane (ładowanie bezpośrednie): "
-                        f"{str(e_direct_load)}"
-                    )
-                    print("Kontynuuję z częściowo załadowanym modelem...")
+            print(f"\n[INFO] Pomyślnie załadowano wagi modelu z: {weights_path}")
 
-            # Ustaw model w tryb ewaluacji
-            self.model.eval()
-
-        except Exception as e_main:
-            msg = f"Nie udało się załadować modelu: {str(e_main)}"
-            traceback.print_exc()  # Dodano dla lepszego debugowania
-            raise ValueError(msg)
-
-        # Logowanie końcowego stanu class_names
-        if self.class_names:
-            print(
-                "Końcowy stan self.class_names po załadowaniu: " f"{self.class_names}"
-            )
-        else:
-            # Ten komunikat jest już obsługiwany przez sekcję KRYTYCZNE OSTRZEŻENIE
-            pass
+        except Exception as e:
+            print(f"BŁĄD podczas ładowania wag modelu: {str(e)}")
+            print(traceback.format_exc())
+            raise
 
     def predict(self, image_path, return_ranking=False):
         """Przewidywanie kategorii dla jednego obrazu
@@ -478,18 +451,23 @@ class ImageClassifier:
                 predicted_class = predicted_idx[j].item()
                 confidence = probabilities[j][predicted_class].item()
 
-                # Używamy oryginalnej nazwy klasy, jeśli istnieje w słowniku class_names
-                class_name = self.class_names.get(str(predicted_class))
+                # Pobierz nazwę klasy z mapowania
+                class_key = str(predicted_class)
+                class_name = self.class_names.get(class_key)
+
                 if class_name is None:
                     print(
-                        f"UWAGA: Nie znaleziono nazwy dla klasy {predicted_class} w słowniku class_names"
+                        f"UWAGA: Nie znaleziono nazwy dla klasy {predicted_class} "
+                        f"w słowniku class_names. Używam domyślnej nazwy."
                     )
                     class_name = f"Kategoria_{predicted_class}"
 
                 # Dodaj logi diagnostyczne dla pierwszych kilku wyników
                 if j < 3:  # Pokaż tylko pierwsze 3 wyniki dla przejrzystości
                     print(
-                        f"DEBUG: batch_predict() - j={j}, predicted_class={predicted_class}, class_name={class_name}"
+                        f"DEBUG: batch_predict() - j={j}, "
+                        f"predicted_class={predicted_class}, "
+                        f"class_name={class_name}"
                     )
 
                 # Przygotuj podstawowy wynik
@@ -506,15 +484,13 @@ class ImageClassifier:
 
                     for idx, prob in enumerate(all_probabilities):
                         class_key = str(idx)
-                        if class_key not in self.class_names:
-                            try:
-                                if int(class_key) in self.class_names:
-                                    class_key = int(class_key)
-                            except ValueError:
-                                pass
-
                         class_name_for_idx = self.class_names.get(class_key)
+
                         if class_name_for_idx is None:
+                            print(
+                                f"UWAGA: Nie znaleziono nazwy dla klasy {idx} "
+                                f"w słowniku class_names. Używam domyślnej nazwy."
+                            )
                             class_name_for_idx = f"Kategoria_{idx}"
 
                         class_ranking.append(
