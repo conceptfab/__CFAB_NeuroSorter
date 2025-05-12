@@ -1,212 +1,62 @@
 [
     {
-        "class_name": "car",
-        "confidence": 0.410400390625,
-        "date": "2025-05-12T14:53:26.941419",
-        "image_path": "F:/__SET_30/training_data/car/4573584.634996012004a.jpg"
-    },
-    {
+        "date": "2025-05-12T19:55:06.474491",
+        "image_path": "F:/______training_database_V3/animal/73204.5304fbb771471.jpg",
         "class_name": "animal",
-        "confidence": 0.2017822265625,
-        "date": "2025-05-12T17:53:31.826277",
-        "image_path": "F:/______training_database_30/animal/46033.527955c1ce54b.jpg"
+        "confidence": 0.2705078125
     },
     {
-        "class_name": "animal",
-        "confidence": 0.376220703125,
-        "date": "2025-05-12T17:53:34.964118",
-        "image_path": "F:/______training_database_30/animal/73204.5304fbb771471.jpg"
-    },
-    {
-        "class_name": "animal",
-        "confidence": 0.24267578125,
-        "date": "2025-05-12T17:53:37.582750",
-        "image_path": "F:/______training_database_30/animal/1029843.58f9122dc9b53.jpg"
-    },
-    {
-        "class_name": "animal",
-        "confidence": 0.263916015625,
-        "date": "2025-05-12T17:53:42.361924",
-        "image_path": "F:/______training_database_30/animal/Giant Panda.thumb.jpeg"
-    },
-    {
-        "class_name": "animal",
-        "confidence": 0.291259765625,
-        "date": "2025-05-12T17:53:44.599300",
-        "image_path": "F:/______training_database_30/animal/Giant Panda  RIG XGEN-CORE.jpg"
-    },
-    {
-        "class_name": "texture_bump",
-        "confidence": 0.1348876953125,
-        "date": "2025-05-12T17:53:47.262246",
-        "image_path": "F:/______training_database_30/animal/Red-crowned Crane Fur Animated Rigged.jpg"
-    },
-    {
-        "class_name": "animal",
-        "confidence": 0.205322265625,
-        "date": "2025-05-12T17:53:53.547263",
-        "image_path": "F:/______training_database_30/animal/red-fox.jpeg"
-    },
-    {
-        "class_name": "animal",
-        "confidence": 0.460693359375,
-        "date": "2025-05-12T17:53:57.898576",
-        "image_path": "F:/______training_database_30/animal/Warbling White-eye.thumb.jpeg"
-    },
-    {
+        "date": "2025-05-12T19:55:09.014714",
+        "image_path": "F:/______training_database_V3/animal/46033.527955c1ce54b.jpg",
         "class_name": "lamp",
-        "confidence": 0.08087158203125,
-        "date": "2025-05-12T17:54:03.203360",
-        "image_path": "F:/______training_database_30/animal/Vampire Bat (Animated).jpg"
+        "confidence": 0.1732177734375
     },
     {
-        "class_name": "lamp",
-        "confidence": 0.08087158203125,
-        "date": "2025-05-12T17:54:10.574759",
-        "image_path": "F:/______training_database_30/animal/Vampire Bat (Animated).jpg"
+        "date": "2025-05-12T19:55:13.204901",
+        "image_path": "F:/______training_database_V3/animal/Baby Emperor Penguin ( Juvenile ).thumb.jpeg",
+        "class_name": "animal",
+        "confidence": 0.5751953125
     },
     {
-        "class_name": "sofa",
-        "confidence": 0.482666015625,
-        "date": "2025-05-12T17:57:52.302754",
-        "image_path": "F:/______training_database_V3/bed/24.52683b8127ae5.jpg"
+        "date": "2025-05-12T19:56:00.397856",
+        "image_path": "F:/_sort_files/animal/1029298.58f8d5abeabbd.jpg",
+        "class_name": "animal",
+        "confidence": 0.63134765625
     },
     {
-        "class_name": "sofa",
-        "confidence": 0.330322265625,
-        "date": "2025-05-12T17:57:57.191619",
-        "image_path": "F:/______training_database_V3/bed/107106.53ad708a3d5d2.jpg"
-    },
-    {
-        "class_name": "bed",
-        "confidence": 0.72607421875,
-        "date": "2025-05-12T17:57:59.921643",
-        "image_path": "F:/______training_database_V3/bed/143175.547ecf038a960.jpg"
-    },
-    {
-        "class_name": "bed",
-        "confidence": 0.677734375,
-        "date": "2025-05-12T17:58:02.920950",
-        "image_path": "F:/______training_database_V3/bed/1298793.599f1f3fa0437.jpg"
-    },
-    {
-        "class_name": "decoration",
-        "confidence": 0.154052734375,
-        "date": "2025-05-12T17:58:06.455704",
-        "image_path": "F:/______training_database_V3/bed/1325979.59b287e4ae41d 1.jpg"
-    },
-    {
-        "class_name": "technology",
-        "confidence": 0.1239013671875,
-        "date": "2025-05-12T17:58:11.496589",
-        "image_path": "F:/______training_database_V3/bed/1401704.59e0f6a9d6206 1.jpg"
-    },
-    {
-        "class_name": "bed",
-        "confidence": 0.513671875,
-        "date": "2025-05-12T17:58:15.127461",
-        "image_path": "F:/______training_database_V3/bed/1769511.5aa81e1820b01 1.jpg"
-    },
-    {
-        "class_name": "bed",
-        "confidence": 0.3818359375,
-        "date": "2025-05-12T17:58:19.256292",
-        "image_path": "F:/______training_database_V3/bed/1658262.5a6f3ff6b66c7 2.jpg"
-    },
-    {
-        "class_name": "bed",
-        "confidence": 0.513671875,
-        "date": "2025-05-12T17:58:23.708323",
-        "image_path": "F:/______training_database_V3/bed/1769511.5aa81e1820b01 1.jpg"
-    },
-    {
-        "class_name": "car",
-        "confidence": 0.80517578125,
-        "date": "2025-05-12T18:07:49.035725",
-        "image_path": "F:/______training_database_V3/car/2721.5268470e59a4b.jpg"
-    },
-    {
-        "class_name": "car",
-        "confidence": 0.85498046875,
-        "date": "2025-05-12T18:07:52.036464",
-        "image_path": "F:/______training_database_V3/car/159974.549284eb757e6.jpg"
-    },
-    {
-        "class_name": "car",
-        "confidence": 0.88525390625,
-        "date": "2025-05-12T18:07:54.229982",
-        "image_path": "F:/______training_database_V3/car/1860999.5ada4778d3330.jpg"
-    },
-    {
-        "class_name": "lamp",
-        "confidence": 0.0916748046875,
-        "date": "2025-05-12T19:03:05.901506",
-        "image_path": "F:/__SET_V3/training_data/animal/46033.527955c1ce54b.jpg"
-    },
-    {
+        "date": "2025-05-12T19:56:06.042024",
+        "image_path": "F:/_sort_files/indoor_plant/128793.54403a44a5aad.jpg",
         "class_name": "indoor_plant",
-        "confidence": 0.432373046875,
-        "date": "2025-05-12T19:03:27.712750",
-        "image_path": "F:/__SET_V3/training_data/indoor_plant/3DC_PDI_001_Poto_04_CoronaPhysicalMtl_4K.jpg"
+        "confidence": 0.5537109375
     },
     {
-        "class_name": "indoor_plant",
-        "confidence": 0.451171875,
-        "date": "2025-05-12T19:03:30.459420",
-        "image_path": "F:/__SET_V3/training_data/indoor_plant/3DC_PDI_005_Ficus_04_CoronaPhysicalMtl_4K.jpg"
+        "date": "2025-05-12T20:51:33.609099",
+        "image_path": "F:/_sort_files/childroom/Water Tower and pool AquaTower_and_Waterpool.jpg",
+        "class_name": "childroom",
+        "confidence": 0.8642578125
     },
     {
-        "date": "2025-05-12T19:04:52.331207",
-        "image_path": "F:/__SET_V3/training_data/tree/3D trees https___p.turbosquid.com_ts-thumb_z3_l91ZUv_QIsP7xcN_3_season_trees_31b_jpg_1556829332_1920x1080_fit_q87_a46c7ba42ac38bbaa75691d4f45d0c139d96b290_3_season_trees_31b.jpg.jpg",
-        "class_name": "tree",
-        "confidence": 0.779296875
+        "date": "2025-05-12T20:51:37.787965",
+        "image_path": "F:/_sort_files/childroom/Toys, decor for children.jpg",
+        "class_name": "childroom",
+        "confidence": 0.5537109375
     },
     {
-        "date": "2025-05-12T19:05:03.161116",
-        "image_path": "F:/__SET_V3/training_data/tree/2888286.5edcf4dfa540c.jpg",
-        "class_name": "tree",
-        "confidence": 0.71875
+        "date": "2025-05-12T20:51:46.236994",
+        "image_path": "F:/_sort_files_50/animal/786.52683d5fcb854.jpg",
+        "class_name": "animal",
+        "confidence": 0.194091796875
     },
     {
-        "date": "2025-05-12T19:05:10.388583",
-        "image_path": "F:/__SET_V3/training_data/car/5258.52685cb638d55.jpg",
-        "class_name": "car",
-        "confidence": 0.427734375
+        "date": "2025-05-12T20:51:48.722960",
+        "image_path": "F:/_sort_files_50/animal/60565.529e76974da3e.jpg",
+        "class_name": "animal",
+        "confidence": 0.218017578125
     },
     {
-        "date": "2025-05-12T19:05:13.178988",
-        "image_path": "F:/__SET_V3/training_data/car/1486137.5a0eb72f06306.jpg",
-        "class_name": "car",
-        "confidence": 0.486572265625
-    },
-    {
-        "date": "2025-05-12T19:05:16.064795",
-        "image_path": "F:/__SET_V3/training_data/car/1818350.5ac234805b89a.jpg",
-        "class_name": "car",
-        "confidence": 0.60888671875
-    },
-    {
-        "date": "2025-05-12T19:05:18.723591",
-        "image_path": "F:/__SET_V3/training_data/car/457120.56a7d4e74aa19.jpg",
-        "class_name": "car",
-        "confidence": 0.462158203125
-    },
-    {
-        "date": "2025-05-12T19:05:21.572793",
-        "image_path": "F:/__SET_V3/training_data/car/579577.57744dabb9616.jpg",
-        "class_name": "car",
-        "confidence": 0.450927734375
-    },
-    {
-        "date": "2025-05-12T19:05:24.343775",
-        "image_path": "F:/__SET_V3/training_data/car/2573587.5d9c8fb3c75e7.jpg",
-        "class_name": "car",
-        "confidence": 0.58154296875
-    },
-    {
-        "date": "2025-05-12T19:05:29.094675",
-        "image_path": "F:/__SET_V3/training_data/car/5775.526860e6c26fd.jpg",
-        "class_name": "car",
-        "confidence": 0.437744140625
+        "date": "2025-05-12T20:51:54.028187",
+        "image_path": "F:/_sort_files_50/animal/House Sparrow.jpeg",
+        "class_name": "animal",
+        "confidence": 0.197998046875
     }
 ]

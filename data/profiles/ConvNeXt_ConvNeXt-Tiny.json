@@ -9,7 +9,7 @@
       "architecture": "ConvNeXt",
       "variant": "ConvNeXt-Tiny",
       "input_size": 256,
-      "num_classes": 34
+      "num_classes": 32
     },
     "training": {
       "epochs": 120,

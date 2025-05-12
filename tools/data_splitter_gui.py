@@ -1592,7 +1592,6 @@ class ScallerWorker(QObject):  # Renamed
                 self.status_update.emit(f"Przerwano skalowanie po {i} plikach.")
                 break
 
-            # self.status_update.emit(f"Przetwarzanie (Scaller): {os.path.basename(file_path)}")
             try:
                 with Image.open(file_path) as img:
                     width, height = img.size
@@ -1607,9 +1606,8 @@ class ScallerWorker(QObject):  # Renamed
                         )
                         skipped_count += 1
                     else:
-                        # self.status_update.emit(f"Skalowanie: {Path(file_path).name} ({width}x{height})")
                         original_format = img.format
-                        if width > height:
+                        if width < height:  # MODIFIED: Changed from width > height
                             new_width = self.target_dimension  # MODIFIED
                             new_height = int(
                                 height * (self.target_dimension / width)  # MODIFIED
@@ -1706,19 +1704,21 @@ class ScallerApp(QWidget):  # Renamed
 
         # --- MODIFIED: Target Dimension Control ---
         dim_control_layout = QHBoxLayout()
-        dim_control_layout.addWidget(QLabel("Docelowy wymiar dłuższego boku (px):"))
+        dim_control_layout.addWidget(
+            QLabel("Docelowy wymiar krótszego boku (px):")
+        )  # MODIFIED: Changed text
         self.target_dimension_spinbox = QSpinBox()
         self.target_dimension_spinbox.setRange(50, 8192)  # Example range
         self.target_dimension_spinbox.setValue(DEFAULT_SCALLER_TARGET_DIMENSION)
         self.target_dimension_spinbox.setToolTip(
-            "Obrazy, których dłuższy bok jest mniejszy lub równy tej wartości, zostaną pominięte."
+            "Obrazy, których krótszy bok jest mniejszy lub równy tej wartości, zostaną pominięte."  # MODIFIED: Changed text
         )
         dim_control_layout.addWidget(self.target_dimension_spinbox)
         dim_control_layout.addStretch()
         folder_layout_internal.addLayout(dim_control_layout)
 
         target_dim_info_label = QLabel(
-            "Mniejsze pliki (których oba wymiary są mniejsze lub równe wartości docelowej) zostaną pominięte."
+            "Krótszy bok obrazu zostanie przeskalowany do wartości docelowej. Pliki, których oba wymiary są mniejsze lub równe wartości docelowej, zostaną pominięte."  # MODIFIED: Changed text
         )
         target_dim_info_label.setWordWrap(True)
         folder_layout_internal.addWidget(target_dim_info_label)

@@ -343,9 +343,15 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 self.optimizer_combo.setCurrentText(
                     training_config.get("optimizer", "Adam")
                 )
-                self.scheduler_combo.setCurrentText(
-                    training_config.get("scheduler", "None")
-                )
+
+                # Poprawiona obsługa schedulera
+                scheduler_config = training_config.get("scheduler", {})
+                if isinstance(scheduler_config, dict):
+                    scheduler_type = scheduler_config.get("type", "None")
+                    self.scheduler_combo.setCurrentText(scheduler_type)
+                else:
+                    self.scheduler_combo.setCurrentText(str(scheduler_config))
+
                 self.num_workers_spin.setValue(training_config.get("num_workers", 4))
                 self.warmup_epochs_spin.setValue(
                     training_config.get("warmup_epochs", 5)

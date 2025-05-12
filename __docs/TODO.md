@@ -1,9 +1,10 @@
 TODO 0.4
 
 
-- zmiana nazwy loga modelu
+- plik log w JSON
+- uprządkować strukturę JSON razem z logiem
 
- - optymalizacja CUDA w tworzeniu zadań
+- optymalizacja CUDA w tworzeniu zadań
 - kolejka wsadowa nie zmienia statusu zadadani, nie zapisuje renderu treningu
 
 - sortowanie poprawic - pliki o niskim ratingu do osobnego folderu - sprawdzic czy to dziala
