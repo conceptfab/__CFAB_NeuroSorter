@@ -448,7 +448,7 @@ def fine_tune_model(
     weight_decay=0.01,
     warmup_epochs=1,
     use_mixup=False,  # Czy stosować mixup na danych WEJŚCIOWYCH
-    use_mixed_precision=True,
+    use_mixed_precision=False,  # Zmienione z True na False
     task_name=None,
     prevent_forgetting=True,
     preserve_original_classes=True,

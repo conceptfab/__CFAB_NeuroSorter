@@ -1,61 +1,32 @@
-Przeanalizowałem kod źródłowy dla obu okien dialogowych konfiguracji zadań treningowych. Znalazłem kilka problemów, które należy rozwiązać, aby przy wyłączonej opcji "Użyj optymalizacji sprzętowej" wszystkie opcje "z profilu sprzętowego" były niedostępne.
-Zmiany w kodzie
-Plik fine_tuning_task_config_dialog.py
-python# Dodajemy brakujące połączenie między checkboxem optymalizacji a funkcją aktualizującą dostępność opcji
-def _init_ui(self):
-    # [istniejący kod...]
-    
-    # Dodać po zdefiniowaniu use_optimization_checkbox:
-    self.use_optimization_checkbox = QtWidgets.QCheckBox("Używaj optymalizacji sprzętowej")
-    self.use_optimization_checkbox.setChecked(True)
-    self.use_optimization_checkbox.stateChanged.connect(self._update_optimization_state)
-    
-    # [istniejący kod...]
+1. Problem z radiobutton w obu oknach dialogowych
+W obu klasach (TrainingTaskConfigDialog i FineTuningTaskConfigDialog) w funkcji _create_parameter_row tworzone są button grupy, które nie są prawidłowo przechowywane jako atrybuty klasy. To powoduje, że tylko ostatnio wybrana opcja jest zapamiętywana, a reszta traci stan.
+2. Problem z wygaszaniem kontrolek
+Funkcja _update_optimization_state nie jest nigdzie podłączana do kontrolki use_optimization_checkbox, przez co zmiany stanu checkboxa nie wywołują aktualizacji interfejsu.
+Proponowane zmiany w kodzie
+Zmiany w pliku training_task_config_dialog.py:
+python# Zmiana 1: Poprawka funkcji _create_parameter_row
+def _create_parameter_row(
+    self,
+    name,
+    param_key,
+    default_value,
+    widget_type,
+    min_val=None,
+    max_val=None,
+    step=None,
+):
+    """
+    Tworzy wiersz parametru z opcją wyboru źródła wartości.
+    """
+    layout = QtWidgets.QHBoxLayout()
 
-# Dodajemy nową metodę do aktualizacji dostępności opcji z profilu sprzętowego
-def _update_optimization_state(self, state):
-    """Aktualizuje dostępność opcji z profilu sprzętowego w zależności od stanu checkboxa."""
-    enabled = state == Qt.CheckState.Checked
+    # Źródło wartości - Tworzymy unikalną grupę dla każdego wiersza
+    source_group = QtWidgets.QButtonGroup()
     
-    # Aktualizacja dostępności opcji "z profilu sprzętowego" we wszystkich parametrach
-    if hasattr(self, "optimization_params"):
-        for param in self.optimization_params:
-            hardware_radio = param["hardware_radio"]
-            hardware_radio.setEnabled(enabled)
-            
-            # Jeśli optymalizacja jest wyłączona, zmieniamy na "Z profilu"
-            if not enabled and hardware_radio.isChecked():
-                param["profile_radio"].setChecked(True)
-Plik training_task_config_dialog.py
-python# Dodajemy brakujące połączenie między checkboxem optymalizacji a funkcją aktualizującą dostępność opcji
-def _init_ui(self):
-    # [istniejący kod...]
-    
-    # Dodać po zdefiniowaniu use_optimization_checkbox:
-    self.use_optimization_checkbox = QtWidgets.QCheckBox("Używaj optymalizacji sprzętowej")
-    self.use_optimization_checkbox.setChecked(True)
-    self.use_optimization_checkbox.stateChanged.connect(self._update_optimization_state)
-    
-    # [istniejący kod...]
-
-# Dodajemy nową metodę do aktualizacji dostępności opcji z profilu sprzętowego
-def _update_optimization_state(self, state):
-    """Aktualizuje dostępność opcji z profilu sprzętowego w zależności od stanu checkboxa."""
-    enabled = state == Qt.CheckState.Checked
-    
-    # Aktualizacja dostępności opcji "z profilu sprzętowego" we wszystkich parametrach
-    if hasattr(self, "optimization_params"):
-        for param in self.optimization_params:
-            hardware_radio = param["hardware_radio"]
-            hardware_radio.setEnabled(enabled)
-            
-            # Jeśli optymalizacja jest wyłączona, zmieniamy na "Z profilu"
-            if not enabled and hardware_radio.isChecked():
-                param["profile_radio"].setChecked(True)
-Zmiany w metodzie _create_parameter_row w obu plikach
-Dodatkowo, w obu klasach należy zmodyfikować metodę _create_parameter_row, aby sprawdzała stan checkboxa optymalizacji przy tworzeniu parametrów:
-pythondef _create_parameter_row(self, name, param_key, default_value, widget_type, min_val=None, max_val=None, step=None):
-    # [istniejący kod...]
+    # Przycisk opcji dla wartości z UI/profilu
+    profile_radio = QtWidgets.QRadioButton("Z profilu")
+    profile_radio.setChecked(True)
+    source_group.addButton(profile_radio, 1)
     
     # Przycisk opcji dla wartości z profilu sprzętowego
     hardware_radio = QtWidgets.QRadioButton("Z profilu sprzętowego")
@@ -66,43 +37,118 @@ pythondef _create_parameter_row(self, name, param_key, default_value, widget_typ
     if hasattr(self, "use_optimization_checkbox"):
         optimization_enabled = self.use_optimization_checkbox.isChecked()
     
-    # Wartość z profilu sprzętowego
-    hw_value = None
-    if self.hardware_profile and param_key in self.hardware_profile:
-        hw_value = self.hardware_profile[param_key]
-        hardware_radio.setEnabled(optimization_enabled)  # Dodana zależność od stanu checkboxa
-    else:
-        hardware_radio.setEnabled(False)
-        hardware_radio.setText("Z profilu sprzętowego (niedostępne)")
+    # [reszta kodu bez zmian]
     
-    # [pozostały kod...]
-Zmiany w metodzie _apply_all_hardware_optimizations w obu plikach
-Należy również zmodyfikować metodę, która aktywuje wszystkie optymalizacje sprzętowe, aby sprawdzała, czy checkbox optymalizacji jest włączony:
-pythondef _apply_all_hardware_optimizations(self):
-    """Zastosowuje wszystkie optymalne ustawienia z profilu sprzętowego."""
-    # Sprawdź czy optymalizacja jest włączona
-    if hasattr(self, "use_optimization_checkbox") and not self.use_optimization_checkbox.isChecked():
-        QtWidgets.QMessageBox.warning(
-            self,
-            "Optymalizacja wyłączona",
-            "Optymalizacja sprzętowa jest obecnie wyłączona. Włącz ją, aby zastosować ustawienia z profilu sprzętowego.",
-        )
-        return
+    # Zapamiętanie referencji do widgetów i grupy przycisków
+    row_widgets = {
+        "param_key": param_key,
+        "profile_radio": profile_radio,
+        "hardware_radio": hardware_radio,
+        "value_widget": value_widget,
+        "hw_value_label": hw_value_label,
+        "hw_value": hw_value,
+        "button_group": source_group,  # Zapisujemy grupę by nie została usunięta przez GC
+    }
+    
+    # [reszta kodu bez zmian]
+    
+    return layout
+
+# Zmiana 2: Dodanie inicjalizacji use_optimization_checkbox i podłączenie sygnału
+def _create_optimization_tab(self):
+    """Tworzenie zakładki Optymalizacja treningu."""
+    try:
+        self.logger.debug("Tworzenie zakładki optymalizacji treningu")
+        tab = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(tab)
         
-    if not hasattr(self, "optimization_params") or not self.hardware_profile:
-        QtWidgets.QMessageBox.warning(
-            self,
-            "Ostrzeżenie",
-            "Brak dostępnego profilu sprzętowego lub parametrów do zastosowania.",
-        )
-        return
+        # Dodanie checkbox'a do włączania/wyłączania optymalizacji
+        self.use_optimization_checkbox = QtWidgets.QCheckBox("Użyj optymalizacji sprzętowej")
+        self.use_optimization_checkbox.setChecked(True)
+        self.use_optimization_checkbox.stateChanged.connect(self._update_optimization_state)
+        layout.addWidget(self.use_optimization_checkbox)
+        
+        # [reszta kodu bez zmian]
+Zmiany w pliku fine_tuning_task_config_dialog.py:
+python# Zmiana 1: Poprawka funkcji _create_parameter_row (analogiczna jak wyżej)
+def _create_parameter_row(
+    self,
+    name,
+    param_key,
+    default_value,
+    widget_type,
+    min_val=None,
+    max_val=None,
+    step=None,
+):
+    """
+    Tworzy wiersz parametru z opcją wyboru źródła wartości.
+    """
+    layout = QtWidgets.QHBoxLayout()
+
+    # Źródło wartości - Tworzymy unikalną grupę dla każdego wiersza
+    source_group = QtWidgets.QButtonGroup()
     
-    # [pozostały kod...]
-Podsumowanie zmian
+    # Przycisk opcji dla wartości z UI/profilu
+    profile_radio = QtWidgets.QRadioButton("Z profilu")
+    profile_radio.setChecked(True)
+    source_group.addButton(profile_radio, 1)
+    
+    # Przycisk opcji dla wartości z profilu sprzętowego
+    hardware_radio = QtWidgets.QRadioButton("Z profilu sprzętowego")
+    source_group.addButton(hardware_radio, 2)
+    
+    # Sprawdź czy optymalizacja jest włączona
+    optimization_enabled = True
+    if hasattr(self, "use_optimization_checkbox"):
+        optimization_enabled = self.use_optimization_checkbox.isChecked()
+    
+    # [reszta kodu bez zmian]
+    
+    # Zapamiętanie referencji do widgetów i grupy przycisków
+    row_widgets = {
+        "param_key": param_key,
+        "profile_radio": profile_radio,
+        "hardware_radio": hardware_radio,
+        "value_widget": value_widget,
+        "hw_value_label": hw_value_label,
+        "hw_value": hw_value,
+        "button_group": source_group,  # Zapisujemy grupę by nie została usunięta przez GC
+    }
+    
+    # [reszta kodu bez zmian]
+    
+    return layout
 
-Dodano połączenie między checkboxem optymalizacji a funkcją aktualizującą dostępność opcji z profilu sprzętowego.
-Dodano nową metodę _update_optimization_state, która aktualizuje dostępność opcji w zależności od stanu checkboxa.
-Zmodyfikowano metodę _create_parameter_row, aby przy tworzeniu parametrów uwzględniała stan checkboxa optymalizacji.
-Zmodyfikowano metodę _apply_all_hardware_optimizations, aby sprawdzała, czy optymalizacja jest włączona.
+# Zmiana 2: Dodanie inicjalizacji use_optimization_checkbox i podłączenie sygnału
+def _create_optimization_tab(self):
+    """Tworzenie zakładki Optymalizacja treningu."""
+    try:
+        self.logger.debug("Tworzenie zakładki optymalizacji treningu")
+        tab = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(tab)
+        
+        # Dodanie checkbox'a do włączania/wyłączania optymalizacji
+        self.use_optimization_checkbox = QtWidgets.QCheckBox("Użyj optymalizacji sprzętowej")
+        self.use_optimization_checkbox.setChecked(True)
+        self.use_optimization_checkbox.stateChanged.connect(self._update_optimization_state)
+        layout.addWidget(self.use_optimization_checkbox)
+        
+        # [reszta kodu bez zmian]
+Podsumowanie zmian w plikach
+Zmiany w pliku training_task_config_dialog.py:
 
-Te zmiany zapewnią, że przy wyłączonej opcji "Użyj optymalizacji sprzętowej" wszystkie opcje "z profilu sprzętowego" będą niedostępne, a jeśli były już wybrane, to zostaną przełączone na opcje "Z profilu".
+Dodanie checkboxa use_optimization_checkbox w funkcji _create_optimization_tab
+Podłączenie sygnału stateChanged checkboxa do funkcji _update_optimization_state
+Zachowanie grupy przycisków w słowniku row_widgets jako atrybut button_group
+
+Zmiany w pliku fine_tuning_task_config_dialog.py:
+
+Dodanie checkboxa use_optimization_checkbox w funkcji _create_optimization_tab
+Podłączenie sygnału stateChanged checkboxa do funkcji _update_optimization_state
+Zachowanie grupy przycisków w słowniku row_widgets jako atrybut button_group
+
+Te zmiany pozwolą na:
+
+Niezależne wybieranie opcji "Z profilu sprzętowego" dla różnych parametrów
+Prawidłowe działanie wygaszania kontrolek przy wyłączeniu opcji "Użyj optymalizacji sprzętowej"

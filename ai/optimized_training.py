@@ -128,7 +128,6 @@ def train_model_optimized(
         # print(f"Użyto optymalnego rozmiaru batcha z profilera: {batch_size}")
 
     # Ustaw optymalną liczbę workerów
-    # print("DEBUG: TYMCZASOWE USTAWIANIE num_workers NA 0 DLA TESTU!")
     recommended_workers = hardware_profile.get("recommended_workers", 0)
 
     # Ustaw mixed precision
