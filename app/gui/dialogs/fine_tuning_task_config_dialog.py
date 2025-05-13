@@ -329,9 +329,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         # Dodaj do layoutu
         ewc_layout = QtWidgets.QHBoxLayout()
         ewc_layout.addWidget(self.adaptive_ewc_lambda_check)
-        self.adaptive_ewc_layout = (
-            ewc_layout  # Zapisanie referencji do późniejszego użycia
-        )
 
     def _setup_logging(self):
         """Konfiguracja logowania dla okna dialogowego."""

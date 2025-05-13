@@ -120,7 +120,7 @@ class Logger:
         Returns:
             Zawsze None, ponieważ logi nie są zapisywane do pliku.
         """
-        return None  # Logi nie są zapisywane do pliku
+        return None
 
     def clear_old_logs(self, days: int = 7):
         """Usuwa stare pliki logów.
