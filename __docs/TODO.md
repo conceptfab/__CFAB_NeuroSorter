@@ -2,7 +2,8 @@ TODO 0.4
 
 
 - nie dziala kolejkowanie
-- plik log w JSON classifier.py
+- przy skonczeniu zadania brakuje zmiany statusu NOWY/ZAKOŃCZONY
+- plik log w JSON classifier.py - dodanie incfo z loga
 - brak czasu trening w zadaniau normalnym
 - uprządkować strukturę JSON razem z logiem
 - nie dziala wsadowe przetwarzanie

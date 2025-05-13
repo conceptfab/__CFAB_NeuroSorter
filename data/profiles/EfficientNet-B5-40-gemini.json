@@ -1,0 +1,160 @@
+{
+  "type": "training",
+  "info": "Profil szkoleniowy dla EfficientNet-B5 40-50 456 px",
+  "description": "Profil dostosowany do rozpoznawania około 40-45 kategorii z wykorzystaniem EfficientNet-B5, zoptymalizowany pod kątem dokładności, zapobiegania overfittingowi i uwzględnieniem specyfiki większego modelu.",
+  "data_required": "40-45 klas (np. 42), zalecane >100-150 obrazów treningowych i >20-30 walidacyjnych na klasę. Dane walidacyjne w osobnym folderze (stosunek 80/20). EfficientNet-B5 skorzysta z większej ilości danych niż mniejsze warianty.",
+  "hardware_required": "GPU z >12GB VRAM (np. RTX 3080/4070 lub lepsza), RYZEN 9 16-rdzeniowy lub odpowiednik Intel, RAM 64-128GB. EfficientNet-B5 jest znacznie bardziej wymagający niż B0-B3.",
+  "config": {
+    "model": {
+      "architecture": "EfficientNet",
+      "variant": "EfficientNet-B5",
+      "input_size": 456,
+      "num_classes": 42,
+      "pretrained": true,
+      "pretrained_weights": "imagenet",
+      "feature_extraction_only": false,
+      "activation": "swish",
+      "dropout_at_inference": false,
+      "global_pool": "avg",
+      "last_layer_activation": "softmax"
+    },
+    "training": {
+      "epochs": 120,
+      "batch_size": 8,
+      "learning_rate": 0.0001,
+      "optimizer": "AdamW",
+      "scheduler": {
+        "type": "CosineAnnealingWarmRestarts",
+        "T_0": 10,
+        "T_mult": 2,
+        "eta_min": 1e-7
+      },
+      "num_workers": 8,
+      "warmup_epochs": 5,
+      "warmup_lr_init": 1e-6,
+      "mixed_precision": true,
+      "gradient_accumulation_steps": 4,
+      "gradient_clip": 1.0,
+      "evaluation_freq": 1,
+      "use_ema": true,
+      "ema_decay": 0.9999
+    },
+    "regularization": {
+      "weight_decay": 0.0001,
+      "label_smoothing": 0.1,
+      "dropout_rate": 0.4,
+      "drop_connect_rate": null,
+      "stochastic_depth": {
+        "use": true,
+        "survival_probability": 0.75
+      },
+      "swa": {
+        "use": true,
+        "start_epoch": 90,
+        "lr_swa": 5e-5
+      }
+    },
+    "augmentation": {
+      "basic": {
+        "use": true,
+        "rotation": 25,
+        "brightness": 0.25,
+        "contrast": 0.25,
+        "saturation": 0.15,
+        "hue": 0.05,
+        "shift": 0.1,
+        "zoom": 0.2,
+        "horizontal_flip": true,
+        "vertical_flip": false
+      },
+      "mixup": {
+        "use": true,
+        "alpha": 0.25
+      },
+      "cutmix": {
+        "use": true,
+        "alpha": 1.0
+      },
+      "autoaugment": { "use": false },
+      "randaugment": {
+        "use": true,
+        "n": 2,
+        "m": 10
+      },
+      "trivialaugment": { "use": false },
+      "random_erase": {
+        "use": true,
+        "probability": 0.3,
+        "scale": [0.02, 0.33],
+        "ratio": [0.3, 3.3]
+      }
+    },
+    "preprocessing": {
+      "normalization": {
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+      },
+      "resize_mode": "bicubic",
+      "cache_dataset": true,
+      "scaling": {
+        "method": "Bicubic",
+        "maintain_aspect_ratio": true,
+        "pad_to_square": true,
+        "pad_mode": "reflection",
+        "pad_value": 0
+      }
+    },
+    "monitoring": {
+      "metrics": {
+        "accuracy": true,
+        "precision": true,
+        "recall": true,
+        "f1": true,
+        "topk": [3, 5],
+        "confusion_matrix": true,
+        "auc": true
+      },
+      "logging": {
+        "use_tensorboard": true,
+        "tensorboard_log_dir": "logs/EfficientNet-B5_42cat_profile",
+        "use_wandb": false,
+        "save_to_csv": true,
+        "csv_log_path": "logs/EfficientNet-B5_42cat_profile/training_log.csv",
+        "logging_freq": "epoch"
+      },
+      "visualization": {
+        "use_gradcam": false,
+        "use_feature_maps": false
+      },
+      "early_stopping": {
+        "use": true,
+        "monitor": "val_loss",
+        "patience": 20,
+        "min_delta": 0.0001,
+        "mode": "min"
+      },
+      "checkpointing": {
+        "use": true,
+        "save_dir": "checkpoints/EfficientNet-B5_42cat_profile",
+        "filename": "best_model_epoch_{epoch:03d}_valloss_{val_loss:.4f}.pt",
+        "monitor": "val_loss",
+        "save_best_only": true,
+        "mode": "min"
+      }
+    },
+    "advanced": {
+      "seed": 42,
+      "deterministic": false,
+      "class_weights": "balanced",
+      "sampler": "weighted_random",
+      "tta": {
+        "use": true,
+        "num_augmentations": 5
+      },
+      "cross_validation": { "use": false },
+      "distributed": { "use": false },
+      "export_onnx": false,
+      "quantization": { "use": false }
+    }
+  }
+}

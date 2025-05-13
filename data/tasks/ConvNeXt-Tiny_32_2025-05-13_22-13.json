@@ -1,13 +1,13 @@
 {
-    "name": "ConvNeXt-Tiny_32_2025-05-12_22-26",
+    "name": "ConvNeXt-Tiny_32_2025-05-13_22-13",
     "type": "training",
-    "status": "Zakończony",
+    "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-12 22:26:46",
+    "created_at": "2025-05-13 22:13:57",
     "config": {
-        "train_dir": "F:/__SET_V3/training_data",
-        "data_dir": "F:/__SET_V3/training_data",
-        "val_dir": "F:/__SET_V3/validation_data",
+        "train_dir": "C:/_cloud/_____XXX/__dane_treningowe",
+        "data_dir": "C:/_cloud/_____XXX/__dane_treningowe",
+        "val_dir": "C:/_cloud/_____XXX/__dane_walidacyjne",
         "model": {
             "architecture": "ConvNeXt",
             "variant": "ConvNeXt-Tiny",
@@ -16,19 +16,19 @@
         },
         "training": {
             "epochs": 120,
-            "batch_size": 32,
-            "learning_rate": 0.0002,
+            "batch_size": 64,
+            "learning_rate": 0.0005,
             "optimizer": "AdamW",
             "scheduler": "CosineAnnealingWarmRestarts",
-            "num_workers": 8,
-            "warmup_epochs": 5,
+            "num_workers": 16,
+            "warmup_epochs": 8,
             "mixed_precision": true,
             "freeze_base_model": true,
-            "unfreeze_layers": "all",
+            "unfreeze_layers": 10,
             "unfreeze_strategy": "unfreeze_all"
         },
         "regularization": {
-            "weight_decay": 0.05,
+            "weight_decay": 5e-05,
             "gradient_clip": 1.0,
             "label_smoothing": 0.1,
             "drop_connect_rate": 0.2,
@@ -37,13 +37,13 @@
             "epsilon": 1e-06,
             "swa": {
                 "use": true,
-                "start_epoch": 90
+                "start_epoch": 60
             }
         },
         "augmentation": {
             "basic": {
                 "use": true,
-                "rotation": 20,
+                "rotation": 25,
                 "brightness": 0.2,
                 "shift": 0.1,
                 "zoom": 0.15,
@@ -52,7 +52,7 @@
             },
             "mixup": {
                 "use": true,
-                "alpha": 0.8
+                "alpha": 0.3
             },
             "cutmix": {
                 "use": true,
@@ -84,17 +84,17 @@
                 "recall": true,
                 "f1": true,
                 "topk": true,
-                "confusion_matrix": false
+                "confusion_matrix": true
             },
             "early_stopping": {
-                "patience": 15,
-                "min_delta": 0.0005,
-                "monitor": "val_loss"
+                "patience": 20,
+                "min_delta": 0.001,
+                "monitor": "val_f1"
             },
             "checkpointing": {
                 "best_only": true,
                 "save_frequency": 1,
-                "metric": "val_loss"
+                "metric": "val_f1"
             },
             "tensorboard": {
                 "use": false,
@@ -132,11 +132,5 @@
                 "frequency": 10
             }
         }
-    },
-    "training_time": 3193.63,
-    "training_time_str": "0:53:13",
-    "train_accuracy": 0.819659239842726,
-    "train_loss": 1.1657766562433882,
-    "validation_accuracy": 0.8369944211994421,
-    "validation_loss": 1.1055341412623723
+    }
 }

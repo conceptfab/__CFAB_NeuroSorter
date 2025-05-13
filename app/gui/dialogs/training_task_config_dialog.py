@@ -393,9 +393,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 self.label_smoothing_spin.setValue(
                     reg_config.get("label_smoothing", 0.1)
                 )
-                self.drop_connect_spin.setValue(
-                    reg_config.get("drop_connect_rate", 0.2)
-                )
+                # Poprawka: Sprawdź, czy wartość nie jest None
+                drop_connect_rate = reg_config.get("drop_connect_rate")
+                if drop_connect_rate is None:
+                    drop_connect_rate = 0.2  # Domyślna wartość, jeśli None
+                self.drop_connect_spin.setValue(drop_connect_rate)
                 self.dropout_spin.setValue(reg_config.get("dropout_rate", 0.2))
                 self.momentum_spin.setValue(reg_config.get("momentum", 0.9))
                 self.epsilon_spin.setValue(reg_config.get("epsilon", 1e-6))
