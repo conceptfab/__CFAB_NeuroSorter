@@ -3192,14 +3192,18 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         hardware_radio = QtWidgets.QRadioButton("Z profilu sprzętowego")
         source_group.addButton(hardware_radio, 2)
 
-        # Wartość z profilu
-        profile_value = default_value
+        # Sprawdź czy optymalizacja jest włączona
+        optimization_enabled = True
+        if hasattr(self, "use_optimization_checkbox"):
+            optimization_enabled = self.use_optimization_checkbox.isChecked()
 
         # Wartość z profilu sprzętowego
         hw_value = None
         if self.hardware_profile and param_key in self.hardware_profile:
             hw_value = self.hardware_profile[param_key]
-            hardware_radio.setEnabled(True)
+            hardware_radio.setEnabled(
+                optimization_enabled
+            )  # Dodana zależność od stanu checkboxa
         else:
             hardware_radio.setEnabled(False)
             hardware_radio.setText("Z profilu sprzętowego (niedostępne)")
@@ -3213,12 +3217,12 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 value_widget.setMaximum(max_val)
             if step is not None:
                 value_widget.setSingleStep(step)
-            value_widget.setValue(profile_value)
+            value_widget.setValue(default_value)
         elif widget_type == "checkbox":
             value_widget = QtWidgets.QCheckBox()
-            value_widget.setChecked(profile_value)
+            value_widget.setChecked(default_value)
         else:
-            value_widget = QtWidgets.QLineEdit(str(profile_value))
+            value_widget = QtWidgets.QLineEdit(str(default_value))
 
         # Etykieta z wartością z profilu sprzętowego
         hw_value_label = QtWidgets.QLabel("Niedostępne")
@@ -3268,6 +3272,18 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
     def _apply_all_hardware_optimizations(self):
         """Zastosowuje wszystkie optymalne ustawienia z profilu sprzętowego."""
+        # Sprawdź czy optymalizacja jest włączona
+        if (
+            hasattr(self, "use_optimization_checkbox")
+            and not self.use_optimization_checkbox.isChecked()
+        ):
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Optymalizacja wyłączona",
+                "Optymalizacja sprzętowa jest obecnie wyłączona. Włącz ją, aby zastosować ustawienia z profilu sprzętowego.",
+            )
+            return
+
         if not hasattr(self, "optimization_params") or not self.hardware_profile:
             QtWidgets.QMessageBox.warning(
                 self,

@@ -1469,6 +1469,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         hardware_radio = QtWidgets.QRadioButton("Z profilu sprzętowego")
         source_group.addButton(hardware_radio, 2)
 
+        # Sprawdź czy optymalizacja jest włączona
+        optimization_enabled = True
+        if hasattr(self, "use_optimization_checkbox"):
+            optimization_enabled = self.use_optimization_checkbox.isChecked()
+
         # Wartość z profilu
         profile_value = default_value
 
@@ -1476,7 +1481,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         hw_value = None
         if self.hardware_profile and param_key in self.hardware_profile:
             hw_value = self.hardware_profile[param_key]
-            hardware_radio.setEnabled(True)
+            hardware_radio.setEnabled(optimization_enabled)
         else:
             hardware_radio.setEnabled(False)
             hardware_radio.setText("Z profilu sprzętowego (niedostępne)")
@@ -1545,6 +1550,18 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
     def _apply_all_hardware_optimizations(self):
         """Zastosowuje wszystkie optymalne ustawienia z profilu sprzętowego."""
+        # Sprawdź czy optymalizacja jest włączona
+        if (
+            hasattr(self, "use_optimization_checkbox")
+            and not self.use_optimization_checkbox.isChecked()
+        ):
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Optymalizacja wyłączona",
+                "Optymalizacja sprzętowa jest obecnie wyłączona. Włącz ją, aby zastosować ustawienia z profilu sprzętowego.",
+            )
+            return
+
         if not hasattr(self, "optimization_params") or not self.hardware_profile:
             QtWidgets.QMessageBox.warning(
                 self,
@@ -1772,3 +1789,17 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         self.logger.info("Zamykanie okna dialogowego")
         self.accept()
         event.accept()
+
+    def _update_optimization_state(self, state):
+        """Aktualizuje dostępność opcji z profilu sprzętowego w zależności od stanu checkboxa."""
+        enabled = state == Qt.CheckState.Checked
+
+        # Aktualizacja dostępności opcji "z profilu sprzętowego" we wszystkich parametrach
+        if hasattr(self, "optimization_params"):
+            for param in self.optimization_params:
+                hardware_radio = param["hardware_radio"]
+                hardware_radio.setEnabled(enabled)
+
+                # Jeśli optymalizacja jest wyłączona, zmieniamy na "Z profilu"
+                if not enabled and hardware_radio.isChecked():
+                    param["profile_radio"].setChecked(True)
