@@ -1,62 +1,98 @@
 [
     {
+        "class_name": "animal",
+        "confidence": 0.2705078125,
         "date": "2025-05-12T19:55:06.474491",
-        "image_path": "F:/______training_database_V3/animal/73204.5304fbb771471.jpg",
-        "class_name": "animal",
-        "confidence": 0.2705078125
+        "image_path": "F:/______training_database_V3/animal/73204.5304fbb771471.jpg"
     },
     {
-        "date": "2025-05-12T19:55:09.014714",
-        "image_path": "F:/______training_database_V3/animal/46033.527955c1ce54b.jpg",
         "class_name": "lamp",
-        "confidence": 0.1732177734375
+        "confidence": 0.1732177734375,
+        "date": "2025-05-12T19:55:09.014714",
+        "image_path": "F:/______training_database_V3/animal/46033.527955c1ce54b.jpg"
     },
     {
+        "class_name": "animal",
+        "confidence": 0.5751953125,
         "date": "2025-05-12T19:55:13.204901",
-        "image_path": "F:/______training_database_V3/animal/Baby Emperor Penguin ( Juvenile ).thumb.jpeg",
-        "class_name": "animal",
-        "confidence": 0.5751953125
+        "image_path": "F:/______training_database_V3/animal/Baby Emperor Penguin ( Juvenile ).thumb.jpeg"
     },
     {
+        "class_name": "animal",
+        "confidence": 0.63134765625,
         "date": "2025-05-12T19:56:00.397856",
-        "image_path": "F:/_sort_files/animal/1029298.58f8d5abeabbd.jpg",
-        "class_name": "animal",
-        "confidence": 0.63134765625
+        "image_path": "F:/_sort_files/animal/1029298.58f8d5abeabbd.jpg"
     },
     {
-        "date": "2025-05-12T19:56:06.042024",
-        "image_path": "F:/_sort_files/indoor_plant/128793.54403a44a5aad.jpg",
         "class_name": "indoor_plant",
-        "confidence": 0.5537109375
+        "confidence": 0.5537109375,
+        "date": "2025-05-12T19:56:06.042024",
+        "image_path": "F:/_sort_files/indoor_plant/128793.54403a44a5aad.jpg"
     },
     {
+        "class_name": "childroom",
+        "confidence": 0.8642578125,
         "date": "2025-05-12T20:51:33.609099",
-        "image_path": "F:/_sort_files/childroom/Water Tower and pool AquaTower_and_Waterpool.jpg",
-        "class_name": "childroom",
-        "confidence": 0.8642578125
+        "image_path": "F:/_sort_files/childroom/Water Tower and pool AquaTower_and_Waterpool.jpg"
     },
     {
+        "class_name": "childroom",
+        "confidence": 0.5537109375,
         "date": "2025-05-12T20:51:37.787965",
-        "image_path": "F:/_sort_files/childroom/Toys, decor for children.jpg",
-        "class_name": "childroom",
-        "confidence": 0.5537109375
+        "image_path": "F:/_sort_files/childroom/Toys, decor for children.jpg"
     },
     {
+        "class_name": "animal",
+        "confidence": 0.194091796875,
         "date": "2025-05-12T20:51:46.236994",
-        "image_path": "F:/_sort_files_50/animal/786.52683d5fcb854.jpg",
-        "class_name": "animal",
-        "confidence": 0.194091796875
+        "image_path": "F:/_sort_files_50/animal/786.52683d5fcb854.jpg"
     },
     {
+        "class_name": "animal",
+        "confidence": 0.218017578125,
         "date": "2025-05-12T20:51:48.722960",
-        "image_path": "F:/_sort_files_50/animal/60565.529e76974da3e.jpg",
-        "class_name": "animal",
-        "confidence": 0.218017578125
+        "image_path": "F:/_sort_files_50/animal/60565.529e76974da3e.jpg"
     },
     {
-        "date": "2025-05-12T20:51:54.028187",
-        "image_path": "F:/_sort_files_50/animal/House Sparrow.jpeg",
         "class_name": "animal",
-        "confidence": 0.197998046875
+        "confidence": 0.197998046875,
+        "date": "2025-05-12T20:51:54.028187",
+        "image_path": "F:/_sort_files_50/animal/House Sparrow.jpeg"
+    },
+    {
+        "date": "2025-05-13T09:02:39.385994",
+        "image_path": "F:/______training_database_V3/animal/46033.527955c1ce54b.jpg",
+        "class_name": "animal",
+        "confidence": 0.52294921875
+    },
+    {
+        "date": "2025-05-13T09:02:42.479720",
+        "image_path": "F:/______training_database_V3/animal/American Cockroach.thumb.jpeg",
+        "class_name": "animal",
+        "confidence": 0.385498046875
+    },
+    {
+        "date": "2025-05-13T09:16:00.945495",
+        "image_path": "F:/__out_20/animal/17021.526b0979d4b29.jpg",
+        "class_name": "animal",
+        "confidence": 0.1329345703125
+    },
+    {
+        "date": "2025-05-13T09:16:06.475682",
+        "image_path": "F:/__out_20/animal/3265652.60226699ed000.jpg",
+        "class_name": "animal",
+        "confidence": 0.1282958984375
+    },
+    {
+        "date": "2025-05-13T09:16:19.613529",
+        "image_path": "F:/__out_20/animal/picture_01.jpg",
+        "class_name": "animal",
+        "confidence": 0.166748046875
+    },
+    {
+        "date": "2025-05-13T09:16:23.059245",
+        "image_path": "F:/__out_20/animal/Leather Sofa Alameda 91.jpg",
+        "class_name": "animal",
+        "confidence": 0.1702880859375
     }
 ]

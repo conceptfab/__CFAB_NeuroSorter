@@ -1,6 +1,7 @@
 TODO 0.4
 
 
+- nie dziala kolejkowanie
 - plik log w JSON classifier.py
 - brak czasu trening w zadaniau normalnym
 - uprządkować strukturę JSON razem z logiem
