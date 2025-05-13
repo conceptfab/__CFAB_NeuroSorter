@@ -451,6 +451,7 @@ class ImageSorter:
                 "processed": 0,
                 "moved": 0,
                 "skipped": 0,
+                "skipped_confidence": 0,  # Nowy licznik dla pominiętych z powodu progu pewności
                 "categories": {},
             }
 
@@ -495,10 +496,9 @@ class ImageSorter:
                                 f"poza zakresem [{min_confidence_threshold} - {max_confidence_threshold}]"
                             )
                             stats["skipped"] += 1
-                            # Można dodać statystykę dla pominiętych z powodu niskiej pewności
-                            if "skipped_confidence" not in stats:
-                                stats["skipped_confidence"] = 0
-                            stats["skipped_confidence"] += 1
+                            stats[
+                                "skipped_confidence"
+                            ] += 1  # Zwiększ licznik pominiętych z powodu progu
                             continue
 
                         # Sprawdź czy kategoria jest na liście wybranych klas
@@ -579,7 +579,8 @@ class ImageSorter:
             logger.info(
                 f"Przetworzono: {stats['processed']}, "
                 f"Przeniesiono: {stats['moved']}, "
-                f"Pominięto: {stats['skipped']}"
+                f"Pominięto: {stats['skipped']}, "
+                f"Pominięto (pewność): {stats['skipped_confidence']}"
             )
             for category, count in stats["categories"].items():
                 logger.info(f"Kategoria {category}: {count} plików")

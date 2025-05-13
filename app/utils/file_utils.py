@@ -18,44 +18,50 @@ def validate_training_directory(training_dir: str) -> Tuple[bool, Optional[str]]
     Returns:
         Tuple[bool, Optional[str]]: (czy_walidny, komunikat_błędu)
     """
-    if not training_dir:
-        return False, "Ścieżka do katalogu treningowego jest pusta"
+    try:
+        if not training_dir:
+            return False, "Ścieżka do katalogu treningowego jest pusta"
 
-    if not os.path.exists(training_dir):
-        return False, f"Katalog treningowy nie istnieje: {training_dir}"
+        if not os.path.exists(training_dir):
+            return False, f"Katalog treningowy nie istnieje: {training_dir}"
 
-    if not os.path.isdir(training_dir):
-        return False, f"Ścieżka nie jest katalogiem: {training_dir}"
+        if not os.path.isdir(training_dir):
+            return False, f"Ścieżka nie jest katalogiem: {training_dir}"
 
-    # Sprawdź czy katalog zawiera podkatalogi klas
-    has_subdirs = any(
-        os.path.isdir(os.path.join(training_dir, d)) for d in os.listdir(training_dir)
-    )
-    if not has_subdirs:
-        return (
-            False,
-            f"Katalog treningowy nie zawiera podkatalogów klas: {training_dir}",
+        # Sprawdź uprawnienia do odczytu
+        if not os.access(training_dir, os.R_OK):
+            return False, f"Brak uprawnień do odczytu katalogu: {training_dir}"
+
+        # Sprawdź czy katalog zawiera podkatalogi klas
+        has_subdirs = any(
+            os.path.isdir(os.path.join(training_dir, d))
+            for d in os.listdir(training_dir)
         )
+        if not has_subdirs:
+            return (
+                False,
+                f"Katalog treningowy nie zawiera podkatalogów klas: {training_dir}",
+            )
 
-    # Sprawdź, czy nie ma zagnieżdżonych podkatalogów kategorii
-    for category_dir in os.listdir(training_dir):
-        category_path = os.path.join(training_dir, category_dir)
-        if os.path.isdir(category_path):
-            for item in os.listdir(category_path):
-                item_path = os.path.join(category_path, item)
-                if os.path.isdir(item_path):
-                    # Znaleziono zagnieżdżony podkatalog - upewnij się, że nie zawiera obrazów
-                    for file in os.listdir(item_path):
-                        file_path = os.path.join(item_path, file)
-                        if os.path.isfile(file_path) and file.lower().endswith(
-                            (".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff")
-                        ):
-                            return (
-                                False,
-                                f"Znaleziono zagnieżdżony podkatalog z obrazami: {item_path}. Dozwolona jest tylko struktura płaska: kategoria/obrazy",
-                            )
+        # Sprawdź czy podkatalogi klas zawierają obrazy
+        has_images = False
+        for root, _, files in os.walk(training_dir):
+            if any(
+                f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp")) for f in files
+            ):
+                has_images = True
+                break
 
-    return True, None
+        if not has_images:
+            return (
+                False,
+                f"Katalog treningowy nie zawiera obrazów w obsługiwanych formatach: {training_dir}",
+            )
+
+        return True, None
+
+    except Exception as e:
+        return False, f"Błąd podczas walidacji katalogu treningowego: {str(e)}"
 
 
 def validate_model_path(model_path: str) -> Tuple[bool, Optional[str]]:

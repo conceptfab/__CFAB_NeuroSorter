@@ -111,51 +111,141 @@ def update_hardware_profile(profile):
 
 def load_default_settings():
     """Ładuje domyślne ustawienia aplikacji."""
-    return {
-        # Ustawienia ogólne
-        "data_dir": "data",
-        "models_dir": "data/models",
-        "reports_dir": "data/reports",
-        "log_level": "INFO",
-        "log_file": "app.log",
-        # Ustawienia modelu
-        "confidence_threshold": 0.5,
-        "use_gpu": True,
-        "batch_size": DEFAULT_TRAINING_PARAMS["batch_size"],
-        "num_workers": DEFAULT_TRAINING_PARAMS["num_workers"],
-        # Ustawienia treningu
-        "epochs": DEFAULT_TRAINING_PARAMS["max_epochs"],
-        "train_batch_size": DEFAULT_TRAINING_PARAMS["batch_size"],
-        "learning_rate": DEFAULT_TRAINING_PARAMS["learning_rate"],
-        "optimizer": DEFAULT_TRAINING_PARAMS["optimizer"],
-        "scheduler": DEFAULT_TRAINING_PARAMS["scheduler"],
-        "weight_decay": DEFAULT_TRAINING_PARAMS["weight_decay"],
-        "gradient_clip_val": DEFAULT_TRAINING_PARAMS["gradient_clip_val"],
-        "early_stopping_patience": DEFAULT_TRAINING_PARAMS["early_stopping_patience"],
-        "validation_split": DEFAULT_TRAINING_PARAMS["validation_split"],
-        "use_mixed_precision": DEFAULT_TRAINING_PARAMS["use_mixed_precision"],
-        # Ustawienia augmentacji
-        "augmentation_params": DEFAULT_AUGMENTATION_PARAMS,
-        # Ustawienia interfejsu
-        "theme": "Systemowy",
-        "language": "Polski",
-        "font_size": 11,
-        "autosave": True,
-        "confirm_exit": True,
-        "notifications": True,
-        # Ustawienia systemowe
-        "memory_limit": 4096,
-        "threads": 4,
-        "backup_enabled": False,
-        "backup_dir": "data/backup",
-        "backup_interval": 24,
-        # Ustawienia kolorów wykresu
-        "chart_train_loss_color": "b",
-        "chart_val_loss_color": "r",
-        "chart_train_acc_color": "g",
-        "chart_val_acc_color": "m",
-        "chart_plot_area_background_color": "w",
-    }
+    try:
+        settings = {
+            # Ustawienia ogólne
+            "data_dir": "data",
+            "models_dir": "data/models",
+            "reports_dir": "data/reports",
+            "log_level": "INFO",
+            "log_file": "app.log",
+            # Ustawienia modelu
+            "confidence_threshold": 0.5,
+            "use_gpu": True,
+            "batch_size": DEFAULT_TRAINING_PARAMS["batch_size"],
+            "num_workers": DEFAULT_TRAINING_PARAMS["num_workers"],
+            # Ustawienia treningu
+            "epochs": DEFAULT_TRAINING_PARAMS["max_epochs"],
+            "train_batch_size": DEFAULT_TRAINING_PARAMS["batch_size"],
+            "learning_rate": DEFAULT_TRAINING_PARAMS["learning_rate"],
+            "optimizer": DEFAULT_TRAINING_PARAMS["optimizer"],
+            "scheduler": DEFAULT_TRAINING_PARAMS["scheduler"],
+            "weight_decay": DEFAULT_TRAINING_PARAMS["weight_decay"],
+            "gradient_clip_val": DEFAULT_TRAINING_PARAMS["gradient_clip_val"],
+            "early_stopping_patience": DEFAULT_TRAINING_PARAMS[
+                "early_stopping_patience"
+            ],
+            "validation_split": DEFAULT_TRAINING_PARAMS["validation_split"],
+            "use_mixed_precision": DEFAULT_TRAINING_PARAMS["use_mixed_precision"],
+            # Ustawienia augmentacji
+            "augmentation_params": DEFAULT_AUGMENTATION_PARAMS,
+            # Ustawienia interfejsu
+            "theme": "Systemowy",
+            "language": "Polski",
+            "font_size": 11,
+            "autosave": True,
+            "confirm_exit": True,
+            "notifications": True,
+            # Ustawienia systemowe
+            "memory_limit": 4096,
+            "threads": 4,
+            "backup_enabled": False,
+            "backup_dir": "data/backup",
+            "backup_interval": 24,
+            # Ustawienia kolorów wykresu
+            "chart_train_loss_color": "b",
+            "chart_val_loss_color": "r",
+            "chart_train_acc_color": "g",
+            "chart_val_acc_color": "m",
+            "chart_plot_area_background_color": "w",
+        }
+
+        # Walidacja wartości
+        if not 0 <= settings["confidence_threshold"] <= 1:
+            raise ValueError("confidence_threshold musi być między 0 a 1")
+
+        if settings["batch_size"] < 1:
+            raise ValueError("batch_size musi być większe od 0")
+
+        if settings["num_workers"] < 0:
+            raise ValueError("num_workers nie może być ujemne")
+
+        if settings["epochs"] < 1:
+            raise ValueError("epochs musi być większe od 0")
+
+        if settings["train_batch_size"] < 1:
+            raise ValueError("train_batch_size musi być większe od 0")
+
+        if settings["learning_rate"] <= 0:
+            raise ValueError("learning_rate musi być większe od 0")
+
+        if settings["weight_decay"] < 0:
+            raise ValueError("weight_decay nie może być ujemne")
+
+        if settings["gradient_clip_val"] < 0:
+            raise ValueError("gradient_clip_val nie może być ujemne")
+
+        if settings["early_stopping_patience"] < 1:
+            raise ValueError("early_stopping_patience musi być większe od 0")
+
+        if not 0 < settings["validation_split"] < 1:
+            raise ValueError("validation_split musi być między 0 a 1")
+
+        if settings["font_size"] < 8 or settings["font_size"] > 24:
+            raise ValueError("font_size musi być między 8 a 24")
+
+        if settings["memory_limit"] < 1024:
+            raise ValueError("memory_limit musi być większe lub równe 1024")
+
+        if settings["threads"] < 1:
+            raise ValueError("threads musi być większe od 0")
+
+        if not 1 <= settings["backup_interval"] <= 168:
+            raise ValueError("backup_interval musi być między 1 a 168")
+
+        return settings
+
+    except Exception as e:
+        print(f"Błąd podczas ładowania domyślnych ustawień: {str(e)}")
+        # Zwróć podstawowe ustawienia w przypadku błędu
+        return {
+            "data_dir": "data",
+            "models_dir": "data/models",
+            "reports_dir": "data/reports",
+            "log_level": "INFO",
+            "log_file": "app.log",
+            "confidence_threshold": 0.5,
+            "use_gpu": True,
+            "batch_size": 32,
+            "num_workers": 4,
+            "epochs": 50,
+            "train_batch_size": 32,
+            "learning_rate": 0.001,
+            "optimizer": "RMSprop",
+            "scheduler": "cosine",
+            "weight_decay": 1e-4,
+            "gradient_clip_val": 0.1,
+            "early_stopping_patience": 5,
+            "validation_split": 0.2,
+            "use_mixed_precision": True,
+            "augmentation_params": DEFAULT_AUGMENTATION_PARAMS,
+            "theme": "Systemowy",
+            "language": "Polski",
+            "font_size": 11,
+            "autosave": True,
+            "confirm_exit": True,
+            "notifications": True,
+            "memory_limit": 4096,
+            "threads": 4,
+            "backup_enabled": False,
+            "backup_dir": "data/backup",
+            "backup_interval": 24,
+            "chart_train_loss_color": "b",
+            "chart_val_loss_color": "r",
+            "chart_train_acc_color": "g",
+            "chart_val_acc_color": "m",
+            "chart_plot_area_background_color": "w",
+        }
 
 
 def save_default_settings():

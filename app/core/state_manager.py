@@ -99,7 +99,7 @@ class StateManager:
             with open(self.state_file, "w", encoding="utf-8") as f:
                 json.dump(self._state, f, indent=2, ensure_ascii=False)
 
-            # Usuń kopię zapasową
+            # Usuń kopię zapasową tylko jeśli zapis się powiódł
             if os.path.exists(f"{self.state_file}.bak"):
                 os.remove(f"{self.state_file}.bak")
 

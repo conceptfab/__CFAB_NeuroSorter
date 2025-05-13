@@ -126,5 +126,5 @@ class NotificationManager:
             Liczba powiadomień
         """
         if type:
-            return len([n for n in self._notifications if n.type == type])
+            return sum(1 for n in self._notifications if n.type == type)
         return len(self._notifications)

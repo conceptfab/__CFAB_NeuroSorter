@@ -64,14 +64,14 @@ class BatchClassificationThread(QThread):
         except Exception as e:
             self.error_occurred.emit(str(e))
 
-    def stop(self):
+    def stop(self) -> None:
         """Zatrzymuje wątek."""
         self.is_stopped = True
 
-    def pause(self):
+    def pause(self) -> None:
         """Wstrzymuje wątek."""
         self.is_paused = True
 
-    def resume(self):
+    def resume(self) -> None:
         """Wznawia wątek."""
         self.is_paused = False

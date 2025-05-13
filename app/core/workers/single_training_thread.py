@@ -642,14 +642,9 @@ class SingleTrainingThread(QThread):
             # Dodaj dokładność walidacyjną jeśli jest dostępna
             if result and "history" in result:
                 history = result["history"]
-                if history.get("train_acc"):
-                    task_data["train_accuracy"] = history["train_acc"][-1]
-                if history.get("train_loss"):
-                    task_data["train_loss"] = history["train_loss"][-1]
-                if history.get("val_acc"):
-                    task_data["validation_accuracy"] = history["val_acc"][-1]
-                if history.get("val_loss"):
-                    task_data["validation_loss"] = history["val_loss"][-1]
+                for key in ["train_acc", "train_loss", "val_acc", "val_loss"]:
+                    if key in history and history[key]:
+                        task_data[key.replace("_", "_")] = history[key][-1]
 
             # Dodaj informacje o epokach
             if result and "epoch" in result and "total_epochs" in result:

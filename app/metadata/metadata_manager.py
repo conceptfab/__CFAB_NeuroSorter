@@ -27,11 +27,11 @@ class MetadataManager:
         """
         try:
             # Konwersja category_data na format JSON, jeśli to słownik
-            if isinstance(category_data, dict):
-                category_value = json.dumps(category_data)
-            else:
-                # Zachowanie kompatybilności wstecznej
-                category_value = str(category_data)
+            category_value = (
+                json.dumps(category_data)
+                if isinstance(category_data, dict)
+                else str(category_data)
+            )
 
             # Sprawdź format pliku
             _, ext = os.path.splitext(image_path.lower())

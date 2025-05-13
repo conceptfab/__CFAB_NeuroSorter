@@ -833,76 +833,148 @@ class HardwareProfiler:
             dict: Słownik z optymalnymi parametrami lub domyślnymi jeśli profil nie istnieje
         """
         logger.info("Pobieranie optymalnych parametrów...")
-        if not hasattr(self, "machine_id") or not self.machine_id:
-            logger.warning("Brak machine_id, generuję nowy...")
-            self.machine_id = self._generate_machine_id()
-        logger.info("Używam machine_id: %s", self.machine_id)
+        try:
+            if not hasattr(self, "machine_id") or not self.machine_id:
+                logger.warning("Brak machine_id, generuję nowy...")
+                self.machine_id = self._generate_machine_id()
+            logger.info("Używam machine_id: %s", self.machine_id)
 
-        profile = self.load_profile()
-        logger.info("Profil %s", "znaleziony" if profile else "nie znaleziony")
+            profile = self.load_profile()
+            logger.info("Profil %s", "znaleziony" if profile else "nie znaleziony")
 
-        if profile:
-            params = {
-                "batch_size": profile.get(
-                    "recommended_batch_size", DEFAULT_TRAINING_PARAMS["batch_size"]
-                ),
-                "num_workers": profile.get(
-                    "recommended_workers", DEFAULT_TRAINING_PARAMS["num_workers"]
-                ),
-                "mixed_precision": profile.get(
-                    "use_mixed_precision",
-                    DEFAULT_TRAINING_PARAMS["use_mixed_precision"],
-                ),
-                "gpu_available": profile.get("gpu_score") is not None
-                and profile.get("gpu_score") > 0,
-                "learning_rate": profile.get(
-                    "learning_rate", DEFAULT_TRAINING_PARAMS["learning_rate"]
-                ),
-                "optimizer": profile.get(
-                    "optimizer", DEFAULT_TRAINING_PARAMS["optimizer"]
-                ),
-                "scheduler": profile.get(
-                    "scheduler", DEFAULT_TRAINING_PARAMS["scheduler"]
-                ),
-                "weight_decay": profile.get(
-                    "weight_decay", DEFAULT_TRAINING_PARAMS["weight_decay"]
-                ),
-                "gradient_clip_val": profile.get(
-                    "gradient_clip_val", DEFAULT_TRAINING_PARAMS["gradient_clip_val"]
-                ),
-                "early_stopping_patience": profile.get(
-                    "early_stopping_patience",
-                    DEFAULT_TRAINING_PARAMS["early_stopping_patience"],
-                ),
-                "max_epochs": profile.get(
-                    "max_epochs", DEFAULT_TRAINING_PARAMS["max_epochs"]
-                ),
-                "validation_split": profile.get(
-                    "validation_split", DEFAULT_TRAINING_PARAMS["validation_split"]
-                ),
+            if profile:
+                # Walidacja wartości z profilu
+                params = {}
+
+                # Batch size
+                batch_size = profile.get("recommended_batch_size")
+                if batch_size is not None and batch_size > 0:
+                    params["batch_size"] = batch_size
+                else:
+                    params["batch_size"] = DEFAULT_TRAINING_PARAMS["batch_size"]
+
+                # Number of workers
+                num_workers = profile.get("recommended_workers")
+                if num_workers is not None and num_workers >= 0:
+                    params["num_workers"] = num_workers
+                else:
+                    params["num_workers"] = DEFAULT_TRAINING_PARAMS["num_workers"]
+
+                # Mixed precision
+                mixed_precision = profile.get("use_mixed_precision")
+                if mixed_precision is not None:
+                    params["mixed_precision"] = mixed_precision
+                else:
+                    params["mixed_precision"] = DEFAULT_TRAINING_PARAMS[
+                        "use_mixed_precision"
+                    ]
+
+                # GPU availability
+                gpu_score = profile.get("gpu_score")
+                params["gpu_available"] = gpu_score is not None and gpu_score > 0
+
+                # Learning rate
+                learning_rate = profile.get("learning_rate")
+                if learning_rate is not None and learning_rate > 0:
+                    params["learning_rate"] = learning_rate
+                else:
+                    params["learning_rate"] = DEFAULT_TRAINING_PARAMS["learning_rate"]
+
+                # Optimizer
+                optimizer = profile.get("optimizer")
+                if optimizer is not None:
+                    params["optimizer"] = optimizer
+                else:
+                    params["optimizer"] = DEFAULT_TRAINING_PARAMS["optimizer"]
+
+                # Scheduler
+                scheduler = profile.get("scheduler")
+                if scheduler is not None:
+                    params["scheduler"] = scheduler
+                else:
+                    params["scheduler"] = DEFAULT_TRAINING_PARAMS["scheduler"]
+
+                # Weight decay
+                weight_decay = profile.get("weight_decay")
+                if weight_decay is not None and weight_decay >= 0:
+                    params["weight_decay"] = weight_decay
+                else:
+                    params["weight_decay"] = DEFAULT_TRAINING_PARAMS["weight_decay"]
+
+                # Gradient clip value
+                gradient_clip_val = profile.get("gradient_clip_val")
+                if gradient_clip_val is not None and gradient_clip_val >= 0:
+                    params["gradient_clip_val"] = gradient_clip_val
+                else:
+                    params["gradient_clip_val"] = DEFAULT_TRAINING_PARAMS[
+                        "gradient_clip_val"
+                    ]
+
+                # Early stopping patience
+                early_stopping_patience = profile.get("early_stopping_patience")
+                if early_stopping_patience is not None and early_stopping_patience > 0:
+                    params["early_stopping_patience"] = early_stopping_patience
+                else:
+                    params["early_stopping_patience"] = DEFAULT_TRAINING_PARAMS[
+                        "early_stopping_patience"
+                    ]
+
+                # Max epochs
+                max_epochs = profile.get("max_epochs")
+                if max_epochs is not None and max_epochs > 0:
+                    params["max_epochs"] = max_epochs
+                else:
+                    params["max_epochs"] = DEFAULT_TRAINING_PARAMS["max_epochs"]
+
+                # Validation split
+                validation_split = profile.get("validation_split")
+                if validation_split is not None and 0 < validation_split < 1:
+                    params["validation_split"] = validation_split
+                else:
+                    params["validation_split"] = DEFAULT_TRAINING_PARAMS[
+                        "validation_split"
+                    ]
+
+                logger.info("Zwracam parametry z profilu.")
+                return params
+            else:
+                # Domyślne parametry jeśli nie ma profilu
+                params = {
+                    "batch_size": DEFAULT_TRAINING_PARAMS["batch_size"],
+                    "num_workers": max(1, (os.cpu_count() or 4) // 2),
+                    "mixed_precision": torch.cuda.is_available(),
+                    "gpu_available": torch.cuda.is_available(),
+                    "learning_rate": DEFAULT_TRAINING_PARAMS["learning_rate"],
+                    "optimizer": DEFAULT_TRAINING_PARAMS["optimizer"],
+                    "scheduler": DEFAULT_TRAINING_PARAMS["scheduler"],
+                    "weight_decay": DEFAULT_TRAINING_PARAMS["weight_decay"],
+                    "gradient_clip_val": DEFAULT_TRAINING_PARAMS["gradient_clip_val"],
+                    "early_stopping_patience": DEFAULT_TRAINING_PARAMS[
+                        "early_stopping_patience"
+                    ],
+                    "max_epochs": DEFAULT_TRAINING_PARAMS["max_epochs"],
+                    "validation_split": DEFAULT_TRAINING_PARAMS["validation_split"],
+                }
+                logger.info("Zwracam domyślne parametry.")
+                return params
+
+        except Exception as e:
+            logger.error(f"Błąd podczas pobierania optymalnych parametrów: {str(e)}")
+            # Zwróć bezpieczne domyślne parametry w przypadku błędu
+            return {
+                "batch_size": 32,
+                "num_workers": 4,
+                "mixed_precision": False,
+                "gpu_available": False,
+                "learning_rate": 0.001,
+                "optimizer": "RMSprop",
+                "scheduler": "cosine",
+                "weight_decay": 1e-4,
+                "gradient_clip_val": 0.1,
+                "early_stopping_patience": 5,
+                "max_epochs": 50,
+                "validation_split": 0.2,
             }
-            logger.info("Zwracam parametry z profilu.")
-            return params
-        else:
-            # Domyślne parametry jeśli nie ma profilu
-            params = {
-                "batch_size": DEFAULT_TRAINING_PARAMS["batch_size"],
-                "num_workers": max(1, (os.cpu_count() or 4) // 2),
-                "mixed_precision": torch.cuda.is_available(),
-                "gpu_available": torch.cuda.is_available(),
-                "learning_rate": DEFAULT_TRAINING_PARAMS["learning_rate"],
-                "optimizer": DEFAULT_TRAINING_PARAMS["optimizer"],
-                "scheduler": DEFAULT_TRAINING_PARAMS["scheduler"],
-                "weight_decay": DEFAULT_TRAINING_PARAMS["weight_decay"],
-                "gradient_clip_val": DEFAULT_TRAINING_PARAMS["gradient_clip_val"],
-                "early_stopping_patience": DEFAULT_TRAINING_PARAMS[
-                    "early_stopping_patience"
-                ],
-                "max_epochs": DEFAULT_TRAINING_PARAMS["max_epochs"],
-                "validation_split": DEFAULT_TRAINING_PARAMS["validation_split"],
-            }
-            logger.info("Zwracam domyślne parametry.")
-            return params
 
     def generate_recommendations(self):
         """
