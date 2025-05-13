@@ -2,6 +2,7 @@ TODO 0.4
 
 
 - plik log w JSON classifier.py
+- brak czasu trening w zadaniau normalnym
 - uprządkować strukturę JSON razem z logiem
 - nie dziala wsadowe przetwarzanie
 
