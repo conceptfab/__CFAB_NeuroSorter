@@ -1,5 +1,5 @@
 {
-  "type": "training_profile",
+  "type": "training",
   "info": "Profil szkoleniowy dla EfficientNet-B3",
   "description": "Profil dostosowany do rozpoznawania około 40-45 kategorii z wykorzystaniem EfficientNet-B3.",
   "data_required": "40-45 klas (np. 42), zalecane >100-140 obrazów treningowych i >20-30 walidacyjnych na klasę. Dane walidacyjne w osobnym folderze (stosunek 80/20).",
