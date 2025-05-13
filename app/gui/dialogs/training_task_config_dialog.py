@@ -757,13 +757,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.epochs_spin.setValue(DEFAULT_TRAINING_PARAMS["max_epochs"])
             form.addRow("Liczba epok:", self.epochs_spin)
 
-            # Rozmiar wsadu
-            self.batch_size_spin = QtWidgets.QSpinBox()
-            self.batch_size_spin.setRange(1, 512)
-            batch_size = DEFAULT_TRAINING_PARAMS["batch_size"]
-            self.batch_size_spin.setValue(batch_size)
-            form.addRow("Rozmiar wsadu:", self.batch_size_spin)
-
             # Współczynnik uczenia
             self.lr_spin = QtWidgets.QDoubleSpinBox()
             self.lr_spin.setDecimals(6)
@@ -791,23 +784,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.scheduler_combo.addItems(schedulers)
             form.addRow("Harmonogram uczenia:", self.scheduler_combo)
 
-            # Liczba wątków
-            self.num_workers_spin = QtWidgets.QSpinBox()
-            self.num_workers_spin.setRange(0, 32)
-            workers = DEFAULT_TRAINING_PARAMS["num_workers"]
-            self.num_workers_spin.setValue(workers)
-            form.addRow("Liczba wątków:", self.num_workers_spin)
-
             # Liczba epok rozgrzewki
             self.warmup_epochs_spin = QtWidgets.QSpinBox()
             self.warmup_epochs_spin.setRange(0, 50)
             self.warmup_epochs_spin.setValue(5)
             form.addRow("Epoki rozgrzewki:", self.warmup_epochs_spin)
-
-            # Mixed precision
-            self.mixed_precision_check = QtWidgets.QCheckBox("Używaj mixed precision")
-            self.mixed_precision_check.setChecked(True)
-            form.addRow("", self.mixed_precision_check)
 
             layout.addLayout(form)
             return tab
@@ -1259,12 +1240,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.grad_clip.setValue(1.0)
             self.grad_clip.setDecimals(3)
 
-            self.grad_accum = QtWidgets.QSpinBox()
-            self.grad_accum.setRange(1, 32)
-            self.grad_accum.setValue(1)
-
             grad_layout.addRow("Gradient Clipping:", self.grad_clip)
-            grad_layout.addRow("Gradient Accumulation:", self.grad_accum)
             grad_group.setLayout(grad_layout)
 
             # Walidacja online
@@ -1692,6 +1668,12 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
                     optimization_config[param_key] = param_value
 
+            # Znajdź batch_size, num_workers i mixed_precision z zakładki optymalizacji
+            batch_size = optimization_config.get("recommended_batch_size", 32)
+            num_workers = optimization_config.get("recommended_workers", 4)
+            mixed_precision = optimization_config.get("use_mixed_precision", True)
+            grad_accum_steps = optimization_config.get("gradient_accumulation_steps", 1)
+
             self.task_config = {
                 "name": task_name,
                 "type": "training",
@@ -1710,15 +1692,15 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                     },
                     "training": {
                         "epochs": self.epochs_spin.value(),
-                        "batch_size": self.batch_size_spin.value(),
+                        "batch_size": batch_size,  # Używa wartości z zakładki optymalizacji
                         "learning_rate": float(self.lr_spin.value()),
                         "optimizer": self.optimizer_combo.currentText(),
                         "scheduler": self._get_scheduler_value(
                             self.scheduler_combo.currentText()
                         ),
-                        "num_workers": self.num_workers_spin.value(),
+                        "num_workers": num_workers,  # Używa wartości z zakładki optymalizacji
                         "warmup_epochs": self.warmup_epochs_spin.value(),
-                        "mixed_precision": self.mixed_precision_check.isChecked(),
+                        "mixed_precision": mixed_precision,  # Używa wartości z zakładki optymalizacji
                         "freeze_base_model": self.freeze_base_model.isChecked(),
                         "unfreeze_layers": self._get_unfreeze_layers_value(
                             self.unfreeze_layers.text()
@@ -1726,6 +1708,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                         "unfreeze_strategy": self._get_unfreeze_strategy_value(
                             self.unfreeze_strategy.currentText()
                         ),
+                        "gradient_accumulation_steps": grad_accum_steps,  # Używa wartości z zakładki optymalizacji
                     },
                     "regularization": {
                         "weight_decay": float(self.weight_decay_spin.value()),
@@ -1757,14 +1740,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                         "cutmix": {
                             "use": self.cutmix_check.isChecked(),
                             "alpha": self.cutmix_alpha_spin.value(),
-                        },
-                        "autoaugment": {
-                            "use": self.autoaugment_check.isChecked(),
-                        },
-                        "randaugment": {
-                            "use": self.randaugment_check.isChecked(),
-                            "n": self.randaugment_n_spin.value(),
-                            "m": self.randaugment_m_spin.value(),
                         },
                     },
                     "optimization": optimization_config,  # Dodajemy sekcję optymalizacji
