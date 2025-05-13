@@ -60,39 +60,123 @@
         "image_path": "F:/_sort_files_50/animal/House Sparrow.jpeg"
     },
     {
+        "class_name": "animal",
+        "confidence": 0.52294921875,
         "date": "2025-05-13T09:02:39.385994",
-        "image_path": "F:/______training_database_V3/animal/46033.527955c1ce54b.jpg",
-        "class_name": "animal",
-        "confidence": 0.52294921875
+        "image_path": "F:/______training_database_V3/animal/46033.527955c1ce54b.jpg"
     },
     {
+        "class_name": "animal",
+        "confidence": 0.385498046875,
         "date": "2025-05-13T09:02:42.479720",
-        "image_path": "F:/______training_database_V3/animal/American Cockroach.thumb.jpeg",
-        "class_name": "animal",
-        "confidence": 0.385498046875
+        "image_path": "F:/______training_database_V3/animal/American Cockroach.thumb.jpeg"
     },
     {
+        "class_name": "animal",
+        "confidence": 0.1329345703125,
         "date": "2025-05-13T09:16:00.945495",
-        "image_path": "F:/__out_20/animal/17021.526b0979d4b29.jpg",
-        "class_name": "animal",
-        "confidence": 0.1329345703125
+        "image_path": "F:/__out_20/animal/17021.526b0979d4b29.jpg"
     },
     {
+        "class_name": "animal",
+        "confidence": 0.1282958984375,
         "date": "2025-05-13T09:16:06.475682",
-        "image_path": "F:/__out_20/animal/3265652.60226699ed000.jpg",
-        "class_name": "animal",
-        "confidence": 0.1282958984375
+        "image_path": "F:/__out_20/animal/3265652.60226699ed000.jpg"
     },
     {
+        "class_name": "animal",
+        "confidence": 0.166748046875,
         "date": "2025-05-13T09:16:19.613529",
-        "image_path": "F:/__out_20/animal/picture_01.jpg",
-        "class_name": "animal",
-        "confidence": 0.166748046875
+        "image_path": "F:/__out_20/animal/picture_01.jpg"
     },
     {
-        "date": "2025-05-13T09:16:23.059245",
-        "image_path": "F:/__out_20/animal/Leather Sofa Alameda 91.jpg",
         "class_name": "animal",
-        "confidence": 0.1702880859375
+        "confidence": 0.1702880859375,
+        "date": "2025-05-13T09:16:23.059245",
+        "image_path": "F:/__out_20/animal/Leather Sofa Alameda 91.jpg"
+    },
+    {
+        "date": "2025-05-13T10:01:13.576360",
+        "image_path": "F:/__out_30/animal/108665.53b551f36196e.jpg",
+        "class_name": "animal",
+        "confidence": 0.117919921875
+    },
+    {
+        "date": "2025-05-13T10:01:16.488558",
+        "image_path": "F:/__out_30/animal/115461.53e3b8584214a.jpg",
+        "class_name": "animal",
+        "confidence": 0.2315673828125
+    },
+    {
+        "date": "2025-05-13T10:01:20.073033",
+        "image_path": "F:/__out_30/animal/1371602.59cf559ced50a.jpg",
+        "class_name": "animal",
+        "confidence": 0.281982421875
+    },
+    {
+        "date": "2025-05-13T10:02:05.198155",
+        "image_path": "F:/__out_30/technology/1795670.5ab4efade8454.jpg",
+        "class_name": "technology",
+        "confidence": 0.2181396484375
+    },
+    {
+        "date": "2025-05-13T10:02:08.767571",
+        "image_path": "F:/__out_30/technology/1134917.59370365352f8.jpg",
+        "class_name": "technology",
+        "confidence": 0.11810302734375
+    },
+    {
+        "date": "2025-05-13T10:02:14.200743",
+        "image_path": "F:/__out_30/technology/216330.55213d9e22e36 1.jpg",
+        "class_name": "technology",
+        "confidence": 0.190673828125
+    },
+    {
+        "date": "2025-05-13T10:02:17.430124",
+        "image_path": "F:/__out_30/technology/1489954.5a1121029082a.jpg",
+        "class_name": "technology",
+        "confidence": 0.1497802734375
+    },
+    {
+        "date": "2025-05-13T10:02:26.038315",
+        "image_path": "F:/__out_30/technology/2655605.5e0646b13acbf 4.jpg",
+        "class_name": "technology",
+        "confidence": 0.1343994140625
+    },
+    {
+        "date": "2025-05-13T10:02:47.766807",
+        "image_path": "F:/__out_30/pouffe_or_other_seat/117146.53f0c34a9ebb0.jpg",
+        "class_name": "pouffe_or_other_seat",
+        "confidence": 0.1961669921875
+    },
+    {
+        "date": "2025-05-13T10:03:23.439341",
+        "image_path": "F:/__out_30/car/418550.5665aee696ada.jpg",
+        "class_name": "car",
+        "confidence": 0.140869140625
+    },
+    {
+        "date": "2025-05-13T10:03:25.804610",
+        "image_path": "F:/__out_30/car/3188064.5fe49ed7d3840.jpeg",
+        "class_name": "car",
+        "confidence": 0.230712890625
+    },
+    {
+        "date": "2025-05-13T10:03:36.150894",
+        "image_path": "F:/__out_30/bed/2852311.5ebe9fc9ce46d.jpg",
+        "class_name": "bed",
+        "confidence": 0.1885986328125
+    },
+    {
+        "date": "2025-05-13T10:03:38.401772",
+        "image_path": "F:/__out_30/bed/2633864.5debc5a20cdf5 4.jpg",
+        "class_name": "bed",
+        "confidence": 0.2127685546875
+    },
+    {
+        "date": "2025-05-13T10:03:43.100806",
+        "image_path": "F:/__out_30/bed/2115783.5b7d92de80081 2.jpg",
+        "class_name": "bed",
+        "confidence": 0.1912841796875
     }
 ]
