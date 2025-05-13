@@ -342,7 +342,27 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             if "training" in config:
                 training_config = config["training"]
                 self.epochs_spin.setValue(training_config.get("epochs", 100))
-                self.batch_size_spin.setValue(training_config.get("batch_size", 32))
+
+                # Aktualizacja parametrów optymalizacji
+                if hasattr(self, "parameter_rows"):
+                    batch_size = training_config.get("batch_size", 32)
+                    num_workers = training_config.get("num_workers", 4)
+                    mixed_precision = training_config.get("mixed_precision", True)
+
+                    # Aktualizacja wartości w parametrach optymalizacji
+                    if "batch_size" in self.parameter_rows:
+                        self.parameter_rows["batch_size"]["value_widget"].setValue(
+                            batch_size
+                        )
+                    if "num_workers" in self.parameter_rows:
+                        self.parameter_rows["num_workers"]["value_widget"].setValue(
+                            num_workers
+                        )
+                    if "use_mixed_precision" in self.parameter_rows:
+                        self.parameter_rows["use_mixed_precision"][
+                            "value_widget"
+                        ].setChecked(mixed_precision)
+
                 self.lr_spin.setValue(training_config.get("learning_rate", 0.001))
                 self.optimizer_combo.setCurrentText(
                     training_config.get("optimizer", "Adam")
@@ -356,12 +376,8 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 else:
                     self.scheduler_combo.setCurrentText(str(scheduler_config))
 
-                self.num_workers_spin.setValue(training_config.get("num_workers", 4))
                 self.warmup_epochs_spin.setValue(
                     training_config.get("warmup_epochs", 5)
-                )
-                self.mixed_precision_check.setChecked(
-                    training_config.get("mixed_precision", True)
                 )
                 self.freeze_base_model.setChecked(
                     training_config.get("freeze_base_model", True)
@@ -1407,27 +1423,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         return layout
 
     def _apply_all_hardware_optimizations(self):
-        """Zastosowuje wszystkie optymalne ustawienia z profilu sprzętowego."""
-        # Sprawdź czy optymalizacja jest włączona
-        if (
-            hasattr(self, "use_optimization_checkbox")
-            and not self.use_optimization_checkbox.isChecked()
-        ):
-            QtWidgets.QMessageBox.warning(
-                self,
-                "Optymalizacja wyłączona",
-                "Optymalizacja sprzętowa jest obecnie wyłączona. Włącz ją, aby zastosować ustawienia z profilu sprzętowego.",
-            )
-            return
-
-        if not hasattr(self, "parameter_rows") or not self.hardware_profile:
-            QtWidgets.QMessageBox.warning(
-                self,
-                "Ostrzeżenie",
-                "Brak dostępnego profilu sprzętowego lub parametrów do zastosowania.",
-            )
-            return
-
+        """Stosuje wszystkie optymalizacje sprzętowe."""
         count = 0
         for param in self.parameter_rows.values():
             param_key = param["param_key"]
@@ -1437,12 +1433,14 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 value_widget = param["value_widget"]
                 value_widget.setEnabled(False)
 
-                if isinstance(value_widget, QtWidgets.QSpinBox) or isinstance(
-                    value_widget, QtWidgets.QDoubleSpinBox
+                if isinstance(
+                    value_widget, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)
                 ):
-                    value_widget.setValue(hw_value)
+                    value_widget.setValue(float(hw_value))
                 elif isinstance(value_widget, QtWidgets.QCheckBox):
-                    value_widget.setChecked(hw_value)
+                    value_widget.setChecked(bool(hw_value))
+                elif isinstance(value_widget, QtWidgets.QLabel):
+                    value_widget.setText(str(hw_value))
                 else:
                     value_widget.setText(str(hw_value))
 

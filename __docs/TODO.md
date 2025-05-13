@@ -1,5 +1,8 @@
 TODO 0.4
 
+- optymalizacja sprzętowa -> wartość uzytkownika -> wartość z profilu sprzętowego
+
+
 - AI usunąć wczytywanie parametrów profili sprzętowego - wszystkie parametry są z pliku json zadania
 - nie dziala kolejkowanie
 - przy skonczeniu zadania brakuje zmiany statusu NOWY/ZAKOŃCZONY
@@ -17,11 +20,7 @@ TODO 0.4
 
 - skalowanie i skaner w jednej zakładce
 - skąd ten log?
-        Konfiguracja modelu:
-        - Architektura: b0
-        - Liczba klas: 10
-        - Drop connect rate: 0.2
-        - Dropout rate: 0.3
+  Konfiguracja modelu: - Architektura: b0 - Liczba klas: 10 - Drop connect rate: 0.2 - Dropout rate: 0.3
 
 <!-- - fine-tuning dopracowac - dialog do poprawy ładowanie profili nie dziala -->
 
@@ -32,4 +31,3 @@ TODO 0.4
 - optymalizacja zadan treningowych - nowy przycisk, pobieranie danych o sprzęcie
 - walidacja danych treningowych przycisk dane w liscie zadań
 - update dokumentacji, do opisania opcje doszkalania i treningu
-
