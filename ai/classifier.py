@@ -268,47 +268,25 @@ class ImageClassifier:
             raise
 
     def predict(self, image_path, return_ranking=False):
-        """Przewidywanie kategorii dla jednego obrazu
-
-        Args:
-            image_path: Ścieżka do obrazu
-            return_ranking: Czy zwrócić pełny ranking wszystkich klas (domyślnie False)
-
-        Returns:
-            Słownik z wynikami klasyfikacji
+        """
+        Optymalizacja: Usunięcie zbędnych logów debugowania i uproszczenie logiki.
         """
         try:
-            print(f"DEBUG: Rozpoczynam klasyfikację obrazu: {image_path}")
-
-            # Dodana weryfikacja czy słownik class_names istnieje
+            # Jeśli słownik class_names nie istnieje, inicjalizuj pusty słownik
             if not hasattr(self, "class_names") or not self.class_names:
-                print("DEBUG: Brak słownika class_names, inicjalizuję pusty słownik")
                 self.class_names = {}
 
-            print(f"DEBUG: Próba otwarcia obrazu: {image_path}")
             image = Image.open(image_path).convert("RGB")
-            print(
-                f"DEBUG: Obraz otwarty pomyślnie, rozmiar: {image.size}, tryb: {image.mode}"
-            )
-
-            # Poprawka: Oddzielamy transformację od przeniesienia na urządzenie
-            print("DEBUG: Rozpoczynam transformację obrazu")
             image_tensor = self.transform(image).unsqueeze(0)
-            print(
-                f"DEBUG: Transformacja zakończona, kształt tensora: {image_tensor.shape}"
-            )
 
-            # Dodajemy obsługę half precision z jawnie określonym typem
+            # Obsługa half precision
             if self.precision == "half" and torch.cuda.is_available():
-                print("DEBUG: Używam half precision na CUDA")
                 image_tensor = image_tensor.to(self.device, dtype=torch.float16)
             else:
-                print("DEBUG: Używam full precision")
                 image_tensor = image_tensor.to(self.device, dtype=torch.float32)
 
-            print("DEBUG: Rozpoczynam predykcję modelu")
             with torch.no_grad():
-                # Dodajemy autocast dla spójności z resztą kodu
+                # Użyj autocast dla spójności
                 if self.precision == "half" and torch.cuda.is_available():
                     with torch.amp.autocast(device_type="cuda", enabled=True):
                         outputs = self.model(image_tensor)
@@ -320,14 +298,10 @@ class ImageClassifier:
                 confidence = probabilities[0][predicted_idx].item()
 
             predicted_class = predicted_idx.item()
-            print(
-                f"DEBUG: Predykcja zakończona - klasa: {predicted_class}, pewność: {confidence:.4f}"
-            )
 
-            # ---> START DODANEGO KODU <---
-            key_to_find = str(predicted_class)  # Konwersja na string
+            # Znajdź nazwę klasy
+            key_to_find = str(predicted_class)
             if self.class_names and key_to_find not in self.class_names:
-                # Spróbuj znaleźć klucz jako liczbę
                 try:
                     int_key = int(key_to_find)
                     if str(int_key) in self.class_names:
@@ -336,30 +310,19 @@ class ImageClassifier:
                         key_to_find = int_key
                 except ValueError:
                     pass
-            # ---> KONIEC DODANEGO KODU <---
 
-            class_name = self.class_names.get(key_to_find)
-            if class_name is None:
-                print(
-                    f"UWAGA: Nie znaleziono nazwy dla klasy {predicted_class} w słowniku class_names"
-                )
-                print(
-                    f"DEBUG: Słownik class_names w momencie błędu: {self.class_names}"
-                )
-                class_name = f"Kategoria_{predicted_class}"
-
-            print(
-                f"DEBUG: Końcowy wynik - klasa: {class_name}, pewność: {confidence:.4f}"
+            class_name = self.class_names.get(
+                key_to_find, f"Kategoria_{predicted_class}"
             )
 
-            # Przygotuj podstawowy wynik
+            # Przygotuj wynik
             result = {
                 "class_id": predicted_class,
                 "class_name": class_name,
                 "confidence": confidence,
             }
 
-            # Jeśli potrzebny jest ranking, dodaj go
+            # Dodaj ranking jeśli wymagany
             if return_ranking:
                 all_probabilities = probabilities[0].cpu().numpy()
                 class_ranking = []
@@ -373,10 +336,9 @@ class ImageClassifier:
                         except ValueError:
                             pass
 
-                    class_name_for_idx = self.class_names.get(class_key)
-                    if class_name_for_idx is None:
-                        class_name_for_idx = f"Kategoria_{idx}"
-
+                    class_name_for_idx = self.class_names.get(
+                        class_key, f"Kategoria_{idx}"
+                    )
                     class_ranking.append(
                         {
                             "class_id": idx,
@@ -387,16 +349,12 @@ class ImageClassifier:
 
                 # Sortowanie malejąco według pewności
                 class_ranking.sort(key=lambda x: x["confidence"], reverse=True)
-
-                # Dodaj ranking do wyniku
                 result["class_ranking"] = class_ranking
 
             return result
 
         except Exception as e:
             error_msg = f"Błąd w ai.classifier.predict: {str(e)}"
-            print(f"DEBUG: Wystąpił błąd: {error_msg}")
-            print(f"DEBUG: Traceback: {traceback.format_exc()}")
             raise ValueError(error_msg)
 
     def batch_predict(self, image_paths, batch_size=16, return_ranking=False):

@@ -194,81 +194,52 @@ def generate_synthetic_samples(
 
 def compute_fisher_information(model, data_loader, device=None, num_samples=200):
     """
-    Oblicza diagonalę macierzy Fishera dla wszystkich parametrów modelu.
-    
-    Args:
-        model: Model do obliczenia macierzy Fishera
-        data_loader: DataLoader z danymi
-        device: Urządzenie (CPU/GPU)
-        num_samples: Liczba próbek do obliczenia macierzy Fishera
-    
-    Returns:
-        dict: Diagonala macierzy Fishera dla każdego parametru
+    Optymalizacja: Usunięcie zbędnych instrukcji i uproszczenie logiki.
     """
-    # Ustawienie urządzenia
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # Przełączenie modelu w tryb ewaluacji
+
     model.eval()
-    
-    # Przygotowanie słownika na diagonalę macierzy Fishera
+
     fisher_diagonal = {}
     for name, param in model.named_parameters():
         fisher_diagonal[name] = torch.zeros_like(param)
-    
-    # Licznik próbek
+
     sample_count = 0
-    
-    # Iteracja po batchu danych
+
     for inputs, targets in data_loader:
-        # Sprawdź czy osiągnięto limit próbek
         if sample_count >= num_samples:
             break
-            
-        # Liczba próbek w bieżącym batchu
-        batch_size = inputs.size(0)
-        
-        # Nie przekraczamy limitu próbek
-        samples_to_process = min(batch_size, num_samples - sample_count)
+
+        samples_to_process = min(inputs.size(0), num_samples - sample_count)
         if samples_to_process <= 0:
             break
-            
-        # Wycinamy odpowiednią liczbę próbek z batcha
+
         inputs = inputs[:samples_to_process]
         targets = targets[:samples_to_process]
-        
+
         inputs, targets = inputs.to(device), targets.to(device)
-        
-        # Forward pass
+
         log_probs = torch.log_softmax(model(inputs), dim=1)
-        
-        # Iteracja po próbkach
+
         for i in range(samples_to_process):
-            # Filtruj nieprawidłowe etykiety (np. etykiety -1 używane do oznaczenia ignorowanych klas)
             if targets[i] < 0:
                 continue
-                
-            # Obliczenie pochodnej logarytmu prawdopodobieństwa dla prawdziwej klasy
+
             log_prob = log_probs[i, targets[i]]
-            
-            # Zerowanie gradientów
+
             model.zero_grad()
-            
-            # Backward pass
-            log_prob.backward(retain_graph=(i < samples_to_process-1))
-            
-            # Aktualizacja diagonali macierzy Fishera
+
+            log_prob.backward(retain_graph=(i < samples_to_process - 1))
+
             for name, param in model.named_parameters():
                 if param.grad is not None:
-                    fisher_diagonal[name] += param.grad.data ** 2 / samples_to_process
-        
-        # Aktualizacja licznika próbek
+                    fisher_diagonal[name] += param.grad.data**2 / samples_to_process
+
         sample_count += samples_to_process
-    
-    # Normalizacja przez liczbę próbek
+
     if sample_count > 0:
         for name in fisher_diagonal:
             fisher_diagonal[name] /= sample_count
-    
+
     return fisher_diagonal

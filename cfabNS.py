@@ -178,6 +178,9 @@ def main():
         if splash:
             splash.finish(window)
 
+        # Bezpieczne zamknięcie loggera przed zakończeniem aplikacji
+        logger.shutdown()
+
         sys.exit(app.exec())
     except Exception as e:
         handle_exception(e, logger)

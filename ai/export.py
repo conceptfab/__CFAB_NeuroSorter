@@ -6,33 +6,15 @@ import torch
 
 
 def _create_dummy_input(classifier, device_type="cpu"):
-    """Tworzy tensor testowy na odpowiednim urządzeniu z obsługą błędów."""
-    try:
-        target_device = (
-            classifier.device if hasattr(classifier, "device") else torch.device("cpu")
-        )
-        if target_device.type == "cuda" and torch.cuda.is_available():
-            dummy_input = torch.randn(
-                1, 3, 224, 224, device="cuda", dtype=torch.float32
-            )
-        else:  # Użyj CPU jeśli CUDA nie jest dostępna lub jeśli device_type jest "cpu"
-            dummy_input = torch.randn(1, 3, 224, 224, dtype=torch.float32, device="cpu")
-            # Spróbuj przenieść na docelowe urządzenie, jeśli nie jest to CPU
-            if target_device.type != "cpu":
-                try:
-                    dummy_input = dummy_input.to(device=target_device)
-                except Exception as move_err:
-                    print(
-                        f"Ostrzeżenie: Nie udało się przenieść tensora na {target_device}: {move_err}. Używam CPU."
-                    )
-                    dummy_input = dummy_input.to(device="cpu")  # Fallback na CPU
-        return dummy_input
-    except Exception as e:
-        print(f"Ostrzeżenie: Problem z utworzeniem tensora na urządzeniu: {e}")
-        print("Używam CPU jako awaryjnego urządzenia")
-        return torch.randn(
-            1, 3, 224, 224, dtype=torch.float32, device="cpu"
-        )  # CPU fallback
+    """
+    Optymalizacja: Uproszczenie funkcji poprzez usunięcie zbędnych bloków try-except.
+    """
+    target_device = getattr(classifier, "device", torch.device("cpu"))
+
+    if target_device.type == "cuda" and torch.cuda.is_available():
+        return torch.randn(1, 3, 224, 224, device="cuda", dtype=torch.float32)
+    else:
+        return torch.randn(1, 3, 224, 224, dtype=torch.float32, device="cpu")
 
 
 def export_model(classifier, export_dir, include_sample_code=True, formats=None):

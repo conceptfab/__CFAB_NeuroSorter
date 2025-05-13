@@ -1,6 +1,6 @@
 TODO 0.4
 
-
+- AI usunąć wczytywanie parametrów profili sprzętowego - wszystkie parametry są z pliku json zadania
 - nie dziala kolejkowanie
 - przy skonczeniu zadania brakuje zmiany statusu NOWY/ZAKOŃCZONY
 - plik log w JSON classifier.py - dodanie incfo z loga

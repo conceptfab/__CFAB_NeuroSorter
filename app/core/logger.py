@@ -211,3 +211,12 @@ class Logger:
         """
         # Ta metoda teraz nic nie robi, ponieważ nie zapisujemy logów do plików
         pass
+
+    def shutdown(self):
+        """Bezpiecznie zamyka wszystkie handlery logowania."""
+        for handler in self.logger.handlers[:]:
+            try:
+                handler.close()
+                self.logger.removeHandler(handler)
+            except Exception:
+                pass

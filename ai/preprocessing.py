@@ -66,19 +66,12 @@ def get_augmentation_transforms(config=None):
 
 def get_extended_augmentation_transforms(image_size=(224, 224), params=None):
     """
-    Zwraca rozszerzone przekształcenia z konfigurowalnymi parametrami.
-
-    Args:
-        image_size: Krotka (szerokość, wysokość)
-        params: Słownik z parametrami augmentacji
-
-    Returns:
-        Obiekt transforms.Compose z przekształceniami
+    Optymalizacja: Uproszczenie logiki konstruowania listy transformacji.
     """
     if params is None:
         params = {}
 
-    # Domyślne wartości
+    # Domyślne wartości z dykcjonariuszem params.get()
     brightness = params.get("brightness", 0.2)
     contrast = params.get("contrast", 0.2)
     saturation = params.get("saturation", 0.2)
@@ -88,38 +81,34 @@ def get_extended_augmentation_transforms(image_size=(224, 224), params=None):
     grayscale = params.get("grayscale", False)
     perspective = params.get("perspective", False)
 
-    # Nowe parametry dla TrivialAugment i AutoAugment
-    use_trivial_augment = params.get("trivialaugment", {}).get("use", False)
-    use_autoaugment = params.get("autoaugment", {}).get("use", False)
-    use_randaugment = params.get("randaugment", {}).get("use", False)
-    randaugment_n = params.get("randaugment", {}).get("n", 2)
-    randaugment_m = params.get("randaugment", {}).get("m", 9)
-
+    # Prosta konstrukcja listy transformacji
     transform_list = [
         transforms.RandomResizedCrop(image_size),
         transforms.RandomHorizontalFlip(),
     ]
 
-    # Dodaj opcjonalne transformacje na podstawie parametrów
+    # Dodawanie opcjonalnych transformacji
     if vertical_flip:
         transform_list.append(transforms.RandomVerticalFlip())
 
     if rotation > 0:
         transform_list.append(transforms.RandomRotation(rotation))
 
-    # Dodaj TrivialAugment jeśli włączony
-    if use_trivial_augment:
+    if params.get("trivialaugment", {}).get("use", False):
         transform_list.append(TrivialAugmentWide())
 
-    # Dodaj AutoAugment jeśli włączony
-    if use_autoaugment:
+    if params.get("autoaugment", {}).get("use", False):
         transform_list.append(AutoAugment(AutoAugmentPolicy.IMAGENET))
 
-    # Dodaj RandAugment jeśli włączony
-    if use_randaugment:
-        transform_list.append(transforms.RandAugment(n=randaugment_n, m=randaugment_m))
+    if params.get("randaugment", {}).get("use", False):
+        transform_list.append(
+            transforms.RandAugment(
+                n=params.get("randaugment", {}).get("n", 2),
+                m=params.get("randaugment", {}).get("m", 9),
+            )
+        )
 
-    # Dodaj standardowe transformacje kolorów
+    # Dodaj ColorJitter
     transform_list.append(
         transforms.ColorJitter(
             brightness=brightness, contrast=contrast, saturation=saturation, hue=hue
@@ -132,7 +121,7 @@ def get_extended_augmentation_transforms(image_size=(224, 224), params=None):
     if perspective:
         transform_list.append(transforms.RandomPerspective(distortion_scale=0.2, p=0.5))
 
-    # Dodaj standardowe transformacje końcowe
+    # Standardowe końcowe transformacje
     transform_list.extend(
         [
             transforms.ToTensor(),
