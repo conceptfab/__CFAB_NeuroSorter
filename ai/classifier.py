@@ -11,8 +11,10 @@ from ai.models import get_model
 
 
 class ImageClassifier:
-    def __init__(self, model_type="b0", num_classes=10, weights_path=None):
-        # Jeśli istnieje plik konfiguracyjny, pobierz z niego model_type i num_classes
+    def __init__(
+        self, model_type="b0", num_classes=10, weights_path=None, input_size=None
+    ):
+        # Jeśli istnieje plik konfiguracyjny, pobierz z niego model_type, num_classes i input_size
         config_file_name = "_config.json"
         config_path = None
         if weights_path:
@@ -27,10 +29,26 @@ class ImageClassifier:
                     model_type = config_data["model_type"]
                 if "num_classes" in config_data:
                     num_classes = config_data["num_classes"]
+                # Pobierz input_size z configu
+                if "input_size" in config_data:
+                    self.input_size = (
+                        tuple(config_data["input_size"])
+                        if isinstance(config_data["input_size"], list)
+                        else (config_data["input_size"], config_data["input_size"])
+                    )
             except Exception as e:
                 print(
                     f"BŁĄD: Nie udało się wczytać pliku konfiguracyjnego {config_path}: {e}"
                 )
+        # Ustaw domyślny input_size, jeśli nie został określony
+        if input_size:
+            self.input_size = (
+                input_size
+                if isinstance(input_size, tuple)
+                else (input_size, input_size)
+            )
+        elif not hasattr(self, "input_size"):
+            self.input_size = (224, 224)  # Domyślny rozmiar
 
         # Normalizacja nazwy modelu
         self.model_type = model_type.lower()
@@ -76,10 +94,10 @@ class ImageClassifier:
         if weights_path and os.path.exists(weights_path):
             self._load_weights(weights_path)
 
-        # Standardowe przekształcenia dla obrazów
+        # Standardowe przekształcenia dla obrazów z dynamicznym rozmiarem
         self.transform = transforms.Compose(
             [
-                transforms.Resize((224, 224)),
+                transforms.Resize(self.input_size),
                 transforms.ToTensor(),
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]
@@ -596,7 +614,7 @@ class ImageClassifier:
             "total_parameters": total_params,
             "trainable_parameters": trainable_params,
             "device": str(self.device),
-            "input_size": (224, 224),
+            "input_size": self.input_size,
             "class_names": self.class_names,
         }
 
@@ -971,3 +989,46 @@ class ImageClassifier:
     def get_weights_path(self):
         """Zwraca zapamiętaną ścieżkę do pliku wag modelu."""
         return self.weights_path
+
+
+# Funkcja główna (odczytująca JSON zadania):
+def train_from_json_config(json_config_path):
+    """
+    Rozpoczyna trening na podstawie pliku JSON z konfiguracją zadania.
+    Args:
+        json_config_path: Ścieżka do pliku JSON z konfiguracją zadania
+    """
+    import json
+
+    from ai.models import get_model
+    from ai.optimized_training import train_model_optimized
+
+    with open(json_config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    # Wyodrębnij parametry z JSON
+    training_config = config.get("config", {})
+    model_config = training_config.get("model", {})
+    # Pobierz input_size
+    input_size = model_config.get("input_size", 224)
+    if isinstance(input_size, int):
+        input_size = (input_size, input_size)
+    # Inne parametry...
+    architecture = model_config.get("architecture", "EfficientNet")
+    variant = model_config.get("variant", "EfficientNet-B0")
+    num_classes = model_config.get("num_classes", 10)
+    # ... pobieranie innych parametrów z JSONa ...
+    # Tworzenie modelu z odpowiednim input_size
+    model = get_model(
+        model_arch=variant.replace("EfficientNet-", "").lower(),
+        num_classes=num_classes,
+        input_size=input_size,
+    )
+    # Przekaż input_size do funkcji trenującej
+    result = train_model_optimized(
+        model=model,
+        train_dir=training_config.get("train_dir"),
+        val_dir=training_config.get("val_dir"),
+        input_size=input_size,
+        # ... inne parametry ...
+    )
+    return result

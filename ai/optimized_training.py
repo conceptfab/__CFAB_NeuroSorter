@@ -74,6 +74,7 @@ def train_model_optimized(
     model_source_info=None,
     output_dir=None,
     model_save_path=None,
+    input_size=None,
 ):
     """
     Trenuje model na podanym zbiorze danych z wykorzystaniem optymalnych parametrów sprzętowych.
@@ -172,21 +173,27 @@ def train_model_optimized(
         print(f"Błąd podczas przenoszenia modelu na urządzenie: {e}")
         raise
 
+    # Ustalamy input_size do przekazania do transformacji
+    if input_size is None and hasattr(model, "input_size"):
+        input_size = model.input_size
+    elif input_size is None:
+        input_size = (224, 224)  # Domyślny rozmiar
+
     # Przygotuj dane treningowe
     train_transform = None
     if augmentation_mode == "basic":
-        train_transform = get_augmentation_transforms()
-        # print("Użyto podstawowej augmentacji danych")
+        train_transform = get_augmentation_transforms(config={"image_size": input_size})
     elif augmentation_mode == "extended":
+        # Upewnij się, że augmentation_params ma image_size
+        if augmentation_params is None:
+            augmentation_params = {}
+        augmentation_params["image_size"] = input_size
         train_transform = get_extended_augmentation_transforms(
-            params=augmentation_params
+            image_size=input_size, params=augmentation_params
         )
-        # print("Użyto rozszerzonej augmentacji danych z parametrami")
     else:
-        train_transform = get_default_transforms()
-        # print("Użyto standardowych transformacji bez augmentacji")
-
-    val_transform = get_default_transforms()
+        train_transform = get_default_transforms(config={"image_size": input_size})
+    val_transform = get_default_transforms(config={"image_size": input_size})
 
     # Przygotuj zbiory danych
     try:

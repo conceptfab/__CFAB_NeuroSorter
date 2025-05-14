@@ -437,7 +437,7 @@ def fine_tune_model(
     num_epochs=10,
     batch_size=16,
     learning_rate=0.0001,
-    freeze_ratio=0.8,  # Domyślny freeze_ratio, może być nadpisany przez layer_freezing_config
+    freeze_ratio=0.8,
     output_dir="./data/models",
     optimizer_type="adamw",
     scheduler_type="plateau",
@@ -447,19 +447,20 @@ def fine_tune_model(
     label_smoothing=0.1,
     weight_decay=0.01,
     warmup_epochs=1,
-    use_mixup=False,  # Czy stosować mixup na danych WEJŚCIOWYCH
-    use_mixed_precision=False,  # Zmienione z True na False
+    use_mixup=False,
+    use_mixed_precision=False,
     task_name=None,
     prevent_forgetting=True,
     preserve_original_classes=True,
-    rehearsal_config=None,  # np. {"use": True, "rehearsal_data_path": "path/to/old_data", "samples_per_class": 10}
-    knowledge_distillation_config=None,  # np. {"use": True, "temperature": 2.0, "alpha": 0.5}
-    ewc_config=None,  # np. {"use": True, "lambda": 1000.0, "fisher_sample_size": 200, "adaptive_lambda": True}
-    layer_freezing_config=None,  # np. {"strategy": "gradual", "freeze_ratio": 0.7}
+    rehearsal_config=None,
+    knowledge_distillation_config=None,
+    ewc_config=None,
+    layer_freezing_config=None,
     augmentation_params=None,
     preprocessing_params=None,
     use_green_diffusion=False,
     early_stopping_patience=5,
+    input_size=None,  # Dodajemy nowy parametr
 ):
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -523,10 +524,10 @@ def fine_tune_model(
     # --- Ładowanie modelu bazowego i jego konfiguracji ---
     print(f"\nŁadowanie modelu bazowego: {base_model_path}")
     try:
-        base_classifier = ImageClassifier(weights_path=base_model_path)
-        base_classifier.model.to(
-            device
-        )  # Kluczowe: przenieś model na urządzenie OD RAZU
+        base_classifier = ImageClassifier(
+            weights_path=base_model_path, input_size=input_size
+        )
+        base_classifier.model.to(device)
         # Logowanie informacji o modelu bazowym PRZED modyfikacjami
         log_model_info(
             base_classifier.model,
@@ -595,8 +596,12 @@ def fine_tune_model(
         )  # Już powinno być, ale dla pewności
 
     # --- Przygotowanie danych treningowych i walidacyjnych ---
-    train_transform = get_augmentation_transforms(config=augmentation_params)
-    val_transform = get_default_transforms(config=preprocessing_params)
+    train_transform = get_augmentation_transforms(
+        config={"image_size": base_classifier.input_size}
+    )
+    val_transform = get_default_transforms(
+        config={"image_size": base_classifier.input_size}
+    )
 
     print("\nŁadowanie danych treningowych (ImageFolder)...")
     train_dataset = datasets.ImageFolder(train_dir, transform=train_transform)

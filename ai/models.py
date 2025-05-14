@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Union, Tuple
 
 import torch.nn as nn
 from torchvision import models
@@ -10,6 +10,7 @@ def get_model(
     logger: Optional[Callable] = None,
     drop_connect_rate: float = 0.2,
     dropout_rate: float = 0.3,
+    input_size: Optional[Union[int, Tuple[int, int]]] = None
 ) -> nn.Module:
     """
     Tworzy model o podanej architekturze.
@@ -20,6 +21,7 @@ def get_model(
         logger: Funkcja do logowania (opcjonalnie)
         drop_connect_rate: Wartość drop connect rate dla EfficientNet (opcjonalnie)
         dropout_rate: Wartość dropout rate dla warstw klasyfikacji (opcjonalnie)
+        input_size: Rozmiar wejściowy obrazu (opcjonalnie)
 
     Returns:
         nn.Module: Model PyTorch
@@ -175,5 +177,13 @@ def get_model(
             model.heads.head = nn.Sequential(
                 nn.Dropout(dropout_rate), nn.Linear(in_features, num_classes)
             )
+
+    # Dodanie input_size jako atrybutu modelu
+    if input_size is not None:
+        if isinstance(input_size, int):
+            input_size = (input_size, input_size)
+        setattr(model, "input_size", input_size)
+    else:
+        setattr(model, "input_size", (224, 224))  # Domyślny rozmiar
 
     return model

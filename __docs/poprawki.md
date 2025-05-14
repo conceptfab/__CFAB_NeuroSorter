@@ -1,333 +1,231 @@
-Zmiany w kodzie dla poprawy eksportu wizualizacji treningu z queue_manager
-Przeanalizowałem dostarczony kod i zidentyfikowałem, że queue_manager nie zapisuje wizualizacji treningu po zakończeniu zadania treningowego. Oto zmiany, które należy wprowadzić:
-Zmiana w pliku app/gui/tabs/training_manager.py
-W klasie TrainingManager należy dodać funkcję przekazywania wizualizacji treningu do queue_managera oraz zmodyfikować funkcję _training_task_completed:
-pythondef __init__(self, parent=None, settings=None):
-    self.logger = logging.getLogger("TrainingManager")
-    self.logger.setLevel(logging.INFO)
-    super().__init__(parent)
-    self.parent = parent
-    self.settings = settings
-    self.training_thread = None
-    self.queue_manager = QueueManager(self)
-    self.setup_ui()
-    self.connect_signals()
+Zmiany w pliku ai/classifier.py:
+python# W klasie ImageClassifier
+
+def __init__(self, model_type="b0", num_classes=10, weights_path=None, input_size=None):
+    # Jeśli istnieje plik konfiguracyjny, pobierz z niego model_type, num_classes i input_size
+    config_file_name = "_config.json"
+    config_path = None
+    if weights_path:
+        config_path = os.path.splitext(weights_path)[0] + config_file_name
+    config_data = None
+    if config_path and os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+            # Nadpisz model_type i num_classes z configu
+            if "model_type" in config_data:
+                model_type = config_data["model_type"]
+            if "num_classes" in config_data:
+                num_classes = config_data["num_classes"]
+            # Pobierz input_size z configu
+            if "input_size" in config_data:
+                self.input_size = tuple(config_data["input_size"]) if isinstance(config_data["input_size"], list) else (config_data["input_size"], config_data["input_size"])
+        except Exception as e:
+            print(f"BŁĄD: Nie udało się wczytać pliku konfiguracyjnego {config_path}: {e}")
     
-    # Przekazanie referencji do wizualizacji treningu
-    if hasattr(self, "training_visualization"):
-        self.queue_manager.set_visualization_widget(self.training_visualization)
+    # Ustaw domyślny input_size, jeśli nie został określony
+    if input_size:
+        self.input_size = input_size if isinstance(input_size, tuple) else (input_size, input_size)
+    elif not hasattr(self, 'input_size'):
+        self.input_size = (224, 224)  # Domyślny rozmiar
+        
+    # ... reszta kodu init ...
     
-    # Automatyczne odświeżenie listy zadań przy starcie
-    self.refresh()
-W metodzie _training_task_completed należy dodać funkcję eksportu wizualizacji:
-pythondef _training_task_completed(self, task_name, result):
-    """Obsługuje zakończenie zadania treningowego."""
+    # Standardowe przekształcenia dla obrazów z dynamicznym rozmiarem
+    self.transform = transforms.Compose(
+        [
+            transforms.Resize(self.input_size),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]
+    )
+Zmiany w pliku ai/fine_tuning.py:
+Gdy tworzymy nowy model podczas fine-tuningu, musimy przekazać input_size z pliku JSON zadania:
+pythondef fine_tune_model(
+    base_model_path,
+    train_dir,
+    val_dir=None,
+    num_epochs=10,
+    batch_size=16,
+    learning_rate=0.0001,
+    freeze_ratio=0.8,
+    output_dir="./data/models",
+    optimizer_type="adamw",
+    scheduler_type="plateau",
+    device=None,
+    progress_callback=None,
+    should_stop_callback=None,
+    label_smoothing=0.1,
+    weight_decay=0.01,
+    warmup_epochs=1,
+    use_mixup=False,
+    use_mixed_precision=False,
+    task_name=None,
+    prevent_forgetting=True,
+    preserve_original_classes=True,
+    rehearsal_config=None,
+    knowledge_distillation_config=None,
+    ewc_config=None,
+    layer_freezing_config=None,
+    augmentation_params=None,
+    preprocessing_params=None,
+    use_green_diffusion=False,
+    early_stopping_patience=5,
+    input_size=None,  # Dodajemy nowy parametr
+):
+    # ...
+    
+    # Ładując model bazowy, przekazujemy input_size
+    print(f"\nŁadowanie modelu bazowego: {base_model_path}")
     try:
-        self.parent.logger.info(
-            f"DEBUG: _training_task_completed wywołane dla zadania: {task_name}"
-        )
-        self.parent.logger.info(
-            f"DEBUG: _training_task_completed - Stan przycisku stop PRZED "
-            f"ustawieniem na False: {self.parent.stop_task_btn.isEnabled()}"
-        )
-
-        # Odśwież zakładkę modeli
-        self.parent.model_manager_tab.refresh()
-
-        model_filename = result.get("model_filename", "")
-        accuracy = result.get("accuracy", 0.0)
-        epochs_trained = result.get("epochs_trained", 0)
-        training_time = result.get("training_time", 0)
-
-        self.parent.logger.info(
-            f"Zakończono zadanie {task_name}. Model: {model_filename}, "
-            f"Dokładność: {accuracy:.2%}, Epoki: {epochs_trained}, "
-            f"Czas: {training_time:.1f}s"
-        )
-
-        # Aktualizacja UI w głównym oknie
-        self.parent.current_task_info.setText("Brak aktywnego zadania")
-        self.parent.task_progress_bar.setValue(0)
-        self.parent.task_progress_details.setText("")
-        self.parent.stop_task_btn.setEnabled(False)
-        self.parent.logger.info(
-            f"DEBUG: _training_task_completed - Stan przycisku stop PO "
-            f"ustawieniu na False: {self.parent.stop_task_btn.isEnabled()}"
-        )
-
-        # Zapisz wyniki do pliku zadania
-        tasks_dir = os.path.join("data", "tasks")
-        # Usuń rozszerzenie .json jeśli już istnieje w nazwie
-        task_name = task_name.replace(".json", "")
-        task_file = os.path.join(tasks_dir, f"{task_name}.json")
-
-        if os.path.exists(task_file):
-            try:
-                # Wczytaj aktualne dane zadania
-                with open(task_file, "r", encoding="utf-8") as f:
-                    task_data = json.load(f)
-
-                # Dodaj wyniki trainingu
-                task_data["status"] = "Zakończony"
-                task_data["model_filename"] = model_filename
-                task_data["accuracy"] = accuracy
-                task_data["epochs_trained"] = epochs_trained
-                task_data["training_time"] = training_time
-                task_data["training_time_str"] = str(
-                    datetime.timedelta(seconds=int(training_time))
-                )
-
-                # Dodaj dodatkowe metryki jeśli są dostępne
-                if "history" in result:
-                    history = result["history"]
-                    if "train_acc" in history:
-                        task_data["train_accuracy"] = history["train_acc"][-1]
-                    if "train_loss" in history:
-                        task_data["train_loss"] = history["train_loss"][-1]
-                    if "val_acc" in history:
-                        task_data["validation_accuracy"] = history["val_acc"][-1]
-                    if "val_loss" in history:
-                        task_data["validation_loss"] = history["val_loss"][-1]
-
-                # Zapisz zaktualizowane dane
-                with open(task_file, "w", encoding="utf-8") as f:
-                    json.dump(task_data, f, indent=4, ensure_ascii=False)
-
-                self.parent.logger.info(
-                    f"Zapisano wyniki trainingu do pliku: {task_file}"
-                )
-            except Exception as e:
-                self.parent.logger.error(
-                    f"Błąd podczas zapisywania wyników: {str(e)}"
-                )
-        else:
-            self.parent.logger.error(f"Nie znaleziono pliku zadania: {task_file}")
-
-        # Zapisz wykres treningu
-        if hasattr(self, "training_visualization") and self.training_visualization:
-            try:
-                # Utwórz katalog na wykresy jeśli nie istnieje
-                plots_dir = os.path.join("data", "plots")
-                os.makedirs(plots_dir, exist_ok=True)
-
-                # Generuj nazwę pliku wykresu
-                timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-                plot_filename = f"{task_name}_{timestamp}.png"
-                plot_path = os.path.join(plots_dir, plot_filename)
-
-                # Zapisz wykres
-                if self.training_visualization.save_plot(plot_path):
-                    self.parent.logger.info(
-                        f"Wykres treningu zapisany w: {plot_path}"
-                    )
-                    
-                    # Dodaj informację o ścieżce do wykresu w pliku zadania
-                    if os.path.exists(task_file):
-                        try:
-                            with open(task_file, "r", encoding="utf-8") as f:
-                                task_data = json.load(f)
-                            task_data["plot_path"] = plot_path
-                            with open(task_file, "w", encoding="utf-8") as f:
-                                json.dump(task_data, f, indent=4, ensure_ascii=False)
-                        except Exception as e:
-                            self.parent.logger.error(
-                                f"Błąd podczas aktualizacji ścieżki wykresu: {str(e)}"
-                            )
-                    
-                    # Reset wizualizacji po zapisaniu
-                    self.training_visualization.clear_data()
-                    self.training_visualization.reset_plot()
-                else:
-                    self.parent.logger.error(
-                        "Nie udało się zapisać wykresu treningu"
-                    )
-            except Exception as plot_error:
-                self.parent.logger.error(
-                    f"Błąd podczas zapisywania wykresu: {plot_error}"
-                )
-
-        # Odśwież listę zadań
-        self.refresh()
-
+        base_classifier = ImageClassifier(weights_path=base_model_path, input_size=input_size)
+        base_classifier.model.to(device)
+        # ...
     except Exception as e:
-        self.parent.logger.error(
-            f"Błąd podczas obsługi zakończenia zadania: {str(e)}"
-        )
-        self.parent.logger.error(f"TRACEBACK: {traceback.format_exc()}")
-        QtWidgets.QMessageBox.critical(
-            self,
-            "Błąd",
-            f"Nie udało się zakończyć zadania: {str(e)}",
-        )
-Zmiana w pliku app/gui/dialogs/queue_manager.py
-Musimy dodać funkcję ustawiającą i używającą wizualizacji treningu w klasie QueueManager:
-pythonclass QueueManager(QDialog):
+        raise RuntimeError(f"Nie udało się załadować modelu bazowego z {base_model_path}: {e}")
+    
+    # ...
+    
+    # Przy tworzeniu datasetu, przekazujemy odpowiedni input_size do przekształceń:
+    val_transform = get_default_transforms(config={"image_size": base_classifier.input_size})
+    train_transform = get_augmentation_transforms(config={"image_size": base_classifier.input_size})
+    
+    # ...
+    
+    # Kod dalszego fine-tuningu...
+Dostosowanie funkcji w ai/optimized_training.py:
+Dodajemy obsługę input_size w funkcji train_model_optimized:
+pythondef train_model_optimized(
+    model,
+    train_dir,
+    val_dir=None,
+    num_epochs=10,
+    batch_size=None,
+    learning_rate=0.001,
+    device=None,
+    progress_callback=None,
+    freeze_backbone=False,
+    lr_scheduler_type="plateau",
+    early_stopping=True,
+    mixup=True,
+    label_smoothing=0.1,
+    weight_decay=0.03,
+    optimizer_type="adamw",
+    profiler=None,
+    augmentation_mode="extended",
+    augmentation_params=None,
+    should_stop_callback=None,
+    use_cross_validation=False,
+    k_folds=5,
+    freeze_layers_ratio=0.7,
+    model_log_path=None,
+    model_source_info=None,
+    output_dir=None,
+    model_save_path=None,
+    input_size=None,  # Dodajemy nowy parametr
+):
+    # ...
+    
+    # Ustalamy input_size do przekazania do transformacji
+    if input_size is None and hasattr(model, "input_size"):
+        input_size = model.input_size
+    elif input_size is None:
+        input_size = (224, 224)  # Domyślny rozmiar
+    
+    # Przygotuj dane treningowe
+    train_transform = None
+    if augmentation_mode == "basic":
+        train_transform = get_augmentation_transforms(config={"image_size": input_size})
+    elif augmentation_mode == "extended":
+        # Upewnij się, że augmentation_params ma image_size
+        if augmentation_params is None:
+            augmentation_params = {}
+        augmentation_params["image_size"] = input_size
+        train_transform = get_extended_augmentation_transforms(image_size=input_size, params=augmentation_params)
+    else:
+        train_transform = get_default_transforms(config={"image_size": input_size})
+    
+    val_transform = get_default_transforms(config={"image_size": input_size})
+    
+    # ... reszta kodu ...
+Funkcja główna (odczytująca JSON zadania):
+Teraz potrzebujemy funkcji głównej, która będzie odczytywać plik JSON zadania i przekazywać parametr input_size do odpowiednich funkcji:
+pythondef train_from_json_config(json_config_path):
+    """
+    Rozpoczyna trening na podstawie pliku JSON z konfiguracją zadania.
+    
+    Args:
+        json_config_path: Ścieżka do pliku JSON z konfiguracją zadania
+    """
+    with open(json_config_path, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+    
+    # Wyodrębnij parametry z JSON
+    training_config = config.get('config', {})
+    model_config = training_config.get('model', {})
+    
+    # Pobierz input_size
+    input_size = model_config.get('input_size', 224)
+    if isinstance(input_size, int):
+        input_size = (input_size, input_size)
+    
+    # Inne parametry...
+    architecture = model_config.get('architecture', 'EfficientNet')
+    variant = model_config.get('variant', 'EfficientNet-B0')
+    num_classes = model_config.get('num_classes', 10)
+    
+    # ... pobieranie innych parametrów z JSONa ...
+    
+    # Tworzenie modelu z odpowiednim input_size
+    model = get_model(
+        model_arch=variant.replace('EfficientNet-', '').lower(),
+        num_classes=num_classes,
+        input_size=input_size
+    )
+    
+    # Przekaż input_size do funkcji trenującej
+    result = train_model_optimized(
+        model=model,
+        train_dir=training_config.get('train_dir'),
+        val_dir=training_config.get('val_dir'),
+        input_size=input_size,
+        # ... inne parametry ...
+    )
+    
+    return result
+Modyfikacja ai/models.py:
+Dodajemy obsługę input_size w funkcji get_model:
+pythondef get_model(
+    model_arch: str,
+    num_classes: Optional[int] = None,
+    logger: Optional[Callable] = None,
+    drop_connect_rate: float = 0.2,
+    dropout_rate: float = 0.3,
+    input_size: Optional[Union[int, Tuple[int, int]]] = None
+) -> nn.Module:
+    """
+    Tworzy model o podanej architekturze.
+
+    Args:
+        model_arch: Architektura modelu (np. 'b0' dla EfficientNet, '50' dla ResNet)
+        num_classes: Liczba klas (opcjonalnie)
+        logger: Funkcja do logowania (opcjonalnie)
+        drop_connect_rate: Wartość drop connect rate dla EfficientNet (opcjonalnie)
+        dropout_rate: Wartość dropout rate dla warstw klasyfikacji (opcjonalnie)
+        input_size: Rozmiar wejściowy obrazu (opcjonalnie)
+
+    Returns:
+        nn.Module: Model PyTorch
+    """
     # ... istniejący kod ...
     
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.parent = parent
-        self.setWindowTitle("Zarządzanie kolejką zadań")
-        self.setMinimumSize(800, 600)
-        self.new_tasks = []
-        self.training_threads = []
-        self.training_visualization = None  # Dodajemy referencję do wizualizacji
-        self.setup_ui()
-        self.load_new_tasks()
+    # Dodanie input_size jako atrybutu modelu
+    if input_size is not None:
+        if isinstance(input_size, int):
+            input_size = (input_size, input_size)
+        setattr(model, "input_size", input_size)
+    else:
+        setattr(model, "input_size", (224, 224))  # Domyślny rozmiar
         
-    def set_visualization_widget(self, visualization_widget):
-        """Ustawia widget wizualizacji treningu."""
-        self.training_visualization = visualization_widget
-        
-    def _handle_task_progress(self, task_name, progress, details):
-        """Obsługuje aktualizacje postępu treningu."""
-        try:
-            # Aktualizacja paska postępu i szczegółów
-            # ... istniejący kod ...
-            
-            # Aktualizacja wizualizacji treningu
-            if self.training_visualization:
-                # Pobierz i weryfikuj wartości metryk
-                epoch = int(details.get("epoch", 0))
-                train_loss = details.get("train_loss")
-                train_acc = details.get("train_acc")
-                val_loss = details.get("val_loss")
-                val_acc = details.get("val_acc")
-                val_top3 = details.get("val_top3")
-                val_top5 = details.get("val_top5")
-                val_precision = details.get("val_precision")
-                val_recall = details.get("val_recall")
-                val_f1 = details.get("val_f1")
-                val_auc = details.get("val_auc")
-                
-                # Aktualizacja wizualizacji
-                if epoch > 0:
-                    self.training_visualization.update_data(
-                        epoch=epoch,
-                        train_loss=train_loss,
-                        train_acc=train_acc,
-                        val_loss=val_loss,
-                        val_acc=val_acc,
-                        val_top3=val_top3,
-                        val_top5=val_top5,
-                        val_precision=val_precision,
-                        val_recall=val_recall,
-                        val_f1=val_f1,
-                        val_auc=val_auc
-                    )
-                    
-        except Exception as e:
-            print(f"Błąd w _handle_task_progress: {e}")
-            import traceback
-            print(traceback.format_exc())
-            
-    def _handle_task_completed(self, task_name, result):
-        """Obsługuje zakończenie zadania treningowego."""
-        try:
-            # ... istniejący kod ...
-            
-            # Zapisz wykres treningu jeśli wizualizacja istnieje
-            if self.training_visualization:
-                try:
-                    # Utwórz katalog na wykresy jeśli nie istnieje
-                    plots_dir = os.path.join("data", "plots")
-                    os.makedirs(plots_dir, exist_ok=True)
-
-                    # Generuj nazwę pliku wykresu
-                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-                    plot_filename = f"{task_name}_{timestamp}.png"
-                    plot_path = os.path.join(plots_dir, plot_filename)
-
-                    # Zapisz wykres
-                    if self.training_visualization.save_plot(plot_path):
-                        print(f"Wykres treningu zapisany w: {plot_path}")
-                        
-                        # Dodaj informację o ścieżce do wykresu w pliku zadania
-                        task_file = os.path.join("data", "tasks", f"{task_name}.json")
-                        if os.path.exists(task_file):
-                            try:
-                                with open(task_file, "r", encoding="utf-8") as f:
-                                    task_data = json.load(f)
-                                task_data["plot_path"] = plot_path
-                                with open(task_file, "w", encoding="utf-8") as f:
-                                    json.dump(task_data, f, indent=4, ensure_ascii=False)
-                            except Exception as e:
-                                print(f"Błąd podczas aktualizacji ścieżki wykresu: {str(e)}")
-                        
-                        # Reset wizualizacji po zapisaniu
-                        self.training_visualization.clear_data()
-                        self.training_visualization.reset_plot()
-                    else:
-                        print("Nie udało się zapisać wykresu treningu")
-                except Exception as plot_error:
-                    print(f"Błąd podczas zapisywania wykresu: {plot_error}")
-            
-            # ... kontynuacja istniejącego kodu ...
-        
-        except Exception as e:
-            print(f"Błąd podczas obsługi zakończenia zadania: {str(e)}")
-            QMessageBox.critical(
-                self,
-                "Błąd",
-                f"Nie udało się zakończyć zadania: {str(e)}",
-            )
-            
-    def _setup_next_task(self):
-        """Konfiguruje i uruchamia następne zadanie z kolejki."""
-        try:
-            # ... istniejący kod ...
-
-            # Wyczyść dane wizualizacji przed rozpoczęciem nowego zadania
-            if self.training_visualization:
-                self.training_visualization.clear_data()
-                self.training_visualization.reset_plot()
-                
-            # ... kontynuacja istniejącego kodu ...
-        
-        except Exception as e:
-            print(f"Błąd podczas konfiguracji następnego zadania: {str(e)}")
-            QMessageBox.critical(
-                self,
-                "Błąd",
-                f"Nie udało się skonfigurować następnego zadania: {str(e)}",
-            )
-Zmiana w pliku app/core/workers/single_training_thread.py
-Upewnijmy się, że SingleTrainingThread przekazuje wszystkie niezbędne dane wizualizacji:
-pythondef _update_progress(self, epoch, total_epochs, metrics):
-    """Aktualizuje postęp treningu."""
-    try:
-        if self._stop_requested:
-            return
-
-        progress = int((epoch / total_epochs) * 100) if total_epochs > 0 else 0
-        
-        # Zbieramy wszystkie dostępne metryki
-        details = {
-            "epoch": epoch,
-            "total_epochs": total_epochs,
-            "train_loss": metrics.get("train_loss"),
-            "train_acc": metrics.get("train_acc"),
-            "val_loss": metrics.get("val_loss"),
-            "val_acc": metrics.get("val_acc"),
-            "val_top3": metrics.get("val_top3"),
-            "val_top5": metrics.get("val_top5"),
-            "val_precision": metrics.get("val_precision"),
-            "val_recall": metrics.get("val_recall"),
-            "val_f1": metrics.get("val_f1"),
-            "val_auc": metrics.get("val_auc"),
-            "learning_rate": metrics.get("learning_rate")
-        }
-        
-        self.task_progress.emit(self.task_name, progress, details)
-        
-    except Exception as e:
-        self.error.emit(self.task_name, f"Błąd aktualizacji postępu: {str(e)}")
-Podsumowanie zmian
-
-Dodajemy przekazanie referencji do widgetu wizualizacji treningu z TrainingManager do QueueManager.
-Dodajemy aktualizację wizualizacji podczas przetwarzania zadań w QueueManager.
-Dodajemy zapisywanie wykresu treningu po zakończeniu zadania w QueueManager.
-Upewniamy się, że SingleTrainingThread przekazuje wszystkie dostępne metryki do wizualizacji.
-Dodajemy zapisywanie ścieżki do wygenerowanego wykresu w pliku konfiguracyjnym zadania.
-
-Te zmiany powinny zapewnić, że queue_manager będzie prawidłowo zapisywał wizualizację treningu w taki sam sposób, jak dzieje się to w zakładce TrainingManager.
+    return model
+Dzięki tym zmianom, input_size będzie dynamicznie odczytywany z pliku JSON zadania i używany w całym procesie treningu, zamiast być ustawionym na stałe jako 224x224.

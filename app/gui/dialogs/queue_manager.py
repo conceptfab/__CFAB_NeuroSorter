@@ -139,7 +139,12 @@ class QueueManager(QtWidgets.QDialog):
         self.tasks_table = QtWidgets.QTableWidget()
         self.tasks_table.setColumnCount(4)
         self.tasks_table.setHorizontalHeaderLabels(
-            ["Nazwa", "Typ", "Status", "Data utworzenia"]
+            [
+                "Nazwa",
+                "Typ",
+                "Status",
+                "Data utworzenia",
+            ]
         )
         self.tasks_table.horizontalHeader().setStretchLastSection(True)
         top_layout.addWidget(self.tasks_table)
@@ -435,7 +440,3 @@ class QueueManager(QtWidgets.QDialog):
             self.update_progress_bar()
             return self.new_tasks[self.current_task_index - 1]
         return None
-
-    def set_visualization_widget(self, visualization_widget):
-        """Ustawia widget wizualizacji treningu."""
-        self.training_visualization = visualization_widget

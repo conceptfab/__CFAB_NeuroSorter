@@ -276,6 +276,9 @@ class TrainingVisualization(QWidget):
         learning_rate=None,  # Nowy parametr
     ):
         """Aktualizuje dane wykresu."""
+        print(
+            f"[TrainingVisualization] update_data: epoka={epoch}, train_loss={train_loss}, train_acc={train_acc}, val_loss={val_loss}, val_acc={val_acc}"
+        )
         try:
             # Konwersja i walidacja danych
             try:
@@ -405,7 +408,7 @@ class TrainingVisualization(QWidget):
             # Przywróć oryginalne ograniczenia szerokości
             self.plot_widget.setMinimumWidth(original_min_width)
             self.plot_widget.setMaximumWidth(original_max_width)
-            
+
             # Upewnij się, że wykres jest nadal widoczny
             self.update_plot()
 

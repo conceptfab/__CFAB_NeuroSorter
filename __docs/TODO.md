@@ -3,6 +3,7 @@ TODO 0.4
 - optymalizacja sprzętowa -> wartość uzytkownika -> wartość z profilu sprzętowego
 - nie dziala przycisk zastosuj optymalizacje
 - usun przycisk pokaz log
+- dodatkowy suffix_sekundowy w nazwie zadania
 - do sprawdzenia czy to potrzebne w pliku zadania: },
         "optimization": {
             "batch_size": 128,

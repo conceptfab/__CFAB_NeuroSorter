@@ -42,10 +42,6 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         self.setup_ui()
         self.connect_signals()
 
-        # Przekazanie referencji do wizualizacji treningu
-        if hasattr(self, "training_visualization"):
-            self.queue_manager.set_visualization_widget(self.training_visualization)
-
         # Automatyczne odświeżenie listy zadań przy starcie
         self.refresh()
 
