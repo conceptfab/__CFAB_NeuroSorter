@@ -26,8 +26,17 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
     def __init__(self, parent=None, settings=None, hardware_profile=None):
         super().__init__(parent)
         self.settings = settings
-        self.hardware_profile = hardware_profile
+        if not hardware_profile:
+            from app.profiler import (
+                HardwareProfiler,
+            )  # Import lokalny aby uniknąć cyklicznych zależności
+
+            profiler = HardwareProfiler()
+            self.hardware_profile = profiler.get_optimal_parameters()
+        else:
+            self.hardware_profile = hardware_profile
         self._setup_logging()
+        self.logger.info(f"Profil sprzętowy: {self.hardware_profile}")
         self.setWindowTitle("Konfiguracja treningu")
         self.setMinimumWidth(1000)
         self.profiles_dir = Path("data/profiles")
@@ -65,6 +74,24 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         try:
             self.logger.debug("Rozpoczęcie inicjalizacji UI")
             layout = QtWidgets.QVBoxLayout(self)
+
+            # Dodaj pasek narzędzi
+            toolbar = QtWidgets.QToolBar("Narzędzia")
+            (
+                self.addToolBar(QtWidgets.Qt.ToolBarArea.TopToolBarArea, toolbar)
+                if hasattr(self, "addToolBar")
+                else None
+            )
+
+            # Przycisk: Pokaż profil sprzętowy
+            show_hw_profile_btn = QtWidgets.QPushButton("Pokaż profil sprzętowy")
+            show_hw_profile_btn.clicked.connect(self._show_hardware_profile)
+            layout.addWidget(show_hw_profile_btn)
+
+            # Przycisk: Otwórz plik logu
+            open_log_btn = QtWidgets.QPushButton("Otwórz plik logu")
+            open_log_btn.clicked.connect(self._open_log_file)
+            layout.addWidget(open_log_btn)
 
             # Utworzenie zakładek
             self.tabs = QtWidgets.QTabWidget()
@@ -130,6 +157,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         """Tworzenie zakładki Dane i Model."""
         try:
             self.logger.debug("Tworzenie zakładki")
+            self.optimization_params = []
             tab = QtWidgets.QWidget()
             layout = QtWidgets.QVBoxLayout(tab)
             form = QtWidgets.QFormLayout()
@@ -246,6 +274,25 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             layout.addLayout(form)
             layout.addWidget(profile_group)
+
+            # --- Dodajemy parametry na końcu formularza jako zwykłe widgety ---
+            self.lr_spin = QtWidgets.QDoubleSpinBox()
+            self.lr_spin.setDecimals(6)
+            self.lr_spin.setRange(0.000001, 1.0)
+            self.lr_spin.setSingleStep(0.0001)
+            self.lr_spin.setValue(0.001)
+            form.addRow("Learning rate:", self.lr_spin)
+
+            self.epochs_spin = QtWidgets.QSpinBox()
+            self.epochs_spin.setRange(1, 1000)
+            self.epochs_spin.setValue(100)
+            form.addRow("Epochs:", self.epochs_spin)
+
+            self.grad_accum_steps_spin = QtWidgets.QSpinBox()
+            self.grad_accum_steps_spin.setRange(1, 16)
+            self.grad_accum_steps_spin.setValue(1)
+            form.addRow("Gradient Accumulation:", self.grad_accum_steps_spin)
+
             return tab
 
         except Exception as e:
@@ -1297,21 +1344,10 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             params_group = QtWidgets.QGroupBox("Parametry optymalizacyjne")
             params_layout = QtWidgets.QFormLayout()
 
-            # Dodaj parametry optymalizacyjne
+            # Dodaj parametry optymalizacyjne (bez learning_rate, epochs, gradient_accumulation_steps)
             params = [
                 ("Batch size", "batch_size", 32, "int", 1, 1024, 1),
-                ("Learning rate", "learning_rate", 0.001, "float", 0.0001, 1.0, 0.0001),
-                ("Epochs", "epochs", 100, "int", 1, 1000, 1),
                 ("Workers", "num_workers", 4, "int", 0, 32, 1),
-                (
-                    "Gradient Accumulation",
-                    "gradient_accumulation_steps",
-                    1,
-                    "int",
-                    1,
-                    16,
-                    1,
-                ),
                 (
                     "Mixed Precision",
                     "use_mixed_precision",
@@ -1358,9 +1394,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         max_val=None,
         step=None,
     ):
-        """
-        Tworzy wiersz parametru z kontrolkami dla ustawień użytkownika i profilu sprzętowego.
-        """
         layout = QtWidgets.QHBoxLayout()
 
         # Wartość użytkownika
@@ -1386,10 +1419,16 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         user_checkbox = QtWidgets.QCheckBox("Użytkownika")
         user_checkbox.setChecked(True)
 
-        # Etykieta i wartość z profilu sprzętowego
-        hw_value_label = QtWidgets.QLabel("Profil sprzętowy:")
+        # Mapowanie kluczy profilu sprzętowego
+        profile_key = {
+            "batch_size": "recommended_batch_size",
+            "learning_rate": "learning_rate",
+            "epochs": "max_epochs",
+            "num_workers": "recommended_workers",
+            "use_mixed_precision": "use_mixed_precision",
+        }.get(param_key, param_key)
         # Pobierz wartość z profilu sprzętowego lub wyświetl "Brak"
-        hw_value_actual = self.hardware_profile.get(param_key)
+        hw_value_actual = self.hardware_profile.get(profile_key)
         hw_value_text = str(hw_value_actual) if hw_value_actual is not None else "Brak"
         hw_value = QtWidgets.QLabel(hw_value_text)
 
@@ -1401,12 +1440,12 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         source_group = QtWidgets.QButtonGroup()
         source_group.addButton(user_checkbox)
         source_group.addButton(hw_checkbox)
-        source_group.setExclusive(True)  # Tylko jeden z checkboxów może być zaznaczony
+        source_group.setExclusive(True)
 
         # Dodaj widgety do layoutu
         layout.addWidget(value_widget)
         layout.addWidget(user_checkbox)
-        layout.addWidget(hw_value_label)
+        layout.addWidget(QtWidgets.QLabel("Profil sprzętowy:"))
         layout.addWidget(hw_value)
         layout.addWidget(hw_checkbox)
 
@@ -1415,14 +1454,13 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             "param_key": param_key,
             "value_widget": value_widget,
             "user_checkbox": user_checkbox,
-            "hw_value_label": hw_value_label,
+            "hw_value_label": None,  # niepotrzebne
             "hw_value": hw_value,
             "hw_checkbox": hw_checkbox,
             "button_group": source_group,
             "hw_value_actual": hw_value_actual,
         }
 
-        # Podpięcie zdarzeń do kontrolek
         user_checkbox.toggled.connect(
             lambda checked: self._on_source_toggle(row_widgets, checked)
         )
@@ -1430,7 +1468,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             lambda checked: self._on_hw_toggle(row_widgets, checked)
         )
 
-        # Zapisz referencje jako atrybut klasy
         if not hasattr(self, "parameter_rows"):
             self.parameter_rows = {}
         self.parameter_rows[param_key] = row_widgets
@@ -1458,9 +1495,8 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             # Ustaw wartość z profilu sprzętowego, jeśli jest dostępna
             if hw_value_actual is not None:
-                if (
-                    isinstance(value_widget, QtWidgets.QSpinBox)
-                    or isinstance(value_widget, QtWidgets.QDoubleSpinBox)
+                if isinstance(value_widget, QtWidgets.QSpinBox) or isinstance(
+                    value_widget, QtWidgets.QDoubleSpinBox
                 ):
                     value_widget.setValue(hw_value_actual)
                 elif isinstance(value_widget, QtWidgets.QCheckBox):
@@ -1556,12 +1592,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             if hasattr(self, "parameter_rows"):
                 for param in self.parameter_rows.values():
                     param_key = param["param_key"]
-                    hardware_radio = param["hardware_radio"]
+                    hw_checkbox = param["hw_checkbox"]
                     value_widget = param["value_widget"]
 
-                    # Pobieranie wartości w zależności od typu widgetu
-                    if hardware_radio.isChecked() and param["hw_value"] is not None:
-                        param_value = param["hw_value"]
+                    if hw_checkbox.isChecked() and param["hw_value_actual"] is not None:
+                        param_value = param["hw_value_actual"]
                     else:
                         if isinstance(value_widget, QtWidgets.QSpinBox) or isinstance(
                             value_widget, QtWidgets.QDoubleSpinBox
@@ -1574,11 +1609,10 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
                     optimization_config[param_key] = param_value
 
-            # Znajdź batch_size, num_workers i mixed_precision z zakładki optymalizacji
-            batch_size = optimization_config.get("recommended_batch_size", 32)
-            num_workers = optimization_config.get("recommended_workers", 4)
-            mixed_precision = optimization_config.get("use_mixed_precision", True)
-            grad_accum_steps = optimization_config.get("gradient_accumulation_steps", 1)
+            # Pobierz wartości bezpośrednio z widgetów dla learning_rate, epochs, gradient_accumulation_steps
+            learning_rate = self.lr_spin.value()
+            epochs = self.epochs_spin.value()
+            grad_accum_steps = self.grad_accum_steps_spin.value()
 
             self.task_config = {
                 "name": task_name,
@@ -1597,16 +1631,18 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                         "num_classes": self.num_classes_spin.value(),
                     },
                     "training": {
-                        "epochs": self.epochs_spin.value(),
-                        "batch_size": batch_size,  # Używa wartości z zakładki optymalizacji
-                        "learning_rate": float(self.lr_spin.value()),
+                        "epochs": epochs,
+                        "batch_size": optimization_config.get("batch_size", 32),
+                        "learning_rate": float(learning_rate),
                         "optimizer": self.optimizer_combo.currentText(),
                         "scheduler": self._get_scheduler_value(
                             self.scheduler_combo.currentText()
                         ),
-                        "num_workers": num_workers,  # Używa wartości z zakładki optymalizacji
+                        "num_workers": optimization_config.get("num_workers", 4),
                         "warmup_epochs": self.warmup_epochs_spin.value(),
-                        "mixed_precision": mixed_precision,  # Używa wartości z zakładki optymalizacji
+                        "mixed_precision": optimization_config.get(
+                            "use_mixed_precision", True
+                        ),
                         "freeze_base_model": self.freeze_base_model.isChecked(),
                         "unfreeze_layers": self._get_unfreeze_layers_value(
                             self.unfreeze_layers.text()
@@ -1614,7 +1650,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                         "unfreeze_strategy": self._get_unfreeze_strategy_value(
                             self.unfreeze_strategy.currentText()
                         ),
-                        "gradient_accumulation_steps": grad_accum_steps,  # Używa wartości z zakładki optymalizacji
+                        "gradient_accumulation_steps": grad_accum_steps,
                     },
                     "regularization": {
                         "weight_decay": float(self.weight_decay_spin.value()),
@@ -1648,7 +1684,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                             "alpha": self.cutmix_alpha_spin.value(),
                         },
                     },
-                    "optimization": optimization_config,  # Dodajemy sekcję optymalizacji
+                    "optimization": optimization_config,
                 },
             }
 
@@ -1678,3 +1714,22 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         self.logger.info("Zamykanie okna dialogowego")
         self.accept()
         event.accept()
+
+    def _show_hardware_profile(self):
+        """Wyświetla okno z aktualnym profilem sprzętowym."""
+        import pprint
+
+        msg = pprint.pformat(self.hardware_profile, indent=2, width=80)
+        QtWidgets.QMessageBox.information(self, "Profil sprzętowy", msg)
+
+    def _open_log_file(self):
+        """Otwiera plik logu w domyślnym edytorze tekstu."""
+        import os
+
+        log_path = os.path.abspath("training_dialog.log")
+        try:
+            os.startfile(log_path)
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(
+                self, "Błąd", f"Nie można otworzyć pliku logu: {e}"
+            )

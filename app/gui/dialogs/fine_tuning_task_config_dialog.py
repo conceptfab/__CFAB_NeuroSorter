@@ -25,8 +25,19 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
     def __init__(self, parent=None, settings=None, hardware_profile=None):
         super().__init__(parent)
         self.settings = settings
-        self.hardware_profile = hardware_profile
+        # Kluczowa zmiana - sprawdzenie czy hardware_profile jest inicjalizowany poprawnie
+        if not hardware_profile:
+            from app.profiler import (
+                HardwareProfiler,
+            )  # Import lokalny aby uniknąć cyklicznych zależności
+
+            profiler = HardwareProfiler()
+            self.hardware_profile = profiler.get_optimal_parameters()
+        else:
+            self.hardware_profile = hardware_profile
         self._setup_logging()
+        # Dodaj logowanie profilu sprzętowego
+        self.logger.info(f"Profil sprzętowy: {self.hardware_profile}")
         self.setWindowTitle("Konfiguracja doszkalania")
         self.setMinimumWidth(1000)
         self.profiles_dir = Path("data/profiles")
@@ -360,6 +371,24 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         try:
             self.logger.debug("Rozpoczęcie inicjalizacji UI")
             layout = QtWidgets.QVBoxLayout(self)
+
+            # Dodaj pasek narzędzi
+            toolbar = QtWidgets.QToolBar("Narzędzia")
+            (
+                self.addToolBar(QtWidgets.Qt.ToolBarArea.TopToolBarArea, toolbar)
+                if hasattr(self, "addToolBar")
+                else None
+            )
+
+            # Przycisk: Pokaż profil sprzętowy
+            show_hw_profile_btn = QtWidgets.QPushButton("Pokaż profil sprzętowy")
+            show_hw_profile_btn.clicked.connect(self._show_hardware_profile)
+            layout.addWidget(show_hw_profile_btn)
+
+            # Przycisk: Otwórz plik logu
+            open_log_btn = QtWidgets.QPushButton("Otwórz plik logu")
+            open_log_btn.clicked.connect(self._open_log_file)
+            layout.addWidget(open_log_btn)
 
             # Utworzenie zakładek
             self.tabs = QtWidgets.QTabWidget()
@@ -3090,9 +3119,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         max_val=None,
         step=None,
     ):
-        """
-        Tworzy wiersz parametru z opcją wyboru źródła wartości.
-        """
         layout = QtWidgets.QHBoxLayout()
 
         # Wartość użytkownika
@@ -3108,6 +3134,9 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             value_widget.setValue(default_value)
             if step:
                 value_widget.setSingleStep(step)
+        elif widget_type == "bool":
+            value_widget = QtWidgets.QCheckBox()
+            value_widget.setChecked(default_value)
         else:
             value_widget = QtWidgets.QLineEdit(str(default_value))
 
@@ -3115,10 +3144,18 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         user_checkbox = QtWidgets.QCheckBox("Użytkownika")
         user_checkbox.setChecked(True)
 
-        # Etykieta i wartość z profilu sprzętowego
-        hw_value_label = QtWidgets.QLabel("Profil sprzętowy:")
-        hw_value = QtWidgets.QLabel(str(self.hardware_profile.get(param_key, "Brak")))
-        hw_value.setEnabled(False)
+        # Mapowanie kluczy profilu sprzętowego
+        profile_key = {
+            "batch_size": "recommended_batch_size",
+            "learning_rate": "learning_rate",
+            "epochs": "max_epochs",
+            "num_workers": "recommended_workers",
+            "use_mixed_precision": "use_mixed_precision",
+        }.get(param_key, param_key)
+        # Pobierz wartość z profilu sprzętowego lub wyświetl "Brak"
+        hw_value_actual = self.hardware_profile.get(profile_key)
+        hw_value_text = str(hw_value_actual) if hw_value_actual is not None else "Brak"
+        hw_value = QtWidgets.QLabel(hw_value_text)
 
         # Checkbox "Profil sprzętowy"
         hw_checkbox = QtWidgets.QCheckBox("Profil sprzętowy")
@@ -3133,7 +3170,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         # Dodaj widgety do layoutu
         layout.addWidget(value_widget)
         layout.addWidget(user_checkbox)
-        layout.addWidget(hw_value_label)
+        layout.addWidget(QtWidgets.QLabel("Profil sprzętowy:"))
         layout.addWidget(hw_value)
         layout.addWidget(hw_checkbox)
 
@@ -3142,14 +3179,13 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             "param_key": param_key,
             "value_widget": value_widget,
             "user_checkbox": user_checkbox,
-            "hw_value_label": hw_value_label,
+            "hw_value_label": None,  # niepotrzebne
             "hw_value": hw_value,
             "hw_checkbox": hw_checkbox,
             "button_group": source_group,
-            "hw_value_actual": self.hardware_profile.get(param_key),
+            "hw_value_actual": hw_value_actual,
         }
 
-        # Podpięcie zdarzeń do kontrolek
         user_checkbox.toggled.connect(
             lambda checked: self._on_source_toggle(row_widgets, checked)
         )
@@ -3157,7 +3193,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             lambda checked: self._on_hw_toggle(row_widgets, checked)
         )
 
-        # Zapisz referencje jako atrybut klasy
         if not hasattr(self, "parameter_rows"):
             self.parameter_rows = {}
         self.parameter_rows[param_key] = row_widgets
@@ -3245,3 +3280,22 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 # Jeśli optymalizacja jest wyłączona, przełącz na "Użytkownika"
                 if not enabled and hw_checkbox.isChecked():  # Poprawna nazwa
                     param["user_checkbox"].setChecked(True)  # Poprawna nazwa
+
+    def _show_hardware_profile(self):
+        """Wyświetla okno z aktualnym profilem sprzętowym."""
+        import pprint
+
+        msg = pprint.pformat(self.hardware_profile, indent=2, width=80)
+        QtWidgets.QMessageBox.information(self, "Profil sprzętowy", msg)
+
+    def _open_log_file(self):
+        """Otwiera plik logu w domyślnym edytorze tekstu."""
+        import os
+
+        log_path = os.path.abspath("training_dialog.log")
+        try:
+            os.startfile(log_path)
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(
+                self, "Błąd", f"Nie można otworzyć pliku logu: {e}"
+            )
