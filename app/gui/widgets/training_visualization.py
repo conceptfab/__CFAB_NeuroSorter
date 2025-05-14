@@ -1,9 +1,14 @@
-import os
-
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class TrainingVisualization(QWidget):
@@ -85,6 +90,18 @@ class TrainingVisualization(QWidget):
         self.plot_widget.setLabel("bottom", "Epoka", color=colors["foreground"])
 
         layout.addWidget(self.plot_widget)
+
+        # --- Early Stopping ---
+        self.early_stopping_group = QGroupBox("Early Stopping")
+        self.early_stopping_layout = QVBoxLayout()
+        self.early_stopping_label = QLabel("Czekam na dane...")
+        self.early_stopping_progress = QProgressBar()
+        self.early_stopping_progress.setRange(0, 10)
+        self.early_stopping_progress.setValue(0)
+        self.early_stopping_layout.addWidget(self.early_stopping_label)
+        self.early_stopping_layout.addWidget(self.early_stopping_progress)
+        self.early_stopping_group.setLayout(self.early_stopping_layout)
+        layout.addWidget(self.early_stopping_group)
 
         # Style dla linii epok
         self.epoch_line_pen = pg.mkPen(
@@ -277,7 +294,9 @@ class TrainingVisualization(QWidget):
     ):
         """Aktualizuje dane wykresu."""
         print(
-            f"[TrainingVisualization] update_data: epoka={epoch}, train_loss={train_loss}, train_acc={train_acc}, val_loss={val_loss}, val_acc={val_acc}"
+            f"[TrainingVisualization] update_data: epoka={epoch}, "
+            f"train_loss={train_loss}, train_acc={train_acc}, "
+            f"val_loss={val_loss}, val_acc={val_acc}"
         )
         try:
             # Konwersja i walidacja danych
@@ -375,6 +394,9 @@ class TrainingVisualization(QWidget):
         self.learning_rates_data = []  # Nowa metryka
         self.data_updated = False
         self.update_plot()
+        self.early_stopping_label.setText("Czekam na dane...")
+        self.early_stopping_progress.setRange(0, 10)
+        self.early_stopping_progress.setValue(0)
 
     def reset_plot(self):
         """Resetuje wykres do stanu początkowego."""
@@ -384,6 +406,9 @@ class TrainingVisualization(QWidget):
         self.plot_widget.showGrid(x=True, y=True)
         self.plot_widget.autoRange()
         self.data_updated = False
+        self.early_stopping_label.setText("Czekam na dane...")
+        self.early_stopping_progress.setRange(0, 10)
+        self.early_stopping_progress.setValue(0)
 
     def save_plot(self, filename):
         """Zapisuje wykres do pliku PNG.
@@ -419,3 +444,28 @@ class TrainingVisualization(QWidget):
 
             print(traceback.format_exc())
             return False
+
+    def update_early_stopping_status(self, patience_counter=0, patience_max=10):
+        self.early_stopping_progress.setMaximum(patience_max)
+        self.early_stopping_progress.setValue(patience_counter)
+        if patience_counter == 0:
+            self.early_stopping_label.setText("Early stopping: Poprawa w tej epoce")
+            self.early_stopping_progress.setStyleSheet(
+                "QProgressBar::chunk { background-color: green; }"
+            )
+        else:
+            self.early_stopping_label.setText(
+                f"Early stopping: {patience_counter}/{patience_max}"
+            )
+            if patience_counter >= patience_max - 1:
+                self.early_stopping_progress.setStyleSheet(
+                    "QProgressBar::chunk { background-color: red; }"
+                )
+            elif patience_counter >= patience_max // 2:
+                self.early_stopping_progress.setStyleSheet(
+                    "QProgressBar::chunk { background-color: orange; }"
+                )
+            else:
+                self.early_stopping_progress.setStyleSheet(
+                    "QProgressBar::chunk { background-color: yellow; }"
+                )

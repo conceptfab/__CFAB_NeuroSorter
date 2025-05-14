@@ -4,8 +4,7 @@ import logging
 import os
 from pathlib import Path
 
-from PyQt6 import QtWidgets
-from PyQt6.QtCore import Qt
+from PyQt6 import QtCore, QtWidgets
 
 from app.gui.dialogs.hardware_profile_dialog import HardwareProfileDialog
 from app.utils.config import DEFAULT_TRAINING_PARAMS
@@ -28,12 +27,10 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.settings = settings
         if not hardware_profile:
-            from app.profiler import (
-                HardwareProfiler,
-            )  # Import lokalny aby uniknąć cyklicznych zależności
-
-            profiler = HardwareProfiler()
-            self.hardware_profile = profiler.get_optimal_parameters()
+            # from app.profiler import HardwareProfiler  # Komentuję, bo brak modułu
+            # profiler = HardwareProfiler()
+            # self.hardware_profile = profiler.get_optimal_parameters()
+            self.hardware_profile = {}  # Tymczasowo pusta konfiguracja sprzętowa
         else:
             self.hardware_profile = hardware_profile
         self._setup_logging()
@@ -43,7 +40,9 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         self.profiles_dir = Path("data/profiles")
         self.profiles_dir.mkdir(exist_ok=True)
         self.current_profile = None
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowCloseButtonHint)
+        self.setWindowFlags(
+            self.windowFlags() | QtCore.Qt.WindowType.WindowCloseButtonHint
+        )
         self._init_ui()
 
     def _setup_logging(self):
@@ -1080,18 +1079,18 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.logger.debug("Tworzenie zakładki monitorowania")
             tab = QtWidgets.QWidget()
             layout = QtWidgets.QVBoxLayout(tab)
+            form = QtWidgets.QFormLayout()
 
-            # Metryki monitorowania
-            metrics_group = QtWidgets.QGroupBox("Metryki")
-            metrics_layout = QtWidgets.QVBoxLayout()
-
+            # --- Metryki ---
             self.accuracy_check = QtWidgets.QCheckBox("Accuracy")
             self.precision_check = QtWidgets.QCheckBox("Precision")
             self.recall_check = QtWidgets.QCheckBox("Recall")
-            self.f1_check = QtWidgets.QCheckBox("F1 Score")
-            self.topk_check = QtWidgets.QCheckBox("Top-k Accuracy")
-            self.confusion_matrix_check = QtWidgets.QCheckBox("Confusion Matrix")
+            self.f1_check = QtWidgets.QCheckBox("F1")
+            self.topk_check = QtWidgets.QCheckBox("Top-K")
+            self.confusion_matrix_check = QtWidgets.QCheckBox("Macierz pomyłek")
 
+            metrics_group = QtWidgets.QGroupBox("Metryki monitorowania")
+            metrics_layout = QtWidgets.QVBoxLayout()
             metrics_layout.addWidget(self.accuracy_check)
             metrics_layout.addWidget(self.precision_check)
             metrics_layout.addWidget(self.recall_check)
@@ -1099,34 +1098,51 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             metrics_layout.addWidget(self.topk_check)
             metrics_layout.addWidget(self.confusion_matrix_check)
             metrics_group.setLayout(metrics_layout)
+            form.addRow(metrics_group)
 
-            # Wczesne zatrzymanie
-            early_stop_group = QtWidgets.QGroupBox("Wczesne zatrzymanie")
+            # Early stopping
+            early_stop_group = QtWidgets.QGroupBox("Early stopping")
             early_stop_layout = QtWidgets.QFormLayout()
+
+            self.use_early_stopping_check = QtWidgets.QCheckBox("Włącz early stopping")
+            self.use_early_stopping_check.setChecked(True)
+            self.use_early_stopping_check.stateChanged.connect(
+                self._toggle_early_stopping_controls
+            )
+            early_stop_layout.addRow("", self.use_early_stopping_check)
 
             self.patience_spin = QtWidgets.QSpinBox()
             self.patience_spin.setRange(1, 100)
             self.patience_spin.setValue(10)
+            self.patience_spin.setToolTip(
+                "Liczba epok bez poprawy, po której trening zostanie zatrzymany"
+            )
+            early_stop_layout.addRow("Patience:", self.patience_spin)
 
             self.min_delta_spin = QtWidgets.QDoubleSpinBox()
             self.min_delta_spin.setRange(0.0, 1.0)
             self.min_delta_spin.setValue(0.001)
             self.min_delta_spin.setDecimals(4)
+            self.min_delta_spin.setToolTip(
+                "Minimalna zmiana metryki, uznawana za poprawę"
+            )
+            early_stop_layout.addRow("Min delta:", self.min_delta_spin)
 
             self.monitor_combo = QtWidgets.QComboBox()
-            metrics = [
-                "val_loss",
-                "val_accuracy",
-                "val_f1",
-                "val_precision",
-                "val_recall",
-            ]
-            self.monitor_combo.addItems(metrics)
+            self.monitor_combo.addItems(
+                [
+                    "val_loss",
+                    "val_accuracy",
+                    "val_f1",
+                    "val_precision",
+                    "val_recall",
+                ]
+            )
+            self.monitor_combo.setToolTip("Metryka używana do monitorowania poprawy")
+            early_stop_layout.addRow("Monitor:", self.monitor_combo)
 
-            early_stop_layout.addRow("Epoki bez poprawy:", self.patience_spin)
-            early_stop_layout.addRow("Minimalna poprawa:", self.min_delta_spin)
-            early_stop_layout.addRow("Metryka:", self.monitor_combo)
             early_stop_group.setLayout(early_stop_layout)
+            form.addRow(early_stop_group)
 
             # Checkpointowanie
             checkpoint_group = QtWidgets.QGroupBox("Checkpointowanie")
@@ -1138,7 +1154,15 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.save_freq_spin.setValue(1)
 
             self.checkpoint_metric_combo = QtWidgets.QComboBox()
-            self.checkpoint_metric_combo.addItems(metrics)
+            self.checkpoint_metric_combo.addItems(
+                [
+                    "val_loss",
+                    "val_accuracy",
+                    "val_f1",
+                    "val_precision",
+                    "val_recall",
+                ]
+            )
 
             checkpoint_layout.addRow("", self.best_only_check)
             checkpoint_layout.addRow("Częstość zapisu:", self.save_freq_spin)
@@ -1175,7 +1199,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             save_layout.addRow("", self.save_logs_check)
             save_group.setLayout(save_layout)
 
-            layout.addWidget(metrics_group)
             layout.addWidget(early_stop_group)
             layout.addWidget(checkpoint_group)
             layout.addWidget(tensorboard_group)
@@ -1571,6 +1594,12 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             return "CosineAnnealingLR"
         return "None"  # domyślna wartość
 
+    def _toggle_early_stopping_controls(self, state):
+        enabled = bool(state)
+        self.patience_spin.setEnabled(enabled)
+        self.min_delta_spin.setEnabled(enabled)
+        self.monitor_combo.setEnabled(enabled)
+
     def _on_accept(self):
         """Obsługa zatwierdzenia konfiguracji."""
         try:
@@ -1627,78 +1656,118 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             epochs = self.epochs_spin.value()
             grad_accum_steps = self.grad_accum_steps_spin.value()
 
+            # --- POPRAWKA: UZUPEŁNIENIE SEKCJI MONITORING I PREPROCESSING ---
+            config = {
+                "train_dir": train_dir,
+                "data_dir": train_dir,
+                "val_dir": val_dir,
+                "model": {
+                    "architecture": self.arch_combo.currentText(),
+                    "variant": self.variant_combo.currentText(),
+                    "input_size": self.input_size_spin.value(),
+                    "num_classes": self.num_classes_spin.value(),
+                },
+                "training": {
+                    "epochs": epochs,
+                    "batch_size": optimization_config.get("batch_size", 32),
+                    "learning_rate": float(learning_rate),
+                    "optimizer": self.optimizer_combo.currentText(),
+                    "scheduler": self._get_scheduler_value(
+                        self.scheduler_combo.currentText()
+                    ),
+                    "num_workers": optimization_config.get("num_workers", 4),
+                    "warmup_epochs": self.warmup_epochs_spin.value(),
+                    "mixed_precision": optimization_config.get(
+                        "use_mixed_precision", True
+                    ),
+                    "freeze_base_model": (
+                        self.freeze_base_model.isChecked()
+                        if hasattr(self, "freeze_base_model")
+                        else False
+                    ),
+                    "unfreeze_layers": self._get_unfreeze_layers_value(
+                        self.unfreeze_layers.text()
+                        if hasattr(self, "unfreeze_layers")
+                        else "all"
+                    ),
+                    "unfreeze_strategy": self._get_unfreeze_strategy_value(
+                        self.unfreeze_strategy.currentText()
+                        if hasattr(self, "unfreeze_strategy")
+                        else "unfreeze_all"
+                    ),
+                    "gradient_accumulation_steps": grad_accum_steps,
+                },
+                "regularization": {
+                    "weight_decay": float(self.weight_decay_spin.value()),
+                    "gradient_clip": self.gradient_clip_spin.value(),
+                    "label_smoothing": self.label_smoothing_spin.value(),
+                    "drop_connect_rate": self.drop_connect_spin.value(),
+                    "dropout_rate": self.dropout_spin.value(),
+                    "momentum": self.momentum_spin.value(),
+                    "epsilon": self.epsilon_spin.value(),
+                    "swa": {
+                        "use": self.use_swa_check.isChecked(),
+                        "start_epoch": (self.swa_start_epoch_spin.value()),
+                    },
+                },
+                "augmentation": {
+                    "basic": {
+                        "use": self.basic_aug_check.isChecked(),
+                        "rotation": self.rotation_spin.value(),
+                        "brightness": self.brightness_spin.value(),
+                        "shift": self.shift_spin.value(),
+                        "zoom": self.zoom_spin.value(),
+                        "horizontal_flip": self.horizontal_flip_check.isChecked(),
+                        "vertical_flip": self.vertical_flip_check.isChecked(),
+                    },
+                    "mixup": {
+                        "use": self.mixup_check.isChecked(),
+                        "alpha": self.mixup_alpha_spin.value(),
+                    },
+                    "cutmix": {
+                        "use": self.cutmix_check.isChecked(),
+                        "alpha": self.cutmix_alpha_spin.value(),
+                    },
+                },
+                "optimization": optimization_config,
+                "monitoring": {
+                    "metrics": {
+                        "accuracy": self.accuracy_check.isChecked(),
+                        "precision": self.precision_check.isChecked(),
+                        "recall": self.recall_check.isChecked(),
+                        "f1": self.f1_check.isChecked(),
+                        "topk": self.topk_check.isChecked(),
+                        "confusion_matrix": self.confusion_matrix_check.isChecked(),
+                    },
+                    "early_stopping": {
+                        "enabled": self.use_early_stopping_check.isChecked(),
+                        "patience": self.patience_spin.value(),
+                        "min_delta": self.min_delta_spin.value(),
+                        "monitor": self.monitor_combo.currentText(),
+                    },
+                    "checkpointing": {
+                        "best_only": self.best_only_check.isChecked(),
+                        "save_frequency": self.save_freq_spin.value(),
+                        "metric": self.checkpoint_metric_combo.currentText(),
+                    },
+                },
+            }
+            # Dodaj sekcję preprocessingu jeśli nie ma
+            if "preprocessing" not in config:
+                config["preprocessing"] = {
+                    "normalization": "RGB",  # Wartość domyślna
+                    "resize_mode": "bilinear",
+                    "cache_dataset": False,
+                }
+            # --- KONIEC POPRAWKI ---
+
             self.task_config = {
                 "name": task_name,
                 "type": "training",
                 "status": "Nowy",
                 "priority": 0,
                 "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "config": {
-                    "train_dir": train_dir,
-                    "data_dir": train_dir,
-                    "val_dir": val_dir,
-                    "model": {
-                        "architecture": self.arch_combo.currentText(),
-                        "variant": self.variant_combo.currentText(),
-                        "input_size": self.input_size_spin.value(),
-                        "num_classes": self.num_classes_spin.value(),
-                    },
-                    "training": {
-                        "epochs": epochs,
-                        "batch_size": optimization_config.get("batch_size", 32),
-                        "learning_rate": float(learning_rate),
-                        "optimizer": self.optimizer_combo.currentText(),
-                        "scheduler": self._get_scheduler_value(
-                            self.scheduler_combo.currentText()
-                        ),
-                        "num_workers": optimization_config.get("num_workers", 4),
-                        "warmup_epochs": self.warmup_epochs_spin.value(),
-                        "mixed_precision": optimization_config.get(
-                            "use_mixed_precision", True
-                        ),
-                        "freeze_base_model": self.freeze_base_model.isChecked(),
-                        "unfreeze_layers": self._get_unfreeze_layers_value(
-                            self.unfreeze_layers.text()
-                        ),
-                        "unfreeze_strategy": self._get_unfreeze_strategy_value(
-                            self.unfreeze_strategy.currentText()
-                        ),
-                        "gradient_accumulation_steps": grad_accum_steps,
-                    },
-                    "regularization": {
-                        "weight_decay": float(self.weight_decay_spin.value()),
-                        "gradient_clip": self.gradient_clip_spin.value(),
-                        "label_smoothing": self.label_smoothing_spin.value(),
-                        "drop_connect_rate": self.drop_connect_spin.value(),
-                        "dropout_rate": self.dropout_spin.value(),
-                        "momentum": self.momentum_spin.value(),
-                        "epsilon": self.epsilon_spin.value(),
-                        "swa": {
-                            "use": self.use_swa_check.isChecked(),
-                            "start_epoch": (self.swa_start_epoch_spin.value()),
-                        },
-                    },
-                    "augmentation": {
-                        "basic": {
-                            "use": self.basic_aug_check.isChecked(),
-                            "rotation": self.rotation_spin.value(),
-                            "brightness": self.brightness_spin.value(),
-                            "shift": self.shift_spin.value(),
-                            "zoom": self.zoom_spin.value(),
-                            "horizontal_flip": self.horizontal_flip_check.isChecked(),
-                            "vertical_flip": self.vertical_flip_check.isChecked(),
-                        },
-                        "mixup": {
-                            "use": self.mixup_check.isChecked(),
-                            "alpha": self.mixup_alpha_spin.value(),
-                        },
-                        "cutmix": {
-                            "use": self.cutmix_check.isChecked(),
-                            "alpha": self.cutmix_alpha_spin.value(),
-                        },
-                    },
-                    "optimization": optimization_config,
-                },
+                "config": config,
             }
 
             # Dodaj logi

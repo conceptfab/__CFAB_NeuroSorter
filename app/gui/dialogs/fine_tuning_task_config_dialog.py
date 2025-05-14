@@ -1861,6 +1861,48 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         layout = QtWidgets.QVBoxLayout()
         form = QtWidgets.QFormLayout()
 
+        # Early stopping
+        early_stop_group = QtWidgets.QGroupBox("Early stopping")
+        early_stop_layout = QtWidgets.QFormLayout()
+
+        self.use_early_stopping_check = QtWidgets.QCheckBox("Włącz early stopping")
+        self.use_early_stopping_check.setChecked(True)
+        self.use_early_stopping_check.stateChanged.connect(
+            self._toggle_early_stopping_controls
+        )
+        early_stop_layout.addRow("", self.use_early_stopping_check)
+
+        self.patience_spin = QtWidgets.QSpinBox()
+        self.patience_spin.setRange(1, 100)
+        self.patience_spin.setValue(10)
+        self.patience_spin.setToolTip(
+            "Liczba epok bez poprawy, po której trening zostanie zatrzymany"
+        )
+        early_stop_layout.addRow("Patience:", self.patience_spin)
+
+        self.min_delta_spin = QtWidgets.QDoubleSpinBox()
+        self.min_delta_spin.setRange(0.0, 1.0)
+        self.min_delta_spin.setValue(0.001)
+        self.min_delta_spin.setDecimals(4)
+        self.min_delta_spin.setToolTip("Minimalna zmiana metryki, uznawana za poprawę")
+        early_stop_layout.addRow("Min delta:", self.min_delta_spin)
+
+        self.monitor_combo = QtWidgets.QComboBox()
+        self.monitor_combo.addItems(
+            [
+                "val_loss",
+                "val_accuracy",
+                "val_f1",
+                "val_precision",
+                "val_recall",
+            ]
+        )
+        self.monitor_combo.setToolTip("Metryka używana do monitorowania poprawy")
+        early_stop_layout.addRow("Monitor:", self.monitor_combo)
+
+        early_stop_group.setLayout(early_stop_layout)
+        form.addRow(early_stop_group)
+
         # Metrics
         metrics_group = QtWidgets.QGroupBox("Metrics")
         metrics_layout = QtWidgets.QFormLayout()
@@ -1914,28 +1956,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         visualization_group.setLayout(visualization_layout)
         form.addRow(visualization_group)
 
-        # Early stopping
-        early_stop_group = QtWidgets.QGroupBox("Early stopping")
-        early_stop_layout = QtWidgets.QFormLayout()
-
-        self.patience_spin = QtWidgets.QSpinBox()
-        self.patience_spin.setRange(1, 100)
-        self.patience_spin.setValue(10)
-        early_stop_layout.addRow("Patience:", self.patience_spin)
-
-        self.min_delta_spin = QtWidgets.QDoubleSpinBox()
-        self.min_delta_spin.setRange(0.0, 1.0)
-        self.min_delta_spin.setValue(0.001)
-        self.min_delta_spin.setDecimals(4)
-        early_stop_layout.addRow("Min delta:", self.min_delta_spin)
-
-        self.monitor_combo = QtWidgets.QComboBox()
-        self.monitor_combo.addItems(["val_loss", "val_accuracy"])
-        early_stop_layout.addRow("Monitor:", self.monitor_combo)
-
-        early_stop_group.setLayout(early_stop_layout)
-        form.addRow(early_stop_group)
-
         # Checkpointing
         checkpoint_group = QtWidgets.QGroupBox("Checkpointing")
         checkpoint_layout = QtWidgets.QFormLayout()
@@ -1959,6 +1979,12 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         layout.addLayout(form)
         tab.setLayout(layout)
         return tab
+
+    def _toggle_early_stopping_controls(self, state):
+        enabled = bool(state)
+        self.patience_spin.setEnabled(enabled)
+        self.min_delta_spin.setEnabled(enabled)
+        self.monitor_combo.setEnabled(enabled)
 
     def _create_advanced_tab(self) -> QtWidgets.QWidget:
         """Tworzy zakładkę z zaawansowanymi parametrami."""
@@ -2087,9 +2113,9 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
         # Scheduler
         self.scheduler_combo = QtWidgets.QComboBox()
-        self.scheduler_combo.addItems([
-            "None", "CosineAnnealingLR", "ReduceLROnPlateau", "OneCycleLR"
-        ])
+        self.scheduler_combo.addItems(
+            ["None", "CosineAnnealingLR", "ReduceLROnPlateau", "OneCycleLR"]
+        )
         basic_layout.addRow("Scheduler:", self.scheduler_combo)
 
         # Warmup epochs
@@ -2505,19 +2531,8 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                         "confusion_matrix": self.confusion_matrix_check.isChecked(),
                         "auc": self.auc_check.isChecked(),
                     },
-                    "logging": {
-                        "use_tensorboard": self.use_tensorboard_check.isChecked(),
-                        "use_wandb": self.use_wandb_check.isChecked(),
-                        "use_csv": self.use_csv_check.isChecked(),
-                        "logging_freq": self.log_freq_combo.currentText(),
-                    },
-                    "visualization": {
-                        "use_gradcam": self.use_gradcam_check.isChecked(),
-                        "use_feature_maps": self.use_feature_maps_check.isChecked(),
-                        "use_pred_samples": self.use_pred_samples_check.isChecked(),
-                        "num_samples": self.num_samples_spin.value(),
-                    },
                     "early_stopping": {
+                        "enabled": self.use_early_stopping_check.isChecked(),
                         "patience": self.patience_spin.value(),
                         "min_delta": self.min_delta_spin.value(),
                         "monitor": self.monitor_combo.currentText(),
@@ -2526,6 +2541,12 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                         "best_only": self.best_only_check.isChecked(),
                         "save_freq": self.save_freq_spin.value(),
                         "metric": self.checkpoint_metric_combo.currentText(),
+                    },
+                    "logging": {
+                        "use_tensorboard": self.use_tensorboard_check.isChecked(),
+                        "use_wandb": self.use_wandb_check.isChecked(),
+                        "use_csv": self.use_csv_check.isChecked(),
+                        "logging_freq": self.log_freq_combo.currentText(),
                     },
                 },
                 "advanced": {
@@ -3063,12 +3084,22 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             params = [
                 ("Batch size", "batch_size", 32, "int", 1, 1024, 1),
                 ("Workers", "num_workers", 4, "int", 0, 32, 1),
-                ("Mixed Precision", "use_mixed_precision", True, "bool", None, None, None),
+                (
+                    "Mixed Precision",
+                    "use_mixed_precision",
+                    True,
+                    "bool",
+                    None,
+                    None,
+                    None,
+                ),
             ]
 
             self.optimization_params = []
             for name, key, default, type_, min_, max_, step in params:
-                row = self._create_parameter_row(name, key, default, type_, min_, max_, step)
+                row = self._create_parameter_row(
+                    name, key, default, type_, min_, max_, step
+                )
                 params_layout.addRow(name + ":", row)
                 if hasattr(self, "parameter_rows") and key in self.parameter_rows:
                     self.optimization_params.append(self.parameter_rows[key])
@@ -3083,7 +3114,9 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
             return tab
         except Exception as e:
-            self.logger.error(f"Błąd podczas tworzenia zakładki: {str(e)}", exc_info=True)
+            self.logger.error(
+                f"Błąd podczas tworzenia zakładki: {str(e)}", exc_info=True
+            )
             raise
 
     def _apply_all_hardware_optimizations(self):
@@ -3102,7 +3135,9 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                 param["hw_checkbox"].blockSignals(False)
                 value_widget = param["value_widget"]
                 value = self.hardware_profile[profile_key]
-                if isinstance(value_widget, QtWidgets.QSpinBox) or isinstance(value_widget, QtWidgets.QDoubleSpinBox):
+                if isinstance(value_widget, QtWidgets.QSpinBox) or isinstance(
+                    value_widget, QtWidgets.QDoubleSpinBox
+                ):
                     value_widget.setValue(value)
                 elif isinstance(value_widget, QtWidgets.QCheckBox):
                     value_widget.setChecked(bool(value))

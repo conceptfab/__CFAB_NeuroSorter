@@ -1,9 +1,9 @@
 {
-    "name": "EfficientNet-B2_32_2025-05-14_18-12",
+    "name": "EfficientNet-B2_32_2025-05-14_21-18-40",
     "type": "training",
     "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-14 18:12:50",
+    "created_at": "2025-05-14 21:18:40",
     "config": {
         "train_dir": "F:/_set_DATA_B2/train",
         "data_dir": "F:/_set_DATA_B2/train",
@@ -64,6 +64,32 @@
             "batch_size": 32,
             "num_workers": 8,
             "use_mixed_precision": true
+        },
+        "monitoring": {
+            "metrics": {
+                "accuracy": true,
+                "precision": true,
+                "recall": true,
+                "f1": true,
+                "topk": true,
+                "confusion_matrix": false
+            },
+            "early_stopping": {
+                "enabled": true,
+                "patience": 15,
+                "min_delta": 0.0005,
+                "monitor": "val_loss"
+            },
+            "checkpointing": {
+                "best_only": true,
+                "save_frequency": 1,
+                "metric": "val_loss"
+            }
+        },
+        "preprocessing": {
+            "normalization": "RGB",
+            "resize_mode": "bilinear",
+            "cache_dataset": false
         }
     }
 }

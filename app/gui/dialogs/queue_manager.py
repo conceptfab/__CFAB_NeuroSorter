@@ -324,6 +324,14 @@ class QueueManager(QtWidgets.QDialog):
                     val_f1=val_f1,
                     val_auc=val_auc,
                 )
+            # --- Early stopping ---
+            patience_counter = details.get("patience_counter")
+            patience_max = details.get("patience_max")
+            if patience_counter is not None and patience_max is not None:
+                self.training_visualization.update_early_stopping_status(
+                    patience_counter=patience_counter,
+                    patience_max=patience_max
+                )
 
     def _on_task_completed(self, task_name, result):
         """Obsługa zakończenia zadania."""
