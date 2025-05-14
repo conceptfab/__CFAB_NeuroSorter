@@ -1,23 +1,23 @@
 {
-    "name": "EfficientNet-B2_32_2025-05-14_14-50",
+    "name": "EfficientNet-B5_32_2025-05-14_17-55",
     "type": "training",
-    "status": "Zakończony",
+    "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-14 14:50:14",
+    "created_at": "2025-05-14 17:55:00",
     "config": {
-        "train_dir": "F:/_set_DATA_B2/train",
-        "data_dir": "F:/_set_DATA_B2/train",
-        "val_dir": "F:/_set_DATA_B2/valid",
+        "train_dir": "F:/_set_DATA_B5/train",
+        "data_dir": "F:/_set_DATA_B5/train",
+        "val_dir": "F:/_set_DATA_B5/valid",
         "model": {
             "architecture": "EfficientNet",
-            "variant": "EfficientNet-B2",
-            "input_size": 288,
+            "variant": "EfficientNet-B5",
+            "input_size": 456,
             "num_classes": 32
         },
         "training": {
             "epochs": 120,
             "batch_size": 128,
-            "learning_rate": 0.00015,
+            "learning_rate": 0.0001,
             "optimizer": "AdamW",
             "scheduler": "CosineAnnealingWarmRestarts",
             "num_workers": 16,
@@ -29,31 +29,31 @@
             "gradient_accumulation_steps": 1
         },
         "regularization": {
-            "weight_decay": 0.00015,
+            "weight_decay": 0.0001,
             "gradient_clip": 1.0,
             "label_smoothing": 0.1,
             "drop_connect_rate": 0.2,
-            "dropout_rate": 0.3,
+            "dropout_rate": 0.4,
             "momentum": 0.9,
             "epsilon": 1e-06,
             "swa": {
                 "use": true,
-                "start_epoch": 80
+                "start_epoch": 90
             }
         },
         "augmentation": {
             "basic": {
                 "use": true,
-                "rotation": 20,
-                "brightness": 0.2,
+                "rotation": 25,
+                "brightness": 0.25,
                 "shift": 0.1,
-                "zoom": 0.15,
+                "zoom": 0.2,
                 "horizontal_flip": true,
                 "vertical_flip": false
             },
             "mixup": {
                 "use": true,
-                "alpha": 0.2
+                "alpha": 0.25
             },
             "cutmix": {
                 "use": true,
@@ -65,11 +65,5 @@
             "num_workers": 16,
             "use_mixed_precision": true
         }
-    },
-    "training_time": 8079.38,
-    "training_time_str": "2:14:39",
-    "train_acc": 0.775390625,
-    "train_loss": 1.3892849187056224,
-    "val_acc": 0.7317708333333334,
-    "val_loss": 1.4213417371114094
+    }
 }

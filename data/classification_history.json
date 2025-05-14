@@ -1,1 +1,68 @@
-[]
+[
+    {
+        "date": "2025-05-14T17:52:27.701905",
+        "image_path": "F:/______training_database_V3/arm_chair/7879.52687dbe7bcc3.jpg",
+        "class_name": "arm_chair",
+        "confidence": 0.5302734375
+    },
+    {
+        "date": "2025-05-14T17:52:32.786656",
+        "image_path": "F:/______training_database_V3/animal/46033.527955c1ce54b.jpg",
+        "class_name": "lamp",
+        "confidence": 0.2296142578125
+    },
+    {
+        "date": "2025-05-14T17:52:35.721208",
+        "image_path": "F:/______training_database_V3/animal/73204.5304fbb771471.jpg",
+        "class_name": "animal",
+        "confidence": 0.2491455078125
+    },
+    {
+        "date": "2025-05-14T17:52:37.868415",
+        "image_path": "F:/______training_database_V3/animal/Andean Condor.thumb.jpeg",
+        "class_name": "animal",
+        "confidence": 0.414794921875
+    },
+    {
+        "date": "2025-05-14T17:52:40.451046",
+        "image_path": "F:/______training_database_V3/animal/Baby King Penguin ( Chick ).thumb.jpeg",
+        "class_name": "animal",
+        "confidence": 0.61328125
+    },
+    {
+        "date": "2025-05-14T17:52:43.475769",
+        "image_path": "F:/______training_database_V3/animal/BLACK PANTHER ANIMATED XGEN-CORE.jpg",
+        "class_name": "animal",
+        "confidence": 0.63671875
+    },
+    {
+        "date": "2025-05-14T17:52:47.381933",
+        "image_path": "F:/______training_database_V3/animal/Pair of Bird Wing [C4D].jpg",
+        "class_name": "animal",
+        "confidence": 0.30078125
+    },
+    {
+        "date": "2025-05-14T17:52:50.191101",
+        "image_path": "F:/______training_database_V3/animal/Owl Animated.jpg",
+        "class_name": "animal",
+        "confidence": 0.7265625
+    },
+    {
+        "date": "2025-05-14T17:52:53.997832",
+        "image_path": "F:/______training_database_V3/animal/Rat Fur Rigged 3.jpg",
+        "class_name": "animal",
+        "confidence": 0.615234375
+    },
+    {
+        "date": "2025-05-14T17:52:56.805698",
+        "image_path": "F:/______training_database_V3/animal/Wolf XGEN-CORE ANIMATED.jpg",
+        "class_name": "animal",
+        "confidence": 0.66259765625
+    },
+    {
+        "date": "2025-05-14T17:52:59.547548",
+        "image_path": "F:/______training_database_V3/animal/wolf-realistic.jpeg",
+        "class_name": "animal",
+        "confidence": 0.49658203125
+    }
+]

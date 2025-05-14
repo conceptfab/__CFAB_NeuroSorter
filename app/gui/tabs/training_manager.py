@@ -41,6 +41,11 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         self.queue_manager = QueueManager(self)
         self.setup_ui()
         self.connect_signals()
+
+        # Przekazanie referencji do wizualizacji treningu
+        if hasattr(self, "training_visualization"):
+            self.queue_manager.set_visualization_widget(self.training_visualization)
+
         # Automatyczne odświeżenie listy zadań przy starcie
         self.refresh()
 
@@ -755,6 +760,20 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                         self.parent.logger.info(
                             f"Wykres treningu zapisany w: {plot_path}"
                         )
+                        # Dodaj informację o ścieżce do wykresu w pliku zadania
+                        if os.path.exists(task_file):
+                            try:
+                                with open(task_file, "r", encoding="utf-8") as f:
+                                    task_data = json.load(f)
+                                task_data["plot_path"] = plot_path
+                                with open(task_file, "w", encoding="utf-8") as f:
+                                    json.dump(
+                                        task_data, f, indent=4, ensure_ascii=False
+                                    )
+                            except Exception as e:
+                                self.parent.logger.error(
+                                    f"Błąd podczas aktualizacji ścieżki wykresu: {str(e)}"
+                                )
                         # Reset wizualizacji po zapisaniu
                         self.training_visualization.clear_data()
                         self.training_visualization.reset_plot()

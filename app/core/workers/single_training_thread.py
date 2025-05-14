@@ -311,6 +311,9 @@ class SingleTrainingThread(QThread):
                     "val_recall": val_recall,
                     "val_f1": val_f1,
                     "val_auc": val_auc,
+                    "learning_rate": (
+                        learning_rate if "learning_rate" in locals() else None
+                    ),
                 }
 
                 self.task_progress.emit(task_name, epoch, details)
@@ -402,7 +405,10 @@ class SingleTrainingThread(QThread):
                         "efficientnet", "EfficientNet"
                     )
 
-                model_filename = f"{model_type}_{model_version}_{num_classes}klas_{accuracy:.2f}acc_{epochs}epok_{timestamp}.pt"
+                model_filename = (
+                    f"{model_type}_{model_version}_{num_classes}klas_"
+                    f"{accuracy:.2f}acc_{epochs}epok_{timestamp}.pt"
+                )
                 model_path = os.path.join(output_dir, model_filename)
 
                 self.logger.info(f"Generowana nazwa modelu: {model_filename}")

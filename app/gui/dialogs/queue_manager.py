@@ -15,12 +15,14 @@ from app.gui.widgets.training_visualization import TrainingVisualization
 class QueueManager(QtWidgets.QDialog):
     def __init__(self, parent=None, settings=None):
         super().__init__(parent)
+        self.parent = parent
         self.setWindowTitle("Trening wsadowy")
         self.setMinimumSize(1200, 800)
         self.tasks_dir = Path("data/tasks")
         self.new_tasks = []
         self.current_task_index = 0
         self.training_thread = None
+        self.training_visualization = None  # Dodajemy referencję do wizualizacji
 
         # Style z MainWindow
         primary_color = "#007ACC"
@@ -261,24 +263,36 @@ class QueueManager(QtWidgets.QDialog):
     def _on_task_progress(self, task_name, progress, details):
         """Obsługa postępu zadania."""
         # Aktualizuj wizualizację
-        self.update_training_progress(
-            epoch=details.get("epoch", 0),
-            train_loss=details.get("train_loss"),
-            train_acc=details.get("train_acc"),
-            val_loss=details.get("val_loss"),
-            val_acc=details.get("val_acc"),
-            val_top3=details.get("val_top3"),
-            val_top5=details.get("val_top5"),
-            val_precision=details.get("val_precision"),
-            val_recall=details.get("val_recall"),
-            val_f1=details.get("val_f1"),
-            val_auc=details.get("val_auc"),
-        )
+        if self.training_visualization:
+            epoch = int(details.get("epoch", 0))
+            train_loss = details.get("train_loss")
+            train_acc = details.get("train_acc")
+            val_loss = details.get("val_loss")
+            val_acc = details.get("val_acc")
+            val_top3 = details.get("val_top3")
+            val_top5 = details.get("val_top5")
+            val_precision = details.get("val_precision")
+            val_recall = details.get("val_recall")
+            val_f1 = details.get("val_f1")
+            val_auc = details.get("val_auc")
+            if epoch > 0:
+                self.training_visualization.update_data(
+                    epoch=epoch,
+                    train_loss=train_loss,
+                    train_acc=train_acc,
+                    val_loss=val_loss,
+                    val_acc=val_acc,
+                    val_top3=val_top3,
+                    val_top5=val_top5,
+                    val_precision=val_precision,
+                    val_recall=val_recall,
+                    val_f1=val_f1,
+                    val_auc=val_auc,
+                )
 
     def _on_task_completed(self, task_name, result):
         """Obsługa zakończenia zadania."""
         self.parent.logger.info(f"Zakończono zadanie: {task_name}")
-
         # Aktualizuj status zadania w pliku
         base_task_name = task_name.replace(".json", "")
         task_file = os.path.join("data", "tasks", f"{base_task_name}.json")
@@ -291,45 +305,40 @@ class QueueManager(QtWidgets.QDialog):
                     json.dump(task_data, f, indent=4)
             except Exception as e:
                 self.parent.logger.error(f"Błąd aktualizacji statusu zadania: {e}")
-
-        # Zapisz wykres treningu
-        if hasattr(self, "training_visualization") and self.training_visualization:
+        # Zapisz wykres treningu jeśli wizualizacja istnieje
+        if self.training_visualization:
             try:
-                # Sprawdź, czy są dane do zapisania (czy są epoki)
-                if (
-                    self.training_visualization.epochs
-                    and len(self.training_visualization.epochs) > 0
-                ):
-                    # Utwórz katalog na wykresy jeśli nie istnieje
-                    plots_dir = os.path.join("data", "plots")
-                    os.makedirs(plots_dir, exist_ok=True)
-
-                    # Generuj nazwę pliku wykresu
-                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-                    plot_filename = f"{task_name}_{timestamp}.png"
-                    plot_path = os.path.join(plots_dir, plot_filename)
-
-                    # Zapisz wykres
-                    if self.training_visualization.save_plot(plot_path):
-                        self.parent.logger.info(
-                            f"Wykres treningu zapisany w: {plot_path}"
-                        )
-                        # Reset wizualizacji po zapisaniu
-                        self.training_visualization.clear_data()
-                        self.training_visualization.reset_plot()
-                    else:
-                        self.parent.logger.error(
-                            "Nie udało się zapisać wykresu treningu"
-                        )
+                # Utwórz katalog na wykresy jeśli nie istnieje
+                plots_dir = os.path.join("data", "plots")
+                os.makedirs(plots_dir, exist_ok=True)
+                # Generuj nazwę pliku wykresu
+                timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+                plot_filename = f"{task_name}_{timestamp}.png"
+                plot_path = os.path.join(plots_dir, plot_filename)
+                # Zapisz wykres
+                if self.training_visualization.save_plot(plot_path):
+                    self.parent.logger.info(f"Wykres treningu zapisany w: {plot_path}")
+                    # Dodaj informację o ścieżce do wykresu w pliku zadania
+                    if os.path.exists(task_file):
+                        try:
+                            with open(task_file, "r", encoding="utf-8") as f:
+                                task_data = json.load(f)
+                            task_data["plot_path"] = plot_path
+                            with open(task_file, "w", encoding="utf-8") as f:
+                                json.dump(task_data, f, indent=4, ensure_ascii=False)
+                        except Exception as e:
+                            self.parent.logger.error(
+                                f"Błąd podczas aktualizacji ścieżki wykresu: {str(e)}"
+                            )
+                    # Reset wizualizacji po zapisaniu
+                    self.training_visualization.clear_data()
+                    self.training_visualization.reset_plot()
                 else:
-                    self.parent.logger.warning(
-                        "Brak danych do zapisania wykresu treningu - pomijam zapis."
-                    )
+                    self.parent.logger.error("Nie udało się zapisać wykresu treningu")
             except Exception as plot_error:
                 self.parent.logger.error(
                     f"Błąd podczas zapisywania wykresu: {plot_error}"
                 )
-
         # Przejdź do następnego zadania
         self.current_task_index += 1
         self.update_progress_bar()
@@ -427,31 +436,6 @@ class QueueManager(QtWidgets.QDialog):
             return self.new_tasks[self.current_task_index - 1]
         return None
 
-    def update_training_progress(
-        self,
-        epoch,
-        train_loss,
-        train_acc,
-        val_loss=None,
-        val_acc=None,
-        val_top3=None,
-        val_top5=None,
-        val_precision=None,
-        val_recall=None,
-        val_f1=None,
-        val_auc=None,
-    ):
-        """Aktualizuje wizualizację treningu."""
-        self.training_visualization.update_data(
-            epoch=epoch,
-            train_loss=train_loss,
-            train_acc=train_acc,
-            val_loss=val_loss,
-            val_acc=val_acc,
-            val_top3=val_top3,
-            val_top5=val_top5,
-            val_precision=val_precision,
-            val_recall=val_recall,
-            val_f1=val_f1,
-            val_auc=val_auc,
-        )
+    def set_visualization_widget(self, visualization_widget):
+        """Ustawia widget wizualizacji treningu."""
+        self.training_visualization = visualization_widget
