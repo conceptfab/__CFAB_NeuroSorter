@@ -1564,7 +1564,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             # Generowanie nazwy zadania automatycznie
             variant = self.variant_combo.currentText()
             num_classes = self.num_classes_spin.value()
-            now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+            now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             task_name = f"{variant}_{num_classes}_{now}"
 
             # Sprawdź czy katalog treningowy jest ustawiony
@@ -1691,9 +1691,8 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             # Dodaj logi
             self.logger.info(f"Utworzono konfigurację zadania: {task_name}")
             self.logger.info(f"Typ zadania: {self.task_config['type']}")
-            self.logger.info(
-                f"Pełna konfiguracja: {json.dumps(self.task_config, indent=2, ensure_ascii=False)}"
-            )
+            config_str = json.dumps(self.task_config, indent=2, ensure_ascii=False)
+            self.logger.info(f"Pełna konfiguracja: {config_str}")
 
             self.accept()
 

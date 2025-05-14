@@ -2350,11 +2350,11 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # Sprawdź czy nazwa zadania jest pusta
             task_name = self.name_edit.text().strip()
             if not task_name:
-                QtWidgets.QMessageBox.warning(
-                    self, "Błąd", "Nazwa zadania nie może być pusta."
-                )
-                return
-
+                variant = self.arch_combo.currentText()
+                num_classes = self.num_classes_spin.value()
+                now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                task_name = f"{variant}_{num_classes}_{now}"
+                self.name_edit.setText(task_name)
             # Sprawdź czy model bazowy jest wybrany
             base_model_path = self.model_path_edit.text().strip()
             if not base_model_path:
