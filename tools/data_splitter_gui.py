@@ -17,22 +17,48 @@ try:
 except ImportError:
     PIL_AVAILABLE = False
 
-import torch  # main_window.py had it, keeping for completeness if any underlying part needs it
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+
 # For ResolutionScanner's plot
 from matplotlib.figure import Figure
-from PyQt6.QtCore import (QObject, QRunnable, QStandardPaths, Qt, QThread,
-                          QThreadPool, QTimer, pyqtSignal, pyqtSlot)
-from PyQt6.QtGui import QAction, QColor, QFont, QIcon
-from PyQt6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox,
-                             QDialog, QDialogButtonBox, QFileDialog, QFrame,
-                             QGroupBox, QHBoxLayout, QHeaderView, QLabel,
-                             QLineEdit, QListWidget, QMainWindow, QMessageBox,
-                             QProgressBar, QProgressDialog, QPushButton,
-                             QRadioButton, QSlider, QSpinBox, QTableWidget,
-                             QTableWidgetItem, QTabWidget, QTextEdit,
-                             QTreeWidget, QTreeWidgetItem, QVBoxLayout,
-                             QWidget)
+from PyQt6.QtCore import (
+    QObject,
+    QRunnable,
+    Qt,
+    QThread,
+    QThreadPool,
+    pyqtSignal,
+    pyqtSlot,
+)
+from PyQt6.QtGui import QAction, QColor, QFont
+from PyQt6.QtWidgets import (
+    QApplication,
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QMainWindow,
+    QMessageBox,
+    QProgressBar,
+    QProgressDialog,
+    QPushButton,
+    QRadioButton,
+    QSlider,
+    QSpinBox,
+    QTabWidget,
+    QTextEdit,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 # --- Global Logger Setup ---
 # Main logger for the combined application
@@ -2853,6 +2879,21 @@ class CombinedApp(QMainWindow):
         self._create_main_central_widget()
         self._create_main_status_bar()
         self._load_app_settings()
+        # --- DODANE: ustawienie tytułu i ikony okna głównego ---
+        self.setWindowTitle("Data Splitter")
+        import os
+
+        from PyQt6.QtGui import QIcon
+
+        icon_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "resources",
+            "img",
+            "icon.png",
+        )
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
 
     def _load_app_settings(self):
         """Wczytuje ustawienia aplikacji."""

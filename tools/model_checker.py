@@ -326,23 +326,39 @@ class ModelViewer(QMainWindow):
 
     def _add_module_to_tree(self, parent_item, module):
         for name, child in module.named_children():
-            item = QTreeWidgetItem(parent_item, [name])
+            # Dodaj typ warstwy i liczbę parametrów
+            layer_type = child.__class__.__name__
+            param_count = sum(p.numel() for p in child.parameters())
+            item = QTreeWidgetItem(
+                parent_item, [f"{name} ({layer_type}, parametry: {param_count})"]
+            )
             if isinstance(child, torch.nn.Module):
                 self._add_module_to_tree(item, child)
-            else:
-                self._add_parameters_to_tree(item, child)
+            self._add_parameters_to_tree(item, child)
 
     def _add_state_dict_to_tree(self, parent_item, state_dict):
         for key, value in state_dict.items():
-            item = QTreeWidgetItem(parent_item, [key])
             if isinstance(value, dict):
+                item = QTreeWidgetItem(parent_item, [key])
                 self._add_state_dict_to_tree(item, value)
             else:
-                self._add_parameters_to_tree(item, value)
+                self._add_parameters_to_tree(parent_item, {key: value})
 
     def _add_parameters_to_tree(self, parent_item, module):
-        for name, param in module.named_parameters():
-            QTreeWidgetItem(parent_item, [f"{name}: {param.shape}"])
+        # Obsługa zarówno torch.nn.Module, jak i dict
+        if isinstance(module, dict):
+            items = module.items()
+        else:
+            items = module.named_parameters()
+        for name, param in items:
+            if isinstance(param, torch.Tensor):
+                shape = list(param.shape)
+                dtype = str(param.dtype)
+                mean = float(param.mean().item()) if param.numel() > 0 else 0.0
+                QTreeWidgetItem(
+                    parent_item,
+                    [f"{name}: shape={shape}, dtype={dtype}, mean={mean:.4f}"],
+                )
 
     def show_details(self, item, column):
         path = []
@@ -360,23 +376,38 @@ class ModelViewer(QMainWindow):
 
         current = self.model
         for name in path[1:]:  # Pomijamy "Model" lub "State Dict"
+            # Wyciągnij czystą nazwę (bez typu i liczby parametrów)
+            name_clean = name.split(":")[0].split("(")[0].strip()
             if isinstance(current, torch.nn.Module):
-                current = getattr(current, name)
+                if hasattr(current, name_clean):
+                    current = getattr(current, name_clean)
+                else:
+                    # Może to być parametr
+                    try:
+                        current = dict(current.named_parameters())[name_clean]
+                    except Exception:
+                        return f"Nie można znaleźć: {' -> '.join(path)}"
             elif isinstance(current, dict):
-                current = current.get(name)
+                current = current.get(name_clean)
             else:
                 return f"Nie można znaleźć: {' -> '.join(path)}"
 
         if isinstance(current, torch.nn.Module):
-            return (
-                f"Moduł: {current.__class__.__name__}\n"
-                + f"Parametry: {sum(p.numel() for p in current.parameters())}"
-            )
+            param_count = sum(p.numel() for p in current.parameters())
+            return f"Moduł: {current.__class__.__name__}\n" f"Parametry: {param_count}"
         elif isinstance(current, torch.Tensor):
+            shape = list(current.shape)
+            dtype = str(current.dtype)
+            mean = float(current.mean().item()) if current.numel() > 0 else 0.0
+            min_val = float(current.min().item()) if current.numel() > 0 else 0.0
+            max_val = float(current.max().item()) if current.numel() > 0 else 0.0
             return (
-                f"Tensor: {current.shape}\n"
-                + f"Typ: {current.dtype}\n"
-                + f"Wymiary: {current.dim()}"
+                f"Tensor:\n"
+                f"  shape: {shape}\n"
+                f"  dtype: {dtype}\n"
+                f"  mean: {mean:.4f}\n"
+                f"  min: {min_val:.4f}\n"
+                f"  max: {max_val:.4f}"
             )
         else:
             return str(current)
