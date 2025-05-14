@@ -235,9 +235,13 @@ class QueueManager(QtWidgets.QDialog):
                             str(model.get("num_classes", ""))
                         )
                         self.tasks_table.setItem(row, 3, item_num_classes)
-                        # Early stopping
-                        early_stopping = training.get("early_stopping", {})
-                        early_enabled = early_stopping.get("enabled", False)
+                        # Early stopping (zgodnie ze schematem: monitoring -> early_stopping -> enabled)
+                        monitoring = config.get("monitoring", {})
+                        early_stopping = monitoring.get("early_stopping", {})
+                        if "enabled" in early_stopping:
+                            early_enabled = early_stopping["enabled"]
+                        else:
+                            early_enabled = ""
                         item_early_stop = QtWidgets.QTableWidgetItem(str(early_enabled))
                         self.tasks_table.setItem(row, 4, item_early_stop)
                         item_epochs = QtWidgets.QTableWidgetItem(
