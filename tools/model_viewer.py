@@ -1,14 +1,28 @@
+import collections
 import json
 import logging
 import os
 import sys
 
+import matplotlib
+
+matplotlib.use("qtagg")  # Standardowy backend Qt
+matplotlib.rcParams["font.family"] = "DejaVu Sans"
+matplotlib.rcParams["font.sans-serif"] = ["DejaVu Sans"]
+matplotlib.rcParams["font.serif"] = ["DejaVu Sans"]
+matplotlib.rcParams["font.monospace"] = ["DejaVu Sans"]
+matplotlib.rcParams["font.cursive"] = ["DejaVu Sans"]
+matplotlib.rcParams["font.fantasy"] = ["DejaVu Sans"]
+matplotlib.rcParams["mathtext.fontset"] = "dejavusans"
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
+import numpy as np
 import torch
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QDialog,
     QFileDialog,
     QHBoxLayout,
@@ -36,6 +50,132 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
+
+class ModelAnalyzerThread(QThread):
+    analysis_complete = pyqtSignal(str)
+    analysis_error = pyqtSignal(str)
+    progress_update = pyqtSignal(str)
+
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def run(self):
+        try:
+            total_params = 0
+            layers_info = []
+            model_type = type(self.model).__name__
+
+            self.progress_update.emit(f"Rozpoczęcie analizy modelu typu: {model_type}")
+
+            def analyze_module(module, name=""):
+                nonlocal total_params
+                params = sum(p.numel() for p in module.parameters())
+                total_params += params
+
+                if params > 0:
+                    layer_info = {
+                        "name": name or module.__class__.__name__,
+                        "parameters": params,
+                        "type": module.__class__.__name__,
+                    }
+                    layers_info.append(layer_info)
+                    self.progress_update.emit(
+                        f"Znaleziono warstwę: {layer_info['name']} "
+                        f"({layer_info['type']}) z {params:,} parametrami"
+                    )
+
+                for child_name, child in module.named_children():
+                    analyze_module(
+                        child, f"{name}.{child_name}" if name else child_name
+                    )
+
+            def analyze_dict(d, prefix=""):
+                nonlocal total_params
+                layer_params = {}
+
+                for key, value in d.items():
+                    current_path = f"{prefix}.{key}" if prefix else key
+                    self.progress_update.emit(
+                        f"Analizuję klucz: {current_path}, typ wartości: {type(value)}"
+                    )
+
+                    if isinstance(value, torch.Tensor):
+                        self.progress_update.emit(
+                            f"Tensor {current_path}: shape={value.shape}, "
+                            f"dtype={value.dtype}, numel={value.numel()}"
+                        )
+                        layer_name = current_path.split(".")[0]
+                        if layer_name not in layer_params:
+                            layer_params[layer_name] = {"parameters": 0, "tensors": []}
+                        layer_params[layer_name]["parameters"] += value.numel()
+                        layer_params[layer_name]["tensors"].append(current_path)
+                        total_params += value.numel()
+                    elif isinstance(value, (dict, collections.OrderedDict)):
+                        self.progress_update.emit(
+                            f"Znaleziono zagnieżdżony słownik: {current_path}"
+                        )
+                        analyze_dict(value, current_path)
+                    else:
+                        self.progress_update.emit(
+                            f"Pominięto nie-tensor: {current_path} ({type(value)})"
+                        )
+
+                return layer_params
+
+            if isinstance(self.model, torch.nn.Module):
+                self.progress_update.emit("Analizuję model typu torch.nn.Module")
+                analyze_module(self.model)
+            elif isinstance(self.model, dict):
+                self.progress_update.emit("Analizuję model typu dict (state_dict)")
+                self.progress_update.emit(
+                    f"Klucze w state_dict: {list(self.model.keys())}"
+                )
+
+                layer_params = analyze_dict(self.model)
+
+                self.progress_update.emit(
+                    f"Znalezione warstwy: {list(layer_params.keys())}"
+                )
+
+                for layer_name, info in layer_params.items():
+                    layers_info.append(
+                        {
+                            "name": layer_name,
+                            "parameters": info["parameters"],
+                            "type": "state_dict_layer",
+                            "tensors": info["tensors"],
+                        }
+                    )
+                    self.progress_update.emit(
+                        f"Znaleziono warstwę state_dict: {layer_name} "
+                        f"z {info['parameters']:,} parametrami"
+                    )
+            else:
+                raise ValueError(f"Nieobsługiwany typ modelu: {model_type}")
+
+            # Przygotuj raport
+            report = "Analiza modelu:\n\n"
+            report += f"Typ modelu: {model_type}\n"
+            report += f"Całkowita liczba parametrów: {total_params:,}\n"
+            report += f"Liczba warstw: {len(layers_info)}\n\n"
+            report += "Szczegóły warstw:\n"
+
+            for layer in layers_info:
+                report += (
+                    f"- {layer['name']}: "
+                    f"{layer['parameters']:,} parametrów "
+                    f"({layer['type']})\n"
+                )
+                if "tensors" in layer:
+                    for tensor in layer["tensors"]:
+                        report += f"  * {tensor}\n"
+
+            self.analysis_complete.emit(report)
+
+        except Exception as e:
+            self.analysis_error.emit(str(e))
 
 
 class ModelViewer(QMainWindow):
@@ -205,6 +345,7 @@ class ModelViewer(QMainWindow):
         self.model = None
         self.current_model_path = None
         self.comparison_model = None
+        self.analyzer_thread = None
 
         # Zastosuj style
         self._apply_styles()
@@ -433,107 +574,34 @@ class ModelViewer(QMainWindow):
     def analyze_model(self):
         if not self.model:
             logger.warning("Próba analizy pustego modelu")
-            self.show_message(
-                "Błąd", "Brak modelu do analizy", QMessageBox.Icon.Warning
-            )
+            self.details_label.setText("Błąd: Brak modelu do analizy")
             return
 
-        total_params = 0
-        layers_info = []
-        model_type = type(self.model).__name__
+        # Wyłącz przycisk analizy podczas analizy
+        self.analyze_button.setEnabled(False)
+        self.details_label.setText("Analizuję model...")
 
-        logger.info(f"Rozpoczęcie analizy modelu typu: {model_type}")
+        # Utwórz i uruchom wątek analizy
+        self.analyzer_thread = ModelAnalyzerThread(self.model)
+        self.analyzer_thread.analysis_complete.connect(self._on_analysis_complete)
+        self.analyzer_thread.analysis_error.connect(self._on_analysis_error)
+        self.analyzer_thread.progress_update.connect(self._on_progress_update)
+        self.analyzer_thread.start()
 
-        def analyze_module(module, name=""):
-            nonlocal total_params
-            params = sum(p.numel() for p in module.parameters())
-            total_params += params
+    def _on_analysis_complete(self, report):
+        self.details_label.setText(report)
+        self.analyze_button.setEnabled(True)
+        logger.info("Analiza modelu zakończona")
 
-            if params > 0:  # Tylko warstwy z parametrami
-                layer_info = {
-                    "name": name or module.__class__.__name__,
-                    "parameters": params,
-                    "type": module.__class__.__name__,
-                }
-                layers_info.append(layer_info)
-                logger.debug(
-                    f"Znaleziono warstwę: {layer_info['name']} "
-                    f"({layer_info['type']}) z {params:,} parametrami"
-                )
+    def _on_analysis_error(self, error_msg):
+        self.details_label.setText(f"Błąd podczas analizy: {error_msg}")
+        self.analyze_button.setEnabled(True)
+        logger.error(f"Błąd podczas analizy modelu: {error_msg}")
 
-            for child_name, child in module.named_children():
-                analyze_module(child, f"{name}.{child_name}" if name else child_name)
-
-        if isinstance(self.model, torch.nn.Module):
-            logger.info("Analizuję model typu torch.nn.Module")
-            analyze_module(self.model)
-        elif isinstance(self.model, dict):
-            logger.info("Analizuję model typu dict (state_dict)")
-            logger.debug(f"Klucze w state_dict: {list(self.model.keys())}")
-
-            # Grupowanie parametrów według nazwy warstwy
-            layer_params = {}
-            for key, value in self.model.items():
-                logger.debug(f"Analizuję klucz: {key}, typ wartości: {type(value)}")
-                if isinstance(value, torch.Tensor):
-                    logger.debug(
-                        f"Tensor {key}: shape={value.shape}, "
-                        f"dtype={value.dtype}, numel={value.numel()}"
-                    )
-                    # Wyodrębnij nazwę warstwy z klucza
-                    layer_name = key.split(".")[0]
-                    if layer_name not in layer_params:
-                        layer_params[layer_name] = {"parameters": 0, "tensors": []}
-                    layer_params[layer_name]["parameters"] += value.numel()
-                    layer_params[layer_name]["tensors"].append(key)
-                    total_params += value.numel()
-                else:
-                    logger.debug(f"Pominięto nie-tensor: {key} ({type(value)})")
-
-            logger.debug(f"Znalezione warstwy: {list(layer_params.keys())}")
-
-            # Konwersja na format warstw
-            for layer_name, info in layer_params.items():
-                layers_info.append(
-                    {
-                        "name": layer_name,
-                        "parameters": info["parameters"],
-                        "type": "state_dict_layer",
-                        "tensors": info["tensors"],
-                    }
-                )
-                logger.debug(
-                    f"Znaleziono warstwę state_dict: {layer_name} "
-                    f"z {info['parameters']:,} parametrami"
-                )
-        else:
-            logger.warning(f"Nieobsługiwany typ modelu: {model_type}")
-            self.show_message(
-                "Błąd",
-                f"Nieobsługiwany typ modelu: {model_type}",
-                QMessageBox.Icon.Warning,
-            )
-            return
-
-        # Przygotuj raport
-        report = "Analiza modelu:\n\n"
-        report += f"Typ modelu: {model_type}\n"
-        report += f"Całkowita liczba parametrów: {total_params:,}\n"
-        report += f"Liczba warstw: {len(layers_info)}\n\n"
-        report += "Szczegóły warstw:\n"
-
-        for layer in layers_info:
-            report += (
-                f"- {layer['name']}: "
-                f"{layer['parameters']:,} parametrów "
-                f"({layer['type']})\n"
-            )
-            if "tensors" in layer:
-                for tensor in layer["tensors"]:
-                    report += f"  * {tensor}\n"
-
-        logger.info(f"Analiza modelu zakończona:\n{report}")
-        self.show_message("Analiza modelu", report)
+    def _on_progress_update(self, message):
+        logger.debug(message)
+        # Możemy też aktualizować status w interfejsie
+        self.statusBar().showMessage(message)
 
     def _get_model_structure(self):
         structure = {}
@@ -764,79 +832,219 @@ class ModelViewer(QMainWindow):
                 )
 
     def visualize_parameters(self):
+        """Wizualizacja parametrów modelu z obsługą outlierów i skalą logarytmiczną."""
         logger.info("Wizualizacja parametrów modelu")
         if not self.model:
             logger.warning("Brak modelu do wizualizacji parametrów")
+            self.show_message(
+                "Błąd", "Brak modelu do wizualizacji", QMessageBox.Icon.Warning
+            )
             return
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Wizualizacja parametrów")
-        dialog.setGeometry(200, 200, 800, 600)
+        try:
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Wizualizacja parametrów")
+            dialog.setGeometry(200, 200, 1200, 800)
+            layout = QVBoxLayout(dialog)
+            tabs = QTabWidget()
 
-        layout = QVBoxLayout(dialog)
+            all_params = []
+            layer_params = {}
 
-        # Zakładki dla różnych typów wizualizacji
-        tabs = QTabWidget()
+            # Zbieranie parametrów
+            if isinstance(self.model, torch.nn.Module):
+                for name, param in self.model.named_parameters():
+                    if param.requires_grad:
+                        values = param.detach().cpu().numpy().flatten()
+                        all_params.extend(values.tolist())
+                        layer_name = name.split(".")[0]
+                        if layer_name not in layer_params:
+                            layer_params[layer_name] = []
+                        layer_params[layer_name].extend(values.tolist())
+            elif isinstance(self.model, dict):
 
-        # Histogram wartości
-        hist_tab = QWidget()
-        hist_layout = QVBoxLayout(hist_tab)
-        hist_fig = Figure(figsize=(8, 6))
-        hist_canvas = FigureCanvas(hist_fig)
-        hist_layout.addWidget(hist_canvas)
-        tabs.addTab(hist_tab, "Histogram wartości")
+                def extract_tensors(d, prefix=""):
+                    for key, value in d.items():
+                        current_path = f"{prefix}.{key}" if prefix else key
+                        if isinstance(value, torch.Tensor):
+                            values = value.detach().cpu().numpy().flatten()
+                            all_params.extend(values.tolist())
+                            layer_name = current_path.split(".")[0]
+                            if layer_name not in layer_params:
+                                layer_params[layer_name] = []
+                            layer_params[layer_name].extend(values.tolist())
+                        elif isinstance(value, dict):
+                            extract_tensors(value, current_path)
 
-        # Wykres rozkładu
-        dist_tab = QWidget()
-        dist_layout = QVBoxLayout(dist_tab)
-        dist_fig = Figure(figsize=(8, 6))
-        dist_canvas = FigureCanvas(dist_fig)
-        dist_layout.addWidget(dist_canvas)
-        tabs.addTab(dist_tab, "Rozkład wartości")
+                extract_tensors(self.model)
 
-        layout.addWidget(tabs)
+            if not all_params:
+                self.show_message(
+                    "Błąd", "Brak parametrów do wizualizacji", QMessageBox.Icon.Warning
+                )
+                return
 
-        # Zbierz wszystkie parametry
-        all_params = []
-        if isinstance(self.model, torch.nn.Module):
-            for param in self.model.parameters():
-                all_params.extend(param.detach().cpu().numpy().flatten())
-        elif isinstance(self.model, dict):
+            all_params = np.array(all_params)
+            # Wyznacz percentyle do ucinania outlierów
+            p1 = np.percentile(all_params, 1)
+            p99 = np.percentile(all_params, 99)
+            mask_normal = (all_params >= p1) & (all_params <= p99)
+            params_normal = all_params[mask_normal]
+            params_outliers = all_params[~mask_normal]
+            outlier_info = f"Liczba outlierów: {len(params_outliers)} ({100*len(params_outliers)/len(all_params):.2f}%)"
+            ostrzezenie = None
+            if len(params_outliers) > 0:
+                ostrzezenie = f"UWAGA: wykryto {len(params_outliers)} outlierów poza zakresem 1-99 percentyla!"
 
-            def extract_tensors(d):
-                for v in d.values():
-                    if isinstance(v, torch.Tensor):
-                        all_params.extend(v.detach().cpu().numpy().flatten())
-                    elif isinstance(v, dict):
-                        extract_tensors(v)
+            # Przełącznik skali logarytmicznej
+            log_checkbox = QCheckBox("Skala logarytmiczna (histogram)")
+            layout.addWidget(log_checkbox)
 
-            extract_tensors(self.model)
-        else:
-            logger.warning("Nieobsługiwany typ modelu do wizualizacji parametrów")
-            return
+            def draw_histogram(ax, data, log_scale, title, stats=True):
+                ax.clear()
+                n, bins, patches = ax.hist(
+                    data, bins=50, density=True, alpha=0.7, log=log_scale
+                )
+                ax.set_title(title, fontsize=14, pad=20)
+                ax.set_xlabel("Wartość", fontsize=12)
+                ax.set_ylabel("Gęstość", fontsize=12)
+                ax.grid(True, alpha=0.3)
+                if stats:
+                    stats_text = (
+                        f"Statystyki:\n"
+                        f"Min: {data.min():.4f}\n"
+                        f"Max: {data.max():.4f}\n"
+                        f"Średnia: {data.mean():.4f}\n"
+                        f"Mediana: {np.median(data):.4f}\n"
+                        f"Std: {data.std():.4f}"
+                    )
+                    ax.text(
+                        0.02,
+                        0.98,
+                        stats_text,
+                        transform=ax.transAxes,
+                        verticalalignment="top",
+                        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+                    )
 
-        if not all_params:
-            logger.warning("Brak parametrów do wizualizacji")
-            return
+            # 1. Histogram (tylko normalne wartości)
+            hist_tab = QWidget()
+            hist_layout = QVBoxLayout(hist_tab)
+            hist_fig = Figure(figsize=(12, 8), dpi=100)
+            hist_canvas = FigureCanvas(hist_fig)
+            hist_layout.addWidget(hist_canvas)
+            ax1 = hist_fig.add_subplot(111)
+            draw_histogram(
+                ax1, params_normal, False, "Histogram wartości (1-99 percentyl)"
+            )
+            hist_canvas.draw()
+            tabs.addTab(hist_tab, "Histogram wartości")
 
-        # Rysuj histogram
-        ax1 = hist_fig.add_subplot(111)
-        ax1.hist(all_params, bins=50)
-        ax1.set_title("Rozkład wartości parametrów")
-        ax1.set_xlabel("Wartość")
-        ax1.set_ylabel("Liczba parametrów")
-        hist_canvas.draw()
+            # 2. Histogram outlierów
+            if len(params_outliers) > 0:
+                outlier_tab = QWidget()
+                outlier_layout = QVBoxLayout(outlier_tab)
+                outlier_fig = Figure(figsize=(12, 8), dpi=100)
+                outlier_canvas = FigureCanvas(outlier_fig)
+                outlier_layout.addWidget(outlier_canvas)
+                ax_out = outlier_fig.add_subplot(111)
+                draw_histogram(
+                    ax_out, params_outliers, False, "Histogram outlierów (poza 1-99%)"
+                )
+                outlier_canvas.draw()
+                tabs.addTab(outlier_tab, "Outliery")
 
-        # Rysuj rozkład
-        ax2 = dist_fig.add_subplot(111)
-        ax2.plot(sorted(all_params))
-        ax2.set_title("Rozkład wartości parametrów")
-        ax2.set_xlabel("Indeks parametru")
-        ax2.set_ylabel("Wartość")
-        dist_canvas.draw()
+            # 3. Rozkład wartości (tylko normalne)
+            dist_tab = QWidget()
+            dist_layout = QVBoxLayout(dist_tab)
+            dist_fig = Figure(figsize=(12, 8), dpi=100)
+            dist_canvas = FigureCanvas(dist_fig)
+            dist_layout.addWidget(dist_canvas)
+            ax2 = dist_fig.add_subplot(111)
+            sorted_params = np.sort(params_normal)
+            ax2.plot(sorted_params, np.linspace(0, 1, len(sorted_params)))
+            ax2.set_title("Rozkład wartości parametrów (1-99%)", fontsize=14, pad=20)
+            ax2.set_xlabel("Wartość", fontsize=12)
+            ax2.set_ylabel("Kwantyl", fontsize=12)
+            ax2.grid(True, alpha=0.3)
+            dist_canvas.draw()
+            tabs.addTab(dist_tab, "Rozkład wartości")
 
-        logger.info("Wizualizacja parametrów zakończona")
-        dialog.exec()
+            # 4. Wykres warstw (tylko normalne)
+            layers_tab = QWidget()
+            layers_layout = QVBoxLayout(layers_tab)
+            layers_fig = Figure(figsize=(12, 8), dpi=100)
+            layers_canvas = FigureCanvas(layers_fig)
+            layers_layout.addWidget(layers_canvas)
+            ax3 = layers_fig.add_subplot(111)
+            layer_names = list(layer_params.keys())
+            layer_means = [
+                (
+                    np.mean([v for v in layer_params[name] if p1 <= v <= p99])
+                    if len([v for v in layer_params[name] if p1 <= v <= p99]) > 0
+                    else 0
+                )
+                for name in layer_names
+            ]
+            layer_stds = [
+                (
+                    np.std([v for v in layer_params[name] if p1 <= v <= p99])
+                    if len([v for v in layer_params[name] if p1 <= v <= p99]) > 0
+                    else 0
+                )
+                for name in layer_names
+            ]
+            y_pos = np.arange(len(layer_names))
+            ax3.barh(y_pos, layer_means, xerr=layer_stds, align="center", alpha=0.7)
+            ax3.set_yticks(y_pos)
+            ax3.set_yticklabels(layer_names)
+            ax3.set_xlabel("Średnia wartość parametrów", fontsize=12)
+            ax3.set_title(
+                "Średnie wartości parametrów dla każdej warstwy (1-99%)",
+                fontsize=14,
+                pad=20,
+            )
+            ax3.grid(True, alpha=0.3)
+            layers_canvas.draw()
+            tabs.addTab(layers_tab, "Parametry warstw")
+
+            # Ostrzeżenie o outlierach
+            if ostrzezenie:
+                warn_label = QLabel(ostrzezenie + "\n" + outlier_info)
+                warn_label.setStyleSheet("color: orange; font-weight: bold;")
+                layout.addWidget(warn_label)
+
+            # Obsługa przełącznika logarytmicznego
+            def on_log_checkbox(state):
+                draw_histogram(
+                    ax1,
+                    params_normal,
+                    log_checkbox.isChecked(),
+                    "Histogram wartości (1-99 percentyl)",
+                )
+                hist_canvas.draw()
+                if len(params_outliers) > 0:
+                    draw_histogram(
+                        ax_out,
+                        params_outliers,
+                        log_checkbox.isChecked(),
+                        "Histogram outlierów (poza 1-99%)",
+                    )
+                    outlier_canvas.draw()
+
+            log_checkbox.stateChanged.connect(on_log_checkbox)
+
+            layout.addWidget(tabs)
+            logger.info("Wizualizacja parametrów zakończona")
+            dialog.exec()
+
+        except Exception as e:
+            logger.error(f"Błąd podczas wizualizacji parametrów: {str(e)}")
+            self.show_message(
+                "Błąd",
+                f"Nie udało się wyświetlić wizualizacji: {str(e)}",
+                QMessageBox.Icon.Critical,
+            )
 
     def compare_models(self):
         file_name, _ = QFileDialog.getOpenFileName(
