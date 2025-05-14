@@ -1293,16 +1293,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             tab = QtWidgets.QWidget()
             layout = QtWidgets.QVBoxLayout(tab)
 
-            # Dodanie checkbox'a do włączania/wyłączania optymalizacji
-            self.use_optimization_checkbox = QtWidgets.QCheckBox(
-                "Użyj optymalizacji sprzętowej"
-            )
-            self.use_optimization_checkbox.setChecked(True)
-            self.use_optimization_checkbox.stateChanged.connect(
-                self._update_optimization_state
-            )
-            layout.addWidget(self.use_optimization_checkbox)
-
             # Grupa parametrów optymalizacyjnych
             params_group = QtWidgets.QGroupBox("Parametry optymalizacyjne")
             params_layout = QtWidgets.QFormLayout()
@@ -1313,13 +1303,34 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 ("Learning rate", "learning_rate", 0.001, "float", 0.0001, 1.0, 0.0001),
                 ("Epochs", "epochs", 100, "int", 1, 1000, 1),
                 ("Workers", "num_workers", 4, "int", 0, 32, 1),
+                (
+                    "Gradient Accumulation",
+                    "gradient_accumulation_steps",
+                    1,
+                    "int",
+                    1,
+                    16,
+                    1,
+                ),
+                (
+                    "Mixed Precision",
+                    "use_mixed_precision",
+                    True,
+                    "bool",
+                    None,
+                    None,
+                    None,
+                ),
             ]
 
+            self.optimization_params = []
             for name, key, default, type_, min_, max_, step in params:
                 row = self._create_parameter_row(
                     name, key, default, type_, min_, max_, step
                 )
                 params_layout.addRow(name + ":", row)
+                if key in self.parameter_rows:
+                    self.optimization_params.append(self.parameter_rows[key])
 
             params_group.setLayout(params_layout)
             layout.addWidget(params_group)
@@ -1348,32 +1359,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         step=None,
     ):
         """
-        Tworzy wiersz parametru z opcją wyboru źródła wartości.
+        Tworzy wiersz parametru z kontrolkami dla ustawień użytkownika i profilu sprzętowego.
         """
         layout = QtWidgets.QHBoxLayout()
 
-        # Źródło wartości - Tworzymy unikalną grupę dla każdego wiersza
-        source_group = QtWidgets.QButtonGroup()
-
-        # Przycisk opcji dla wartości z UI/profilu
-        profile_radio = QtWidgets.QRadioButton("Z profilu")
-        profile_radio.setChecked(True)
-        source_group.addButton(profile_radio, 1)
-
-        # Przycisk opcji dla wartości z profilu sprzętowego
-        hardware_radio = QtWidgets.QRadioButton("Z profilu sprzętowego")
-        source_group.addButton(hardware_radio, 2)
-
-        # Sprawdź czy optymalizacja jest włączona
-        optimization_enabled = True
-        if hasattr(self, "use_optimization_checkbox"):
-            optimization_enabled = self.use_optimization_checkbox.isChecked()
-
-        # Dodaj przyciski do layoutu
-        layout.addWidget(profile_radio)
-        layout.addWidget(hardware_radio)
-
-        # Utwórz widget wartości
+        # Wartość użytkownika
         if widget_type == "int":
             value_widget = QtWidgets.QSpinBox()
             value_widget.setRange(min_val or -999999, max_val or 999999)
@@ -1386,41 +1376,97 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             value_widget.setValue(default_value)
             if step:
                 value_widget.setSingleStep(step)
+        elif widget_type == "bool":
+            value_widget = QtWidgets.QCheckBox()
+            value_widget.setChecked(default_value)
         else:
             value_widget = QtWidgets.QLineEdit(str(default_value))
 
+        # Checkbox "Użytkownika"
+        user_checkbox = QtWidgets.QCheckBox("Użytkownika")
+        user_checkbox.setChecked(True)
+
         # Etykieta i wartość z profilu sprzętowego
-        hw_value_label = QtWidgets.QLabel("Wartość z profilu:")
-        hw_value = QtWidgets.QLabel(str(self.hardware_profile.get(param_key, "Brak")))
+        hw_value_label = QtWidgets.QLabel("Profil sprzętowy:")
+        # Pobierz wartość z profilu sprzętowego lub wyświetl "Brak"
+        hw_value_actual = self.hardware_profile.get(param_key)
+        hw_value_text = str(hw_value_actual) if hw_value_actual is not None else "Brak"
+        hw_value = QtWidgets.QLabel(hw_value_text)
+
+        # Checkbox "Profil sprzętowy"
+        hw_checkbox = QtWidgets.QCheckBox("Profil sprzętowy")
+        hw_checkbox.setChecked(False)
+
+        # Grupa przycisków (checkboxów) do wyboru źródła wartości
+        source_group = QtWidgets.QButtonGroup()
+        source_group.addButton(user_checkbox)
+        source_group.addButton(hw_checkbox)
+        source_group.setExclusive(True)  # Tylko jeden z checkboxów może być zaznaczony
 
         # Dodaj widgety do layoutu
         layout.addWidget(value_widget)
+        layout.addWidget(user_checkbox)
         layout.addWidget(hw_value_label)
         layout.addWidget(hw_value)
+        layout.addWidget(hw_checkbox)
 
         # Zapamiętanie referencji do widgetów i grupy przycisków
         row_widgets = {
             "param_key": param_key,
-            "profile_radio": profile_radio,
-            "hardware_radio": hardware_radio,
             "value_widget": value_widget,
+            "user_checkbox": user_checkbox,
             "hw_value_label": hw_value_label,
             "hw_value": hw_value,
-            "button_group": source_group,  # Zapisujemy grupę by nie została usunięta przez GC
+            "hw_checkbox": hw_checkbox,
+            "button_group": source_group,
+            "hw_value_actual": hw_value_actual,
         }
+
+        # Podpięcie zdarzeń do kontrolek
+        user_checkbox.toggled.connect(
+            lambda checked: self._on_source_toggle(row_widgets, checked)
+        )
+        hw_checkbox.toggled.connect(
+            lambda checked: self._on_hw_toggle(row_widgets, checked)
+        )
 
         # Zapisz referencje jako atrybut klasy
         if not hasattr(self, "parameter_rows"):
             self.parameter_rows = {}
         self.parameter_rows[param_key] = row_widgets
 
-        # Aktualizuj stan widgetów na podstawie optymalizacji
-        if not optimization_enabled:
-            hardware_radio.setEnabled(False)
-            hw_value_label.setEnabled(False)
-            hw_value.setEnabled(False)
-
         return layout
+
+    def _on_source_toggle(self, row_widgets, is_user_selected):
+        """Obsługuje przełączanie na źródło użytkownika."""
+        value_widget = row_widgets["value_widget"]
+        hw_checkbox = row_widgets["hw_checkbox"]
+
+        if is_user_selected:
+            value_widget.setEnabled(True)
+            hw_checkbox.setChecked(False)
+
+    def _on_hw_toggle(self, row_widgets, is_hw_selected):
+        """Obsługuje przełączanie na profil sprzętowy."""
+        value_widget = row_widgets["value_widget"]
+        user_checkbox = row_widgets["user_checkbox"]
+        hw_value_actual = row_widgets["hw_value_actual"]
+
+        if is_hw_selected:
+            user_checkbox.setChecked(False)
+            value_widget.setEnabled(False)
+
+            # Ustaw wartość z profilu sprzętowego, jeśli jest dostępna
+            if hw_value_actual is not None:
+                if (
+                    isinstance(value_widget, QtWidgets.QSpinBox)
+                    or isinstance(value_widget, QtWidgets.QDoubleSpinBox)
+                ):
+                    value_widget.setValue(hw_value_actual)
+                elif isinstance(value_widget, QtWidgets.QCheckBox):
+                    value_widget.setChecked(hw_value_actual)
+                else:
+                    value_widget.setText(str(hw_value_actual))
 
     def _apply_all_hardware_optimizations(self):
         """Stosuje wszystkie optymalizacje sprzętowe."""
@@ -1428,22 +1474,9 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         for param in self.parameter_rows.values():
             param_key = param["param_key"]
             if param_key in self.hardware_profile:
-                param["hardware_radio"].setChecked(True)
-                hw_value = param["hw_value"]
-                value_widget = param["value_widget"]
-                value_widget.setEnabled(False)
-
-                if isinstance(
-                    value_widget, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)
-                ):
-                    value_widget.setValue(float(hw_value))
-                elif isinstance(value_widget, QtWidgets.QCheckBox):
-                    value_widget.setChecked(bool(hw_value))
-                elif isinstance(value_widget, QtWidgets.QLabel):
-                    value_widget.setText(str(hw_value))
-                else:
-                    value_widget.setText(str(hw_value))
-
+                # Włącz checkbox profilu sprzętowego, wyłącz checkbox użytkownika
+                param["hw_checkbox"].setChecked(True)
+                # Akcja zaznaczenia checkboxa spowoduje automatyczną aktualizację wartości
                 count += 1
 
         QtWidgets.QMessageBox.information(
@@ -1645,22 +1678,3 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         self.logger.info("Zamykanie okna dialogowego")
         self.accept()
         event.accept()
-
-    def _update_optimization_state(self, state):
-        """Aktualizuje stan kontrolek optymalizacji na podstawie stanu checkboxa."""
-        enabled = bool(state)
-
-        # Aktualizacja dostępności opcji "z profilu sprzętowego" we wszystkich parametrach
-        if hasattr(self, "parameter_rows"):
-            for param in self.parameter_rows.values():
-                hardware_radio = param["hardware_radio"]
-                hw_value_label = param["hw_value_label"]
-                hw_value = param["hw_value"]
-
-                hardware_radio.setEnabled(enabled)
-                hw_value_label.setEnabled(enabled)
-                hw_value.setEnabled(enabled)
-
-                # Jeśli optymalizacja jest wyłączona, przełącz na "Z profilu"
-                if not enabled and hardware_radio.isChecked():
-                    param["profile_radio"].setChecked(True)

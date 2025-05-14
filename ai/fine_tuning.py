@@ -1443,9 +1443,13 @@ def fine_tune_model(
                     and original_ewc_model_params
                     and epoch >= warmup_epochs
                 ):  # EWC po warmupie
-
                     ewc_lambda_val = ewc_config.get("lambda", 1000.0)
-                    if ewc_config.get("adaptive_lambda", True):
+                    # Sprawdzamy, czy parametr adaptive_lambda został przekazany
+                    adaptive_lambda = ewc_config.get("adaptive_lambda")
+                    # Jeśli nie został przekazany, używamy wartości domyślnej True
+                    if adaptive_lambda is None:
+                        adaptive_lambda = True
+                    if adaptive_lambda:
                         progress = epoch / max(1, num_epochs - 1)  # 0 do 1
                         ewc_lambda_val *= progress
 

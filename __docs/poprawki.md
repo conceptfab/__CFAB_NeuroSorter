@@ -1,81 +1,65 @@
-Przeprowadzę analizę, czy wszystkie parametry wymagane do treningu i fine-tuningu są prawidłowo przekazywane z okien dialogowych przez pliki JSON do plików realizacyjnych.
-Analiza przekazywania parametrów
+Problem
+W obu przypadkach po zaznaczeniu checkboxa "Profil sprzętowy" wartości nie są stosowane do kontrolek, ponieważ:
 
-1. Porównanie parametrów w dialogach konfiguracyjnych
-   Przeanalizowałem dwa pliki dialogowe:
+W metodzie _on_hw_toggle() w klasie FineTuningTaskConfigDialog nazwa zmiennej hardware_radio nie odpowiada rzeczywistej nazwie zmiennej hw_checkbox używanej w tworzeniu kontrolek.
+W klasie TrainingTaskConfigDialog funkcja _apply_all_hardware_optimizations() również używa niepoprawnej nazwy zmiennej.
 
-fine_tuning_task_config_dialog.py - konfiguracja zadań fine-tuningu
-training_task_config_dialog.py - konfiguracja zadań treningu od podstaw
+Proponowane zmiany
+1. W pliku training_task_config_dialog.py:
+pythondef _apply_all_hardware_optimizations(self):
+    """Stosuje wszystkie optymalizacje sprzętowe."""
+    count = 0
+    for param in self.parameter_rows.values():
+        param_key = param["param_key"]
+        if param_key in self.hardware_profile:
+            # Włącz checkbox profilu sprzętowego, wyłącz checkbox użytkownika
+            param["hw_checkbox"].setChecked(True)
+            # Akcja zaznaczenia checkboxa spowoduje automatyczną aktualizację wartości
+            count += 1
 
-Główne zmiany w fine_tuning_task_config_dialog.py:
-Dodano import datetime, który jest używany do generowania znaczników czasu. Jest to ważna zmiana, ponieważ pozwala na prawidłowe zapisywanie informacji o czasie utworzenia zadania.
-Ponadto, dodano nową kontrolkę ewc_lambda_spin z zwiększonym zakresem od 100.0 do 10000.0 oraz domyślną wartością 5000.0 zamiast poprzedniej, mniejszej wartości. Ta zmiana jest istotna dla parametrów związanych z zapobieganiem katastrofalnemu zapominaniu przy fine-tuningu.
-Dodano także ważną kontrolkę adaptive_ewc_lambda_check do adaptacyjnego sterowania parametrem lambda, która jest domyślnie włączona (setChecked(True)) i ma odpowiedni tooltip wyjaśniający, że lambda będzie dynamicznie zwiększana podczas treningu. 2. Przekazywanie parametrów przy tworzeniu zadania
-W obu dialogach, gdy użytkownik klika "Dodaj zadanie", wywoływana jest metoda \_on_accept():
-W fine_tuning_task_config_dialog.py:
-Metoda ta zbiera wszystkie parametry z kontrolek interfejsu i tworzy słownik konfiguracyjny, który jest zapisywany do atrybutu self.task_config. Kluczową sekcją jest zbieranie konfiguracji optymalizacyjnej:
-Konfiguracja optymalizacyjna jest zbierana z kontrolek interfejsu i zapisywana w optimization_config.
-Ten słownik jest następnie używany do ustawienia parametrów takich jak batch_size, num_workers i mixed_precision.
-Dodatkowo dodawany jest parametr gradient_accumulation_steps z optymalizacji.
-Cała konfiguracja optymalizacji jest dodawana do głównej konfiguracji.
-W training_task_config_dialog.py:
-Podobnie, w dialogu treningowym:
-Generowany jest słownik konfiguracyjny, a parametry optymalizacji są pobierane z kontrolek i zapisywane w optimization_config.
-Parametry z zakładki optymalizacji (batch_size, num_workers, mixed_precision) są używane do konfiguracji treningu.
-Sekcja optymalizacji jest dodawana do głównej konfiguracji. 3. Przekazywanie parametrów do modułu wykonawczego
-Fine-tuning:
-W pliku ai/fine_tuning.py znajduje się funkcja fine_tune_model, która przyjmuje liczne parametry, w tym:
-Parameter ewc_config dla konfiguracji EWC
-Parameter layer_freezing_config dla zamrażania warstw
-Parameter augmentation_params
-Parameter preprocessing_params
-Szczególnie istotna jest logika związana z parametrem lambda w EWC:
-Wartość ewc_lambda_val jest pobierana z konfiguracji oraz zwiększana dynamicznie w zależności od epoki.
-Adaptacyjność lambda jest kontrolowana przez flagę adaptive_lambda.
-Trening od podstaw:
-W pliku ai/optimized_training.py znajduje się funkcja train_model_optimized, która również przyjmuje parametry z dialogu, w tym:
-Różne parametry treningu, w tym augmentation_mode i augmentation_params
-Parametry są przesyłane do funkcji augmentacji danych 4. Obsługa parametrów w przetwarzaniu danych
-W module ai/preprocessing.py:
-Funkcja get_default_transforms przyjmuje opcjonalny parametr config
-Parametr ten może zawierać konfigurację rozmiaru obrazu i inne parametry przetwarzania
-Funkcja sprawdza, czy config zawiera klucz image_size i używa go, jeśli istnieje
-Podobnie dla augmentacji:
-Funkcja augmentacji również przyjmuje parametr config
-Rozszerzona funkcja augmentacji przyjmuje bardziej szczegółowy parametr params
-Ustawia wartości domyślne, jeśli params jest None
-Używa params.get() do pobierania parametrów z odpowiednimi wartościami domyślnymi
-Potencjalne problemy i braki
-Na podstawie analizy kodu, zidentyfikowałem kilka potencjalnych problemów:
+    QtWidgets.QMessageBox.information(
+        self,
+        "Sukces",
+        f"Zastosowano {count} optymalnych ustawień z profilu sprzętowego.",
+    )
+2. W pliku fine_tuning_task_config_dialog.py:
+pythondef _update_optimization_state(self, state):
+    """Aktualizuje stan kontrolek optymalizacji na podstawie stanu checkboxa."""
+    enabled = bool(state)
 
-Brak pełnej spójności w nazwach parametrów między dialogami a funkcjami wykonawczymi:
+    # Aktualizacja dostępności opcji "z profilu sprzętowego" we wszystkich parametrach
+    if hasattr(self, "parameter_rows"):
+        for param in self.parameter_rows.values():
+            hw_checkbox = param["hw_checkbox"]  # Użyj poprawnej nazwy
+            hw_value_label = param["hw_value_label"]
+            hw_value = param["hw_value"]
 
-W dialogu używana jest kontrolka adaptive_ewc_lambda_check, ale w funkcji fine_tune_model oczekiwana jest flaga adaptive_lambda w ewc_config.
+            hw_checkbox.setEnabled(enabled)  # Użyj poprawnej nazwy
+            hw_value_label.setEnabled(enabled)
+            hw_value.setEnabled(enabled)
 
-Parametry EWC w fine-tuningu:
+            # Jeśli optymalizacja jest wyłączona, przełącz na "Z profilu"
+            if not enabled and hw_checkbox.isChecked():  # Użyj poprawnej nazwy
+                param["user_checkbox"].setChecked(True)  # Użyj poprawnej nazwy
+3. Należy również poprawić metodę _on_hw_toggle() w obu klasach:
+pythondef _on_hw_toggle(self, row_widgets, is_hw_selected):
+    """Obsługuje przełączanie na profil sprzętowy."""
+    value_widget = row_widgets["value_widget"]
+    user_checkbox = row_widgets["user_checkbox"]
+    hw_value_actual = row_widgets["hw_value_actual"]
 
-Chociaż dialog zawiera kontrolki dla parametrów EWC, nie jest jasne, czy wszystkie są prawidłowo dodawane do konfiguracji w metodzie \_on_accept().
+    if is_hw_selected:
+        user_checkbox.setChecked(False)
+        value_widget.setEnabled(False)
 
-Przekazywanie parametrów augmentacji:
-
-W dialogu są kontrolki dla AutoAugment i RandAugment, ale nie jest jasne, czy są one prawidłowo przekazywane do funkcji get_extended_augmentation_transforms.
-
-Zalecenia
-Aby zapewnić prawidłowe przekazywanie wszystkich parametrów, proponuję następujące zmiany:
-
-Ujednolicenie nazw parametrów między dialogami a funkcjami wykonawczymi.
-Dodanie brakujących parametrów w metodach \_on_accept() w obu dialogach:
-
-Upewnij się, że ewc_config zawiera parametr adaptive_lambda ustawiony na podstawie stanu adaptive_ewc_lambda_check.
-
-Weryfikacja konfiguracji augmentacji:
-
-Sprawdź, czy wszystkie parametry z kontrolek augmentacji są prawidłowo przekazywane do augmentation_params.
-
-Dokumentacja mapowania parametrów:
-
-Stwórz dokumentację, która jasno określa, które kontrolki dialogu odpowiadają którym parametrom w funkcjach wykonawczych.
-
-Podsumowanie
-Ogólnie rzecz biorąc, większość parametrów jest prawidłowo przekazywana z dialogów konfiguracyjnych przez pliki JSON do funkcji realizacyjnych. Zidentyfikowane problemy dotyczą głównie spójności nazewnictwa i kompletności parametrów, szczególnie w bardziej skomplikowanych komponentach jak EWC i augmentacja danych.
-Nowe parametry, takie jak adaptive_ewc_lambda_check, zostały dodane do interfejsu, ale należy upewnić się, że są one prawidłowo uwzględniane w końcowej konfiguracji JSON przekazywanej do funkcji wykonawczych.
+        # Ustaw wartość z profilu sprzętowego, jeśli jest dostępna
+        if hw_value_actual is not None:
+            if isinstance(value_widget, QtWidgets.QSpinBox) or isinstance(value_widget, QtWidgets.QDoubleSpinBox):
+                value_widget.setValue(hw_value_actual)
+            elif isinstance(value_widget, QtWidgets.QCheckBox):
+                value_widget.setChecked(hw_value_actual)
+            else:
+                value_widget.setText(str(hw_value_actual))
+Wnioski
+Problem polega na nieprawidłowym powiązaniu zmiennych w interfejsie użytkownika. Po zmianie nazw zmiennych z "hardware_radio" na "hw_checkbox" w odpowiednich miejscach oraz zapewnieniu, że wartości z profilu sprzętowego są prawidłowo stosowane, wartości powinny być poprawnie wyświetlane w zakładkach optymalizacji.
+Należy wprowadzić powyższe zmiany w obu plikach dialogowych, aby rozwiązać problem braku wartości z profili sprzętowych.

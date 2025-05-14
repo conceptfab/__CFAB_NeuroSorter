@@ -3,6 +3,8 @@ TODO 0.4
 - optymalizacja sprzętowa -> wartość uzytkownika -> wartość z profilu sprzętowego
 
 
+- ikona i nazwa data splitter
+
 - AI usunąć wczytywanie parametrów profili sprzętowego - wszystkie parametry są z pliku json zadania
 - nie dziala kolejkowanie
 - przy skonczeniu zadania brakuje zmiany statusu NOWY/ZAKOŃCZONY

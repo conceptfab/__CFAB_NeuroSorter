@@ -19,53 +19,20 @@ except ImportError:
 
 import torch  # main_window.py had it, keeping for completeness if any underlying part needs it
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-
 # For ResolutionScanner's plot
 from matplotlib.figure import Figure
-from PyQt6.QtCore import (
-    QObject,
-    QRunnable,
-    QStandardPaths,
-    Qt,
-    QThread,
-    QThreadPool,
-    QTimer,
-    pyqtSignal,
-    pyqtSlot,
-)
+from PyQt6.QtCore import (QObject, QRunnable, QStandardPaths, Qt, QThread,
+                          QThreadPool, QTimer, pyqtSignal, pyqtSlot)
 from PyQt6.QtGui import QAction, QColor, QFont, QIcon
-from PyQt6.QtWidgets import (
-    QApplication,
-    QButtonGroup,
-    QCheckBox,
-    QComboBox,
-    QDialog,
-    QDialogButtonBox,
-    QFileDialog,
-    QFrame,
-    QGroupBox,
-    QHBoxLayout,
-    QHeaderView,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QMainWindow,
-    QMessageBox,
-    QProgressBar,
-    QProgressDialog,
-    QPushButton,
-    QRadioButton,
-    QSlider,
-    QSpinBox,
-    QTableWidget,
-    QTableWidgetItem,
-    QTabWidget,
-    QTextEdit,
-    QTreeWidget,
-    QTreeWidgetItem,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox,
+                             QDialog, QDialogButtonBox, QFileDialog, QFrame,
+                             QGroupBox, QHBoxLayout, QHeaderView, QLabel,
+                             QLineEdit, QListWidget, QMainWindow, QMessageBox,
+                             QProgressBar, QProgressDialog, QPushButton,
+                             QRadioButton, QSlider, QSpinBox, QTableWidget,
+                             QTableWidgetItem, QTabWidget, QTextEdit,
+                             QTreeWidget, QTreeWidgetItem, QVBoxLayout,
+                             QWidget)
 
 # --- Global Logger Setup ---
 # Main logger for the combined application
@@ -102,6 +69,8 @@ data_splitter_config_values = {
     "folders": {
         "input": "",
         "output": "",
+        "train_folder_name": "train",
+        "valid_folder_name": "valid",
     },
     "defaults": {"train_split_percent": 80, "files_per_category": 10},
     "extensions": {
@@ -726,73 +695,200 @@ class DataSplitterApp(QWidget):
         pass
 
     def initUI(self):
-        main_layout = QVBoxLayout(self)
+        # self.setWindowTitle("Przygotowanie Danych AI") # Title set by Tab name
+        # self.setGeometry(200, 200, 850, 650)
+        layout = QVBoxLayout(self)  # Add self
 
-        # Folder selection
-        folder_group = QGroupBox("Wybór folderu")
-        folder_layout = QHBoxLayout()
-        self.select_folder_btn = QPushButton("Wybierz folder")
-        self.select_folder_btn.clicked.connect(self.select_folder)
-        folder_layout.addWidget(self.select_folder_btn)
-        self.folder_label = QLabel("Nie wybrano folderu")
-        folder_layout.addWidget(self.folder_label)
-        folder_group.setLayout(folder_layout)
-        main_layout.addWidget(folder_group)
+        # --- MODIFIED FOLDER SELECTION LAYOUT ---
+        folder_selection_outer_group = QGroupBox("Ścieżki folderów")
+        folder_selection_outer_group.setFixedHeight(120)  # Ustawienie stałej wysokości
+        folder_selection_main_layout = QHBoxLayout(
+            folder_selection_outer_group
+        )  # Main layout for the group box
 
-        # Options
-        options_group = QGroupBox("Opcje")
-        options_layout = QVBoxLayout()
+        # Input Path Section
+        input_path_v_layout = QVBoxLayout()  # Vertical layout for this section
 
-        # Recursive checkbox
-        self.recursive_checkbox = QCheckBox("Przeszukuj podfoldery")
-        self.recursive_checkbox.setChecked(True)
-        options_layout.addWidget(self.recursive_checkbox)
+        in_label = QLabel("Folder z danymi źródłowymi:")
+        input_path_v_layout.addWidget(in_label)
 
-        # Transparency checkbox
-        self.transparency_checkbox = QCheckBox("Zamień przezroczystość na kolor tła")
-        self.transparency_checkbox.setChecked(True)
-        options_layout.addWidget(self.transparency_checkbox)
+        input_controls_h_layout = (
+            QHBoxLayout()
+        )  # Horizontal for QLineEdit and QPushButton
+        self.in_path_edit = QLineEdit()
+        self.in_path_edit.setReadOnly(True)
+        in_button = QPushButton("Wybierz...")
+        in_button.clicked.connect(self.select_input_folder)
+        input_controls_h_layout.addWidget(
+            self.in_path_edit, 1
+        )  # QLineEdit takes more space
+        input_controls_h_layout.addWidget(in_button)
+        input_path_v_layout.addLayout(input_controls_h_layout)
+        input_path_v_layout.addStretch(
+            1
+        )  # Pushes controls to top if vertical space is available
 
-        # Background color selection
-        bg_color_group = QButtonGroup(self)
-        bg_color_layout = QHBoxLayout()
-        bg_color_label = QLabel("Kolor tła:")
-        bg_color_layout.addWidget(bg_color_label)
-        self.white_bg_radio = QRadioButton("Biały")
-        self.white_bg_radio.setChecked(True)
-        self.bg_color_group.addButton(self.white_bg_radio)
-        bg_color_layout.addWidget(self.white_bg_radio)
-        self.black_bg_radio = QRadioButton("Czarny")
-        self.bg_color_group.addButton(self.black_bg_radio)
-        bg_color_layout.addWidget(self.black_bg_radio)
-        bg_color_layout.addStretch()
-        options_layout.addLayout(bg_color_layout)
-        options_group.setLayout(options_layout)
-        main_layout.addWidget(options_group)
+        folder_selection_main_layout.addLayout(
+            input_path_v_layout
+        )  # Add input section to main horizontal layout
 
-        # Action buttons and Progress
-        action_progress_layout = QHBoxLayout()
-        self.process_btn = QPushButton("Rozpocznij przetwarzanie")
-        self.process_btn.clicked.connect(self.start_processing)
-        self.process_btn.setEnabled(False)
-        action_progress_layout.addWidget(self.process_btn)
+        # Output Path Section
+        output_path_v_layout = QVBoxLayout()  # Vertical layout for this section
 
-        self.stop_btn_fix_png = QPushButton("Zatrzymaj")
-        self.stop_btn_fix_png.clicked.connect(self.stop_processing_fix_png)
-        self.stop_btn_fix_png.setEnabled(False)
-        action_progress_layout.addWidget(self.stop_btn_fix_png)
-        main_layout.addLayout(action_progress_layout)
+        out_label = QLabel("Folder docelowy dla podziału:")
+        output_path_v_layout.addWidget(out_label)
 
-        progress_group = QGroupBox("Postęp")
-        progress_layout_internal = QVBoxLayout(progress_group)
+        output_controls_h_layout = (
+            QHBoxLayout()
+        )  # Horizontal for QLineEdit and QPushButton
+        self.out_path_edit = QLineEdit()
+        self.out_path_edit.setReadOnly(True)
+        out_button = QPushButton("Wybierz...")
+        out_button.clicked.connect(self.select_output_folder)
+        output_controls_h_layout.addWidget(
+            self.out_path_edit, 1
+        )  # QLineEdit takes more space
+        output_controls_h_layout.addWidget(out_button)
+        output_path_v_layout.addLayout(output_controls_h_layout)
+        output_path_v_layout.addStretch(1)  # Pushes controls to top
+
+        folder_selection_main_layout.addLayout(
+            output_path_v_layout
+        )  # Add output section to main horizontal layout
+
+        layout.addWidget(folder_selection_outer_group)
+        # --- END MODIFIED FOLDER SELECTION LAYOUT ---
+
+        self.tabs = QTabWidget()
+
+        # Folder tree tab
+        folder_tree_widget = QWidget()
+        folder_tree_main_layout = QVBoxLayout(folder_tree_widget)
+
+        self.folder_tree = QTreeWidget()
+        self.folder_tree.setHeaderLabels(
+            ["Struktura folderów (zaznacz kategorie do przetworzenia)"]
+        )
+        self.folder_tree.setColumnCount(1)
+        self.folder_tree.itemChanged.connect(self.on_folder_tree_item_changed)
+        # QTreeWidget typically expands by default, so no specific size policy needed here
+        # Its parent layouts (QVBoxLayout, QTabWidget) will manage its size.
+
+        folder_buttons_layout = QHBoxLayout()
+        self.select_all_button = QPushButton("Zaznacz wszystkie")
+        self.deselect_all_button = QPushButton("Odznacz wszystkie")
+        self.select_all_button.clicked.connect(self.select_all_folders)
+        self.deselect_all_button.clicked.connect(self.deselect_all_folders)
+        folder_buttons_layout.addWidget(self.select_all_button)
+        folder_buttons_layout.addWidget(self.deselect_all_button)
+        folder_tree_main_layout.addLayout(folder_buttons_layout)
+        folder_tree_main_layout.addWidget(
+            self.folder_tree, 1
+        )  # Add stretch factor for tree
+        self.tabs.addTab(folder_tree_widget, "Wybór kategorii")
+
+        # Files list tab (optional, can be demanding for very large datasets)
+        self.files_list_widget = QListWidget()
+        self.tabs.addTab(self.files_list_widget, "Lista wszystkich plików (podgląd)")
+        layout.addWidget(self.tabs)
+
+        # Split options group
+        split_options_group = QGroupBox("Opcje podziału")
+        split_main_layout = QVBoxLayout(split_options_group)
+
+        mode_layout = QHBoxLayout()
+        mode_label = QLabel("Tryb podziału:")
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItems(["Podział procentowy", "Limit plików na kategorię"])
+        self.mode_combo.currentIndexChanged.connect(self.update_split_mode_visibility)
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.mode_combo)
+        split_main_layout.addLayout(mode_layout)
+
+        self.percent_layout_widget = (
+            QWidget()
+        )  # Use a QWidget to toggle visibility of the whole layout
+        self.percent_layout = QHBoxLayout(self.percent_layout_widget)
+        percent_label = QLabel(
+            f"Podział {TRAIN_FOLDER_NAME} / {VALID_FOLDER_NAME} (%):"
+        )  # MODIFIED HERE
+        self.split_slider = QSlider(Qt.Orientation.Horizontal)
+        self.split_slider.setMinimum(1)
+        self.split_slider.setMaximum(99)
+        self.split_slider.setValue(DEFAULT_TRAIN_SPLIT_PERCENT)
+        self.split_slider.setTickInterval(10)
+        self.split_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.split_value_label = QLabel(
+            f"{DEFAULT_TRAIN_SPLIT_PERCENT}% / {100 - DEFAULT_TRAIN_SPLIT_PERCENT}%"
+        )
+        self.split_value_label.setMinimumWidth(80)  # Ensure space for label
+        self.split_slider.valueChanged.connect(self.update_split_label_text)
+        self.percent_layout.addWidget(percent_label)
+        self.percent_layout.addWidget(self.split_slider)
+        self.percent_layout.addWidget(self.split_value_label)
+        split_main_layout.addWidget(self.percent_layout_widget)
+
+        self.files_layout_widget = QWidget()  # Use QWidget for visibility toggle
+        self.files_layout = QHBoxLayout(self.files_layout_widget)
+        files_label = QLabel(
+            f"Liczba plików {TRAIN_FOLDER_NAME} na kategorię:"
+        )  # MODIFIED HERE
+        self.files_spin = QSpinBox()
+        self.files_spin.setMinimum(1)
+        self.files_spin.setMaximum(10000)  # Default max, will be adjusted
+        self.files_spin.setValue(DEFAULT_FILES_PER_CATEGORY)
+        self.files_spin.valueChanged.connect(
+            self.update_files_limit_and_validation_based_on_selection
+        )
+        self.files_layout.addWidget(files_label)
+        self.files_layout.addWidget(self.files_spin)
+        split_main_layout.addWidget(self.files_layout_widget)
+
+        validation_layout = QHBoxLayout()
+        self.validation_check = QCheckBox(
+            f"Utwórz folder {VALID_FOLDER_NAME}"
+        )  # MODIFIED HERE
+        self.validation_check.setChecked(True)
+        self.validation_check.stateChanged.connect(
+            self.update_files_limit_and_validation_based_on_selection
+        )
+        self.validation_label = QLabel("")  # Informational label
+        validation_layout.addWidget(self.validation_check)
+        validation_layout.addWidget(self.validation_label)
+        validation_layout.addStretch()
+        split_main_layout.addLayout(validation_layout)
+        layout.addWidget(split_options_group)
+
+        # Control buttons group
+        # control_group = QGroupBox("Akcje") # Not really needed if progress bar is outside
+        # control_main_layout = QVBoxLayout(control_group)
+
+        control_buttons_layout = QHBoxLayout()
+        self.start_button = QPushButton("Rozpocznij przetwarzanie")
+        self.start_button.clicked.connect(self.start_processing)
+        self.cancel_button = QPushButton("Anuluj")
+        self.cancel_button.clicked.connect(self.cancel_processing)
+        self.cancel_button.setEnabled(False)
+        control_buttons_layout.addWidget(self.start_button)
+        control_buttons_layout.addWidget(self.cancel_button)
+        layout.addLayout(control_buttons_layout)  # Add QHBoxLayout directly
+
         self.progress_bar = QProgressBar()
-        progress_layout_internal.addWidget(self.progress_bar)
-        self.status_label = QLabel("Gotowy do przetwarzania.")
-        progress_layout_internal.addWidget(self.status_label)
-        main_layout.addWidget(progress_group)
-        main_layout.addStretch()
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        layout.addWidget(self.progress_bar)
 
-        self.setLayout(main_layout)
+        # Log edit is handled by main application
+        # log_label = QLabel("Log (Data Splitter):")
+        # self.log_edit = QTextEdit() # This would be a local log for DS
+        # self.log_edit.setReadOnly(True)
+        # self.log_edit.setMaximumHeight(100)
+        # layout.addWidget(log_label)
+        # layout.addWidget(self.log_edit)
+
+        self.setLayout(layout)
+        # self.show() # Main app shows this widget
+        self.update_split_mode_visibility(0)  # Initial setup based on combobox
 
     def update_split_mode_visibility(self, index):
         is_percent_mode = index == 0
