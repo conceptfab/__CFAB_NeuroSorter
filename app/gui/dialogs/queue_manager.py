@@ -137,13 +137,17 @@ class QueueManager(QtWidgets.QDialog):
 
         # Tabela zadań
         self.tasks_table = QtWidgets.QTableWidget()
-        self.tasks_table.setColumnCount(4)
+        self.tasks_table.setColumnCount(8)
         self.tasks_table.setHorizontalHeaderLabels(
             [
                 "Nazwa",
-                "Typ",
-                "Status",
-                "Data utworzenia",
+                "type",
+                "variant",
+                "epochs",
+                "batch_size",
+                "num_workers",
+                "train_dir",
+                "val_dir",
             ]
         )
         self.tasks_table.horizontalHeader().setStretchLastSection(True)
@@ -210,24 +214,50 @@ class QueueManager(QtWidgets.QDialog):
                         self.new_tasks.append(task_data)
                         row = self.tasks_table.rowCount()
                         self.tasks_table.insertRow(row)
+                        # Pobieranie zagnieżdżonych wartości
+                        config = task_data.get("config", {})
+                        model = config.get("model", {})
+                        training = config.get("training", {})
                         item_name = QtWidgets.QTableWidgetItem(
                             task_data.get("name", "")
                         )
                         self.tasks_table.setItem(row, 0, item_name)
-                        item_type = QtWidgets.QTableWidgetItem(task_data.get("typ", ""))
+                        item_type = QtWidgets.QTableWidgetItem(
+                            str(task_data.get("type", ""))
+                        )
                         self.tasks_table.setItem(row, 1, item_type)
-                        item_status = QtWidgets.QTableWidgetItem(
-                            task_data.get("status", "")
+                        item_variant = QtWidgets.QTableWidgetItem(
+                            str(model.get("variant", ""))
                         )
-                        self.tasks_table.setItem(row, 2, item_status)
-                        item_created_at = QtWidgets.QTableWidgetItem(
-                            task_data.get("created_at", "")
+                        self.tasks_table.setItem(row, 2, item_variant)
+                        item_epochs = QtWidgets.QTableWidgetItem(
+                            str(training.get("epochs", ""))
                         )
-                        self.tasks_table.setItem(row, 3, item_created_at)
+                        self.tasks_table.setItem(row, 3, item_epochs)
+                        item_batch_size = QtWidgets.QTableWidgetItem(
+                            str(training.get("batch_size", ""))
+                        )
+                        self.tasks_table.setItem(row, 4, item_batch_size)
+                        item_num_workers = QtWidgets.QTableWidgetItem(
+                            str(training.get("num_workers", ""))
+                        )
+                        self.tasks_table.setItem(row, 5, item_num_workers)
+                        item_train_dir = QtWidgets.QTableWidgetItem(
+                            str(config.get("train_dir", ""))
+                        )
+                        self.tasks_table.setItem(row, 6, item_train_dir)
+                        item_val_dir = QtWidgets.QTableWidgetItem(
+                            str(config.get("val_dir", ""))
+                        )
+                        self.tasks_table.setItem(row, 7, item_val_dir)
             except Exception as e:
                 print(f"Błąd wczytywania pliku {task_file}: {e}")
 
         self.tasks_table.resizeColumnsToContents()
+        # Zwiększ szerokość wybranych kolumn o 20%
+        for col in [0, 1, 2, 6]:
+            current_width = self.tasks_table.columnWidth(col)
+            self.tasks_table.setColumnWidth(col, int(current_width * 1.2))
         self.update_progress_bar()
 
     def update_progress_bar(self):
