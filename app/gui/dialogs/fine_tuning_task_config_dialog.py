@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 from PyQt6 import QtWidgets
 
+from app.gui.dialogs.hardware_profile_dialog import HardwareProfileDialog
 from app.utils.file_utils import (
     validate_training_directory,
     validate_validation_directory,
@@ -384,11 +385,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             show_hw_profile_btn = QtWidgets.QPushButton("Pokaż profil sprzętowy")
             show_hw_profile_btn.clicked.connect(self._show_hardware_profile)
             layout.addWidget(show_hw_profile_btn)
-
-            # Przycisk: Otwórz plik logu
-            open_log_btn = QtWidgets.QPushButton("Otwórz plik logu")
-            open_log_btn.clicked.connect(self._open_log_file)
-            layout.addWidget(open_log_btn)
 
             # Utworzenie zakładek
             self.tabs = QtWidgets.QTabWidget()
@@ -2056,7 +2052,7 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.freeze_ratio_spin.setEnabled(enabled)
 
     def _create_fine_tuning_params_tab(self) -> QtWidgets.QWidget:
-        """Tworzy zakładkę z parametrami fine-tuningu."""
+        """Tworzy zakładkę z parametrami fine-tuningu (przeniesione learning rate, epochs, grad_accum_steps)."""
         tab = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout()
         form = QtWidgets.QFormLayout()
@@ -2078,6 +2074,12 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
         self.lr_spin.setDecimals(6)
         basic_layout.addRow("Learning rate:", self.lr_spin)
 
+        # Gradient accumulation steps
+        self.grad_accum_steps_spin = QtWidgets.QSpinBox()
+        self.grad_accum_steps_spin.setRange(1, 16)
+        self.grad_accum_steps_spin.setValue(1)
+        basic_layout.addRow("Gradient Accumulation:", self.grad_accum_steps_spin)
+
         # Optimizer
         self.optimizer_combo = QtWidgets.QComboBox()
         self.optimizer_combo.addItems(["Adam", "AdamW", "SGD", "RMSprop"])
@@ -2085,9 +2087,9 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
 
         # Scheduler
         self.scheduler_combo = QtWidgets.QComboBox()
-        self.scheduler_combo.addItems(
-            ["None", "CosineAnnealingLR", "ReduceLROnPlateau", "OneCycleLR"]
-        )
+        self.scheduler_combo.addItems([
+            "None", "CosineAnnealingLR", "ReduceLROnPlateau", "OneCycleLR"
+        ])
         basic_layout.addRow("Scheduler:", self.scheduler_combo)
 
         # Warmup epochs
@@ -3048,47 +3050,25 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             layout.addRow(label, widget)
 
     def _create_optimization_tab(self) -> QtWidgets.QWidget:
-        """Tworzenie zakładki Optymalizacja treningu."""
+        """Tworzenie zakładki Optymalizacja treningu (upodobniona do okna treningu)."""
         try:
             self.logger.debug("Tworzenie zakładki optymalizacji treningu")
             tab = QtWidgets.QWidget()
             layout = QtWidgets.QVBoxLayout(tab)
 
-            # Grupa parametrów optymalizacyjnych
+            # Grupa parametrów optymalizacyjnych (tylko batch size, workers, mixed precision)
             params_group = QtWidgets.QGroupBox("Parametry optymalizacyjne")
             params_layout = QtWidgets.QFormLayout()
 
-            # Dodaj parametry optymalizacyjne
             params = [
                 ("Batch size", "batch_size", 32, "int", 1, 1024, 1),
-                ("Learning rate", "learning_rate", 0.001, "float", 0.0001, 1.0, 0.0001),
-                ("Epochs", "epochs", 100, "int", 1, 1000, 1),
                 ("Workers", "num_workers", 4, "int", 0, 32, 1),
-                (
-                    "Gradient Accumulation",
-                    "gradient_accumulation_steps",
-                    1,
-                    "int",
-                    1,
-                    16,
-                    1,
-                ),
-                (
-                    "Mixed Precision",
-                    "use_mixed_precision",
-                    True,
-                    "bool",
-                    None,
-                    None,
-                    None,
-                ),
+                ("Mixed Precision", "use_mixed_precision", True, "bool", None, None, None),
             ]
 
             self.optimization_params = []
             for name, key, default, type_, min_, max_, step in params:
-                row = self._create_parameter_row(
-                    name, key, default, type_, min_, max_, step
-                )
+                row = self._create_parameter_row(name, key, default, type_, min_, max_, step)
                 params_layout.addRow(name + ":", row)
                 if hasattr(self, "parameter_rows") and key in self.parameter_rows:
                     self.optimization_params.append(self.parameter_rows[key])
@@ -3102,12 +3082,38 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             layout.addWidget(apply_all_btn)
 
             return tab
-
         except Exception as e:
-            self.logger.error(
-                f"Błąd podczas tworzenia zakładki: {str(e)}", exc_info=True
-            )
+            self.logger.error(f"Błąd podczas tworzenia zakładki: {str(e)}", exc_info=True)
             raise
+
+    def _apply_all_hardware_optimizations(self):
+        """Stosuje wszystkie optymalizacje sprzętowe (jak w oknie treningu)."""
+        count = 0
+        for param in self.parameter_rows.values():
+            param_key = param["param_key"]
+            profile_key = {
+                "batch_size": "recommended_batch_size",
+                "num_workers": "recommended_workers",
+                "use_mixed_precision": "use_mixed_precision",
+            }.get(param_key, param_key)
+            if profile_key in self.hardware_profile:
+                param["hw_checkbox"].blockSignals(True)
+                param["hw_checkbox"].setChecked(True)
+                param["hw_checkbox"].blockSignals(False)
+                value_widget = param["value_widget"]
+                value = self.hardware_profile[profile_key]
+                if isinstance(value_widget, QtWidgets.QSpinBox) or isinstance(value_widget, QtWidgets.QDoubleSpinBox):
+                    value_widget.setValue(value)
+                elif isinstance(value_widget, QtWidgets.QCheckBox):
+                    value_widget.setChecked(bool(value))
+                else:
+                    value_widget.setText(str(value))
+                count += 1
+        QtWidgets.QMessageBox.information(
+            self,
+            "Sukces",
+            f"Zastosowano {count} optymalnych ustawień z profilu sprzętowego.",
+        )
 
     def _create_parameter_row(
         self,
@@ -3235,33 +3241,6 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
             # Ten kod prawdopodobnie nie zostanie wywołany, ponieważ checkboxy są wzajemnie wykluczające
             value_widget.setEnabled(True)
 
-    def _apply_all_hardware_optimizations(self):
-        """Zastosowuje wszystkie optymalne ustawienia z profilu sprzętowego."""
-        try:
-            count = 0
-            for param in self.parameter_rows.values():
-                param_key = param["param_key"]
-                if param_key in self.hardware_profile:
-                    # Włącz checkbox profilu sprzętowego, wyłącz checkbox użytkownika
-                    param["hw_checkbox"].setChecked(True)
-                    param["user_checkbox"].setChecked(False)
-
-                    # Kontrolka wartości jest już obsługiwana przez _on_hw_toggle
-                    count += 1
-
-            QtWidgets.QMessageBox.information(
-                self,
-                "Sukces",
-                f"Zastosowano {count} optymalnych ustawień z profilu sprzętowego.",
-            )
-        except Exception as e:
-            self.logger.error(
-                f"Błąd podczas stosowania optymalizacji: {str(e)}", exc_info=True
-            )
-            QtWidgets.QMessageBox.critical(
-                self, "Błąd", f"Nie można zastosować optymalizacji: {str(e)}"
-            )
-
     def _update_optimization_state(self, state):
         """Aktualizuje stan kontrolek optymalizacji na podstawie stanu checkboxa."""
         enabled = bool(state)
@@ -3282,11 +3261,8 @@ class FineTuningTaskConfigDialog(QtWidgets.QDialog):
                     param["user_checkbox"].setChecked(True)  # Poprawna nazwa
 
     def _show_hardware_profile(self):
-        """Wyświetla okno z aktualnym profilem sprzętowym."""
-        import pprint
-
-        msg = pprint.pformat(self.hardware_profile, indent=2, width=80)
-        QtWidgets.QMessageBox.information(self, "Profil sprzętowy", msg)
+        dialog = HardwareProfileDialog(self.hardware_profile, self)
+        dialog.exec()
 
     def _open_log_file(self):
         """Otwiera plik logu w domyślnym edytorze tekstu."""

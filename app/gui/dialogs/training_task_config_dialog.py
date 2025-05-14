@@ -7,6 +7,7 @@ from pathlib import Path
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
+from app.gui.dialogs.hardware_profile_dialog import HardwareProfileDialog
 from app.utils.config import DEFAULT_TRAINING_PARAMS
 from app.utils.file_utils import (
     validate_training_directory,
@@ -87,11 +88,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             show_hw_profile_btn = QtWidgets.QPushButton("Pokaż profil sprzętowy")
             show_hw_profile_btn.clicked.connect(self._show_hardware_profile)
             layout.addWidget(show_hw_profile_btn)
-
-            # Przycisk: Otwórz plik logu
-            open_log_btn = QtWidgets.QPushButton("Otwórz plik logu")
-            open_log_btn.clicked.connect(self._open_log_file)
-            layout.addWidget(open_log_btn)
 
             # Utworzenie zakładek
             self.tabs = QtWidgets.QTabWidget()
@@ -1509,12 +1505,29 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         count = 0
         for param in self.parameter_rows.values():
             param_key = param["param_key"]
-            if param_key in self.hardware_profile:
-                # Włącz checkbox profilu sprzętowego, wyłącz checkbox użytkownika
+            # Mapowanie na klucz profilu sprzętowego
+            profile_key = {
+                "batch_size": "recommended_batch_size",
+                "num_workers": "recommended_workers",
+                "use_mixed_precision": "use_mixed_precision",
+            }.get(param_key, param_key)
+            if profile_key in self.hardware_profile:
+                # Wymuś ustawienie checkboxa profilu sprzętowego (to wywoła _on_hw_toggle)
+                param["hw_checkbox"].blockSignals(True)
                 param["hw_checkbox"].setChecked(True)
-                # Akcja zaznaczenia checkboxa spowoduje automatyczną aktualizację wartości
+                param["hw_checkbox"].blockSignals(False)
+                # Ustaw wartość z profilu sprzętowego bezpośrednio
+                value_widget = param["value_widget"]
+                value = self.hardware_profile[profile_key]
+                if isinstance(value_widget, QtWidgets.QSpinBox) or isinstance(
+                    value_widget, QtWidgets.QDoubleSpinBox
+                ):
+                    value_widget.setValue(value)
+                elif isinstance(value_widget, QtWidgets.QCheckBox):
+                    value_widget.setChecked(bool(value))
+                else:
+                    value_widget.setText(str(value))
                 count += 1
-
         QtWidgets.QMessageBox.information(
             self,
             "Sukces",
@@ -1716,19 +1729,5 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
     def _show_hardware_profile(self):
         """Wyświetla okno z aktualnym profilem sprzętowym."""
-        import pprint
-
-        msg = pprint.pformat(self.hardware_profile, indent=2, width=80)
-        QtWidgets.QMessageBox.information(self, "Profil sprzętowy", msg)
-
-    def _open_log_file(self):
-        """Otwiera plik logu w domyślnym edytorze tekstu."""
-        import os
-
-        log_path = os.path.abspath("training_dialog.log")
-        try:
-            os.startfile(log_path)
-        except Exception as e:
-            QtWidgets.QMessageBox.warning(
-                self, "Błąd", f"Nie można otworzyć pliku logu: {e}"
-            )
+        dialog = HardwareProfileDialog(self.hardware_profile, self)
+        dialog.exec()
