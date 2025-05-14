@@ -22,7 +22,9 @@ class QueueManager(QtWidgets.QDialog):
         self.new_tasks = []
         self.current_task_index = 0
         self.training_thread = None
-        self.training_visualization = None  # Dodajemy referencję do wizualizacji
+        self.training_visualization = TrainingVisualization(
+            parent=self, settings=settings
+        )
 
         # Style z MainWindow
         primary_color = "#007ACC"
@@ -137,12 +139,14 @@ class QueueManager(QtWidgets.QDialog):
 
         # Tabela zadań
         self.tasks_table = QtWidgets.QTableWidget()
-        self.tasks_table.setColumnCount(8)
+        self.tasks_table.setColumnCount(10)
         self.tasks_table.setHorizontalHeaderLabels(
             [
                 "Nazwa",
                 "type",
                 "variant",
+                "Klasy",
+                "Early stop.",
                 "epochs",
                 "batch_size",
                 "num_workers",
@@ -188,9 +192,6 @@ class QueueManager(QtWidgets.QDialog):
         # Dolna grupa: Wizualizacja treningu
         self.bottom_group = QtWidgets.QGroupBox("Wizualizacja treningu")
         bottom_layout = QtWidgets.QVBoxLayout(self.bottom_group)
-        self.training_visualization = TrainingVisualization(
-            parent=self, settings=settings
-        )
         bottom_layout.addWidget(self.training_visualization)
         main_layout.addWidget(self.bottom_group, stretch=1)
 
@@ -230,32 +231,41 @@ class QueueManager(QtWidgets.QDialog):
                             str(model.get("variant", ""))
                         )
                         self.tasks_table.setItem(row, 2, item_variant)
+                        item_num_classes = QtWidgets.QTableWidgetItem(
+                            str(model.get("num_classes", ""))
+                        )
+                        self.tasks_table.setItem(row, 3, item_num_classes)
+                        # Early stopping
+                        early_stopping = training.get("early_stopping", {})
+                        early_enabled = early_stopping.get("enabled", False)
+                        item_early_stop = QtWidgets.QTableWidgetItem(str(early_enabled))
+                        self.tasks_table.setItem(row, 4, item_early_stop)
                         item_epochs = QtWidgets.QTableWidgetItem(
                             str(training.get("epochs", ""))
                         )
-                        self.tasks_table.setItem(row, 3, item_epochs)
+                        self.tasks_table.setItem(row, 5, item_epochs)
                         item_batch_size = QtWidgets.QTableWidgetItem(
                             str(training.get("batch_size", ""))
                         )
-                        self.tasks_table.setItem(row, 4, item_batch_size)
+                        self.tasks_table.setItem(row, 6, item_batch_size)
                         item_num_workers = QtWidgets.QTableWidgetItem(
                             str(training.get("num_workers", ""))
                         )
-                        self.tasks_table.setItem(row, 5, item_num_workers)
+                        self.tasks_table.setItem(row, 7, item_num_workers)
                         item_train_dir = QtWidgets.QTableWidgetItem(
                             str(config.get("train_dir", ""))
                         )
-                        self.tasks_table.setItem(row, 6, item_train_dir)
+                        self.tasks_table.setItem(row, 8, item_train_dir)
                         item_val_dir = QtWidgets.QTableWidgetItem(
                             str(config.get("val_dir", ""))
                         )
-                        self.tasks_table.setItem(row, 7, item_val_dir)
+                        self.tasks_table.setItem(row, 9, item_val_dir)
             except Exception as e:
                 print(f"Błąd wczytywania pliku {task_file}: {e}")
 
         self.tasks_table.resizeColumnsToContents()
         # Zwiększ szerokość wybranych kolumn o 20%
-        for col in [0, 1, 2, 6]:
+        for col in [0, 1, 2, 3, 4, 8]:
             current_width = self.tasks_table.columnWidth(col)
             self.tasks_table.setColumnWidth(col, int(current_width * 1.2))
         self.update_progress_bar()
@@ -329,8 +339,7 @@ class QueueManager(QtWidgets.QDialog):
             patience_max = details.get("patience_max")
             if patience_counter is not None and patience_max is not None:
                 self.training_visualization.update_early_stopping_status(
-                    patience_counter=patience_counter,
-                    patience_max=patience_max
+                    patience_counter=patience_counter, patience_max=patience_max
                 )
 
     def _on_task_completed(self, task_name, result):
@@ -415,7 +424,7 @@ class QueueManager(QtWidgets.QDialog):
                 self.training_thread.error.connect(self._on_task_error)
                 self.training_thread.start()
                 self.parent.logger.info(
-                    f"Uruchomiono kolejne zadanie: "
+                    "Uruchomiono kolejne zadanie: "
                     f"{next_task.get('name', 'brak nazwy')}"
                 )
             except Exception as e:
