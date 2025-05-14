@@ -1250,6 +1250,17 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
         try:
             if self.queue_manager:  # Upewnij się, że obiekt istnieje
                 self.queue_manager.load_new_tasks()  # ODŚWIEŻ LISTĘ ZADAŃ
+                # Bardzo czytelny komunikat do konsoli z nazwami zadań
+                nazwy_zadan = [
+                    task.get("name", "BRAK_NAZWY")
+                    for task in self.queue_manager.new_tasks
+                ]
+                print("*" * 60)
+                print(f"***   DODANO DO KOLEJKI {len(nazwy_zadan)} ZADAŃ   ***")
+                print(f"***   NAZWY ZADAŃ:")
+                for nazwa in nazwy_zadan:
+                    print(f"***     - {nazwa}")
+                print("*" * 60)
             self.queue_manager.show()
             self.queue_manager.raise_()
             self.queue_manager.activateWindow()

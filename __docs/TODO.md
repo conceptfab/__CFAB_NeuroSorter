@@ -1,6 +1,7 @@
 TODO 0.4
 
 - optymalizacja sprzętowa -> wartość uzytkownika -> wartość z profilu sprzętowego
+- nie dziala przycisk zastosuj optymalizacje
 - usun przycisk pokaz log
 - do sprawdzenia czy to potrzebne w pliku zadania: },
         "optimization": {
@@ -8,7 +9,7 @@ TODO 0.4
             "num_workers": 16,
             "use_mixed_precision": true
         }
-        
+
 - ikona i nazwa data splitter
 
 - AI usunąć wczytywanie parametrów profili sprzętowego - wszystkie parametry są z pliku json zadania

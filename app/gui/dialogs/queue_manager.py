@@ -203,7 +203,6 @@ class QueueManager(QtWidgets.QDialog):
                         self.new_tasks.append(task_data)
                         row = self.tasks_table.rowCount()
                         self.tasks_table.insertRow(row)
-                        # Poprawiono długość linii dla QTableWidgetItem
                         item_name = QtWidgets.QTableWidgetItem(
                             task_data.get("name", "")
                         )
@@ -296,23 +295,36 @@ class QueueManager(QtWidgets.QDialog):
         # Zapisz wykres treningu
         if hasattr(self, "training_visualization") and self.training_visualization:
             try:
-                # Utwórz katalog na wykresy jeśli nie istnieje
-                plots_dir = os.path.join("data", "plots")
-                os.makedirs(plots_dir, exist_ok=True)
+                # Sprawdź, czy są dane do zapisania (czy są epoki)
+                if (
+                    self.training_visualization.epochs
+                    and len(self.training_visualization.epochs) > 0
+                ):
+                    # Utwórz katalog na wykresy jeśli nie istnieje
+                    plots_dir = os.path.join("data", "plots")
+                    os.makedirs(plots_dir, exist_ok=True)
 
-                # Generuj nazwę pliku wykresu
-                timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-                plot_filename = f"{task_name}_{timestamp}.png"
-                plot_path = os.path.join(plots_dir, plot_filename)
+                    # Generuj nazwę pliku wykresu
+                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+                    plot_filename = f"{task_name}_{timestamp}.png"
+                    plot_path = os.path.join(plots_dir, plot_filename)
 
-                # Zapisz wykres
-                if self.training_visualization.save_plot(plot_path):
-                    self.parent.logger.info(f"Wykres treningu zapisany w: {plot_path}")
-                    # Reset wizualizacji po zapisaniu
-                    self.training_visualization.clear_data()
-                    self.training_visualization.reset_plot()
+                    # Zapisz wykres
+                    if self.training_visualization.save_plot(plot_path):
+                        self.parent.logger.info(
+                            f"Wykres treningu zapisany w: {plot_path}"
+                        )
+                        # Reset wizualizacji po zapisaniu
+                        self.training_visualization.clear_data()
+                        self.training_visualization.reset_plot()
+                    else:
+                        self.parent.logger.error(
+                            "Nie udało się zapisać wykresu treningu"
+                        )
                 else:
-                    self.parent.logger.error("Nie udało się zapisać wykresu treningu")
+                    self.parent.logger.warning(
+                        "Brak danych do zapisania wykresu treningu - pomijam zapis."
+                    )
             except Exception as plot_error:
                 self.parent.logger.error(
                     f"Błąd podczas zapisywania wykresu: {plot_error}"
@@ -322,15 +334,42 @@ class QueueManager(QtWidgets.QDialog):
         self.current_task_index += 1
         self.update_progress_bar()
 
+        # Bardzo czytelny komunikat do konsoli z nazwami pozostałych zadań
+        remaining = len(self.new_tasks) - self.current_task_index
+        if remaining > 0:
+            pozostale_nazwy = [
+                task.get("name", "BRAK_NAZWY")
+                for task in self.new_tasks[self.current_task_index :]
+            ]
+            print("=" * 60)
+            print(f"===   POZOSTAŁO {remaining} ZADAŃ W KOLEJCE   ===")
+            print(f"===   NAZWY POZOSTAŁYCH ZADAŃ:")
+            for nazwa in pozostale_nazwy:
+                print(f"===     - {nazwa}")
+            print("=" * 60)
+        else:
+            print("=" * 60)
+            print("===   KOLEJKA ZADAŃ ZOSTAŁA WYKONANA   ===")
+            print("=" * 60)
+
+        # Zabezpieczenie: sprawdź, czy są kolejne zadania i uruchom następne
         if self.current_task_index < len(self.new_tasks):
-            # Uruchom następne zadanie
-            next_task = self.new_tasks[self.current_task_index]
-            self.training_thread = SingleTrainingThread(next_task)
-            self.training_thread.task_started.connect(self._on_task_started)
-            self.training_thread.task_progress.connect(self._on_task_progress)
-            self.training_thread.task_completed.connect(self._on_task_completed)
-            self.training_thread.error.connect(self._on_task_error)
-            self.training_thread.start()
+            try:
+                next_task = self.new_tasks[self.current_task_index]
+                self.training_thread = SingleTrainingThread(next_task)
+                self.training_thread.task_started.connect(self._on_task_started)
+                self.training_thread.task_progress.connect(self._on_task_progress)
+                self.training_thread.task_completed.connect(self._on_task_completed)
+                self.training_thread.error.connect(self._on_task_error)
+                self.training_thread.start()
+                self.parent.logger.info(
+                    f"Uruchomiono kolejne zadanie: "
+                    f"{next_task.get('name', 'brak nazwy')}"
+                )
+            except Exception as e:
+                self.parent.logger.error(
+                    f"Błąd przy uruchamianiu kolejnego zadania: {e}"
+                )
         else:
             # Wszystkie zadania zakończone
             self.parent.logger.info("Wszystkie zadania zostały zakończone")
