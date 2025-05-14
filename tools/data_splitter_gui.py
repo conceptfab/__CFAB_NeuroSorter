@@ -890,12 +890,15 @@ class DataSplitterApp(QWidget):
         # control_main_layout = QVBoxLayout(control_group)
 
         control_buttons_layout = QHBoxLayout()
-        self.start_button = QPushButton("Rozpocznij przetwarzanie")
+        self.start_button = QPushButton("Rozpocznij kopiowanie")
+        self.start_button.setProperty("action", "success")
         self.start_button.clicked.connect(self.start_processing)
+        self.empty_button = QPushButton("Przycisk")
         self.cancel_button = QPushButton("Anuluj")
         self.cancel_button.clicked.connect(self.cancel_processing)
         self.cancel_button.setEnabled(False)
         control_buttons_layout.addWidget(self.start_button)
+        control_buttons_layout.addWidget(self.empty_button)
         control_buttons_layout.addWidget(self.cancel_button)
         layout.addLayout(control_buttons_layout)  # Add QHBoxLayout directly
 
@@ -2072,7 +2075,8 @@ class FixPngApp(QWidget):  # Renamed
 
         # Action buttons and Progress
         action_progress_layout = QHBoxLayout()
-        self.process_btn = QPushButton("Rozpocznij przetwarzanie")
+        self.process_btn = QPushButton("Rozpocznij kopiowanie")
+        self.process_btn.setProperty("action", "success")
         self.process_btn.clicked.connect(self.start_processing)
         self.process_btn.setEnabled(False)
         action_progress_layout.addWidget(self.process_btn)

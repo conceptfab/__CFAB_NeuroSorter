@@ -211,10 +211,10 @@ class MainWindow(QMainWindow):
                     border: none;
                 }}
                 QPushButton[action="success"]:hover {{
-                    background-color: #34D399;
+                    background-color: #059669;
                 }}
                 QPushButton[action="success"]:pressed {{
-                    background-color: #059669;
+                    background-color: #047857;
                 }}
                 QTabWidget::pane {{
                     border: 1px solid {border_color};
@@ -336,6 +336,14 @@ class MainWindow(QMainWindow):
         data_splitter_action = QAction("Przygotowanie danych AI", self)
         data_splitter_action.triggered.connect(self._run_data_splitter)
         tools_menu.addAction(data_splitter_action)
+
+        model_viewer_action = QAction("Przeglądarka modeli", self)
+        model_viewer_action.triggered.connect(self._run_model_viewer)
+        tools_menu.addAction(model_viewer_action)
+
+        folder_compare_action = QAction("Porównywarka folderów", self)
+        folder_compare_action.triggered.connect(self._run_folder_compare)
+        tools_menu.addAction(folder_compare_action)
 
         # Menu Pomoc
         help_menu = menubar.addMenu("Pomoc")
@@ -958,53 +966,40 @@ class MainWindow(QMainWindow):
     def _run_data_splitter(self):
         """Uruchamia narzędzie do przygotowania danych AI."""
         try:
-            import subprocess
-            import sys
+            from tools.data_splitter_gui import CombinedApp
 
-            # Poprawiona ścieżka do skryptu data_splitter_gui.py
-            script_path = os.path.join(
-                os.path.dirname(
-                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                ),  # <project_root>
-                "tools",
-                "data_splitter_gui.py",
-            )
-
-            if not os.path.exists(script_path):
-                self.logger.error(f"Nie znaleziono skryptu: {script_path}")
-                QMessageBox.critical(
-                    self,
-                    "Błąd",
-                    f"Nie znaleziono skryptu przygotowania danych:\n{script_path}",
-                )
-                return
-
-            # Plik do logowania błędów procesu potomnego
-            error_log_path = os.path.join(
-                os.path.dirname(script_path), "data_splitter_error.log"
-            )
-            error_log = open(error_log_path, "a", encoding="utf-8")
-
-            if sys.platform == "win32":
-                # Usunięto startupinfo i CREATE_NO_WINDOW, aby okno GUI pojawiało się poprawnie
-                subprocess.Popen(
-                    [sys.executable, script_path],
-                    stdout=error_log,
-                    stderr=error_log,
-                )
-            else:
-                subprocess.Popen(
-                    [sys.executable, script_path],
-                    stdout=error_log,
-                    stderr=error_log,
-                )
-
-            self.logger.info("Uruchomiono narzędzie przygotowania danych AI")
-
+            self.data_splitter = CombinedApp(self.settings)
+            self.data_splitter.show()
         except Exception as e:
-            self.logger.error(f"Błąd podczas uruchamiania narzędzia: {str(e)}")
+            self.logger.error(f"Błąd podczas uruchamiania DataSplitter: {str(e)}")
             QMessageBox.critical(
-                self, "Błąd", f"Wystąpił błąd podczas uruchamiania narzędzia:\n{str(e)}"
+                self, "Błąd", f"Nie udało się uruchomić narzędzia: {str(e)}"
+            )
+
+    def _run_model_viewer(self):
+        """Uruchamia przeglądarkę modeli."""
+        try:
+            from tools.model_viewer import ModelViewer
+
+            self.model_viewer = ModelViewer()
+            self.model_viewer.show()
+        except Exception as e:
+            self.logger.error(f"Błąd podczas uruchamiania ModelViewer: {str(e)}")
+            QMessageBox.critical(
+                self, "Błąd", f"Nie udało się uruchomić przeglądarki modeli: {str(e)}"
+            )
+
+    def _run_folder_compare(self):
+        """Uruchamia narzędzie do porównywania folderów."""
+        try:
+            from tools.compare_folders import FolderViewer
+
+            self.folder_viewer = FolderViewer()
+            self.folder_viewer.show()
+        except Exception as e:
+            self.logger.error(f"Błąd podczas uruchamiania FolderViewer: {str(e)}")
+            QMessageBox.critical(
+                self, "Błąd", f"Nie udało się uruchomić porównywarki folderów: {str(e)}"
             )
 
     def _apply_settings(self):

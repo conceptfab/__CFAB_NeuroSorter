@@ -1,9 +1,13 @@
 TODO 0.4
 
-- optymalizacja sprzętowa -> wartość uzytkownika -> wartość z profilu sprzętowego
-- nie dziala przycisk zastosuj optymalizacje
-- usun przycisk pokaz log
-- dodatkowy suffix_sekundowy w nazwie zadania
+- data spliterr przenoszenie danych
+- ikona viewer
+- dodac toolsy
+
+<!-- - optymalizacja sprzętowa -> wartość uzytkownika -> wartość z profilu sprzętowego -->
+<!-- - nie dziala przycisk zastosuj optymalizacje -->
+<!-- - usun przycisk pokaz log -->
+<!-- - dodatkowy suffix_sekundowy w nazwie zadania -->
 - do sprawdzenia czy to potrzebne w pliku zadania: },
         "optimization": {
             "batch_size": 128,
@@ -11,12 +15,13 @@ TODO 0.4
             "use_mixed_precision": true
         }
 
-- ikona i nazwa data splitter
+<!-- - ikona i nazwa data splitter -->
 
-- AI usunąć wczytywanie parametrów profili sprzętowego - wszystkie parametry są z pliku json zadania
-- nie dziala kolejkowanie
+<!-- - AI usunąć wczytywanie parametrów profili sprzętowego - wszystkie parametry są z pliku json zadania -->
+<!-- - nie dziala kolejkowanie -->
 - przy skonczeniu zadania brakuje zmiany statusu NOWY/ZAKOŃCZONY
 - plik log w JSON classifier.py - dodanie incfo z loga
+
 - brak czasu trening w zadaniau normalnym
 - uprządkować strukturę JSON razem z logiem
 - nie dziala wsadowe przetwarzanie

@@ -11,6 +11,7 @@ import torch
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -19,10 +20,12 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QInputDialog,
     QLabel,
+    QLineEdit,
     QListWidget,
     QMainWindow,
     QMenu,
     QMessageBox,
+    QProgressBar,
     QPushButton,
     QScrollArea,
     QSplitter,
@@ -48,15 +51,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Dodaj po importach, przed klasą ModelAnalyzerThread
+LAYER_PATTERNS = collections.OrderedDict(
+    [
+        ("embedding", ["embedding"]),
+        ("attention", ["attention", "attn"]),
+        ("batch_norm", ["bn", "batch_norm"]),
+        (
+            "layer_norm",
+            ["layernorm", "layer_norm"],
+        ),  # bardziej specyficzne niż ogólne "norm"
+        ("normalization", ["norm"]),  # ogólne norm, jeśli inne nie pasują
+        ("conv", ["conv", "convolutional"]),
+        (
+            "linear",
+            ["fc", "linear", "dense"],
+        ),  # "linear" jest bardziej typowe w PyTorch niż "fc"
+        ("pooling", ["pool"]),
+        (
+            "activation",
+            ["activation", "relu", "sigmoid", "tanh", "gelu"],
+        ),  # dodać więcej aktywacji
+    ]
+)
+
 
 class ModelAnalyzerThread(QThread):
     analysis_complete = pyqtSignal(str)
     analysis_error = pyqtSignal(str)
     progress_update = pyqtSignal(str)
 
-    def __init__(self, model):
+    def __init__(self, model, group_depth=2):  # Dodaj argument group_depth
         super().__init__()
         self.model = model
+        self.group_depth = group_depth  # Zapisz wartość
         logger.info("Utworzono wątek analizy modelu")
 
     def run(self):
@@ -77,26 +105,53 @@ class ModelAnalyzerThread(QThread):
                 params = sum(p.numel() for p in module.parameters())
                 total_params += params
 
+                # Zbierz informacje o kształtach parametrów
+                param_shapes = {}
+                param_dtypes = {}
+                param_stats = {}
+
+                for param_name, param in module.named_parameters():
+                    if param.requires_grad:
+                        param_shapes[param_name] = list(param.shape)
+                        param_dtypes[param_name] = str(param.dtype)
+                        if param.numel() > 0:
+                            param_stats[param_name] = {
+                                "mean": float(param.float().mean().item()),
+                                "std": float(param.float().std().item()),
+                                "min": float(param.float().min().item()),
+                                "max": float(param.float().max().item()),
+                            }
+
+                layer_info = {
+                    "name": name or module.__class__.__name__,
+                    "parameters": params,
+                    "type": module.__class__.__name__,
+                    "has_parameters": params > 0,
+                    "param_shapes": param_shapes,
+                    "param_dtypes": param_dtypes,
+                    "param_stats": param_stats,
+                }
+                layers_info.append(layer_info)
+
                 if params > 0:
-                    layer_info = {
-                        "name": name or module.__class__.__name__,
-                        "parameters": params,
-                        "type": module.__class__.__name__,
-                    }
-                    layers_info.append(layer_info)
                     msg = (
                         f"Znaleziono warstwę: {layer_info['name']} "
                         f"({layer_info['type']}) z {params:,} parametrami"
                     )
-                    logger.info(msg)
-                    self.progress_update.emit(msg)
+                else:
+                    msg = (
+                        f"Znaleziono moduł: {layer_info['name']} "
+                        f"({layer_info['type']}) bez parametrów"
+                    )
+                logger.info(msg)
+                self.progress_update.emit(msg)
 
                 for child_name, child in module.named_children():
                     analyze_module(
                         child, f"{name}.{child_name}" if name else child_name
                     )
 
-            def analyze_dict(d, prefix=""):
+            def analyze_dict(d, prefix="", group_depth=2):
                 nonlocal total_params
                 layer_params = {}
                 current_layer = None
@@ -115,33 +170,14 @@ class ModelAnalyzerThread(QThread):
                     parts = current_path.split(".")
                     logger.info(f"Ścieżka: {current_path}, części: {parts}")
 
-                    # Dla EfficientNet, struktura jest bardziej złożona
-                    if "efficientnet" in current_path.lower():
-                        # Znajdź główny blok (np. blocks.0, blocks.1, itd.)
-                        block_idx = None
-                        for i, part in enumerate(parts):
-                            if part == "blocks" and i + 1 < len(parts):
-                                block_idx = parts[i + 1]
-                                break
-
-                        if block_idx is not None:
-                            # Użyj numeru bloku jako głównej warstwy
-                            current_layer = f"blocks.{block_idx}"
-                            logger.info(
-                                f"Znaleziono blok EfficientNet: {current_layer}"
-                            )
-                        else:
-                            # Dla innych części modelu, użyj pierwszej części ścieżki
-                            current_layer = parts[0]
-                            logger.info(
-                                f"Użyto pierwszej części ścieżki jako warstwy: {current_layer}"
-                            )
+                    # Grupowanie na podstawie konfigurowalnej głębokości
+                    if len(parts) >= group_depth:
+                        current_layer = ".".join(parts[:group_depth])
                     else:
-                        # Dla innych modeli, użyj pierwszej części ścieżki
                         current_layer = parts[0]
-                        logger.info(
-                            f"Użyto pierwszej części ścieżki jako warstwy: {current_layer}"
-                        )
+                    logger.info(
+                        f"Użyto grupowania do głębokości {group_depth}: {current_layer}"
+                    )
 
                     if isinstance(value, torch.Tensor):
                         msg = (
@@ -159,29 +195,46 @@ class ModelAnalyzerThread(QThread):
                                 "dtypes": set(),
                                 "sub_layers": set(),
                                 "layer_type": "unknown",
+                                "has_parameters": False,
+                                "param_shapes": {},
+                                "param_dtypes": {},
+                                "param_stats": {},
                             }
                             logger.info(f"Utworzono nową warstwę: {current_layer}")
 
-                        # Określ typ warstwy na podstawie nazwy
-                        if "conv" in current_path.lower():
-                            layer_params[current_layer]["layer_type"] = "conv"
-                        elif "bn" in current_path.lower():
-                            layer_params[current_layer]["layer_type"] = "batch_norm"
-                        elif "fc" in current_path.lower():
-                            layer_params[current_layer][
-                                "layer_type"
-                            ] = "fully_connected"
-                        elif "se" in current_path.lower():
-                            layer_params[current_layer]["layer_type"] = "squeeze_excite"
+                        # Użyj LAYER_PATTERNS do określenia typu warstwy
+                        layer_params[current_layer]["layer_type"] = "unknown"
+                        for type_name, patterns in LAYER_PATTERNS.items():
+                            if any(
+                                pattern in current_path.lower() for pattern in patterns
+                            ):
+                                layer_params[current_layer]["layer_type"] = type_name
+                                break
 
                         layer_params[current_layer]["parameters"] += value.numel()
                         layer_params[current_layer]["tensors"].append(current_path)
                         layer_params[current_layer]["shapes"].add(str(value.shape))
                         layer_params[current_layer]["dtypes"].add(str(value.dtype))
+                        layer_params[current_layer]["has_parameters"] = True
 
-                        # Dodaj informację o podwarstwie
-                        if len(parts) > 2:
-                            sub_layer = ".".join(parts[2:])
+                        # Dodaj statystyki parametrów
+                        if value.numel() > 0:
+                            layer_params[current_layer]["param_shapes"][
+                                current_path
+                            ] = list(value.shape)
+                            layer_params[current_layer]["param_dtypes"][
+                                current_path
+                            ] = str(value.dtype)
+                            layer_params[current_layer]["param_stats"][current_path] = {
+                                "mean": float(value.float().mean().item()),
+                                "std": float(value.float().std().item()),
+                                "min": float(value.float().min().item()),
+                                "max": float(value.float().max().item()),
+                            }
+
+                        # Dodaj informację o podwarstwie (pozostała część ścieżki)
+                        if len(parts) > group_depth:
+                            sub_layer = ".".join(parts[group_depth:])
                             layer_params[current_layer]["sub_layers"].add(sub_layer)
                             logger.info(
                                 f"Dodano podwarstwę: {sub_layer} do warstwy {current_layer}"
@@ -192,7 +245,7 @@ class ModelAnalyzerThread(QThread):
                     elif isinstance(value, (dict, collections.OrderedDict)):
                         self.progress_update.emit(f"Analizuję słownik: {current_path}")
                         logger.info(f"Znaleziono zagnieżdżony słownik: {current_path}")
-                        sub_params = analyze_dict(value, current_path)
+                        sub_params = analyze_dict(value, current_path, group_depth)
                         # Połącz parametry z podwarstwami
                         for layer, info in sub_params.items():
                             if layer not in layer_params:
@@ -208,6 +261,25 @@ class ModelAnalyzerThread(QThread):
                                 layer_params[layer]["sub_layers"].update(
                                     info["sub_layers"]
                                 )
+                                # Aktualizacja has_parameters
+                                if "has_parameters" in info:
+                                    layer_params[layer]["has_parameters"] = (
+                                        layer_params[layer]["has_parameters"]
+                                        or info["has_parameters"]
+                                    )
+                                # Aktualizacja statystyk parametrów
+                                if "param_shapes" in info:
+                                    layer_params[layer]["param_shapes"].update(
+                                        info["param_shapes"]
+                                    )
+                                if "param_dtypes" in info:
+                                    layer_params[layer]["param_dtypes"].update(
+                                        info["param_dtypes"]
+                                    )
+                                if "param_stats" in info:
+                                    layer_params[layer]["param_stats"].update(
+                                        info["param_stats"]
+                                    )
                                 if info["layer_type"] != "unknown":
                                     layer_params[layer]["layer_type"] = info[
                                         "layer_type"
@@ -232,19 +304,23 @@ class ModelAnalyzerThread(QThread):
             elif isinstance(self.model, dict):
                 logger.info("Analizuję model typu dict (state_dict)")
                 self.progress_update.emit("Analizuję model typu dict (state_dict)")
-                layer_params = analyze_dict(self.model)
+                layer_params = analyze_dict(self.model, group_depth=self.group_depth)
 
                 # Konwertuj wyniki analizy słownika na format warstw
                 for layer_name, info in layer_params.items():
                     layers_info.append(
                         {
                             "name": layer_name,
-                            "parameters": info["parameters"],
-                            "type": info["layer_type"],
-                            "tensors": info["tensors"],
-                            "shapes": list(info["shapes"]),
-                            "dtypes": list(info["dtypes"]),
-                            "sub_layers": list(info["sub_layers"]),
+                            "parameters": info.get("parameters", 0),
+                            "type": info.get("layer_type", "unknown"),
+                            "tensors": info.get("tensors", []),
+                            "shapes": list(info.get("shapes", set())),
+                            "dtypes": list(info.get("dtypes", set())),
+                            "sub_layers": list(info.get("sub_layers", set())),
+                            "has_parameters": info.get("has_parameters", False),
+                            "param_shapes": info.get("param_shapes", {}),
+                            "param_dtypes": info.get("param_dtypes", {}),
+                            "param_stats": info.get("param_stats", {}),
                         }
                     )
             else:
@@ -264,6 +340,22 @@ class ModelAnalyzerThread(QThread):
                 report.append(f"\n{layer['name']}:")
                 report.append(f"  Typ: {layer['type']}")
                 report.append(f"  Liczba parametrów: {layer['parameters']:,}")
+
+                if layer["has_parameters"]:
+                    report.append("  Statystyki parametrów:")
+                    for param_name, stats in layer["param_stats"].items():
+                        report.append(f"    {param_name}:")
+                        report.append(
+                            f"      Kształt: {layer['param_shapes'][param_name]}"
+                        )
+                        report.append(
+                            f"      Typ danych: {layer['param_dtypes'][param_name]}"
+                        )
+                        report.append(f"      Średnia: {stats['mean']:.4f}")
+                        report.append(f"      Std: {stats['std']:.4f}")
+                        report.append(f"      Min: {stats['min']:.4f}")
+                        report.append(f"      Max: {stats['max']:.4f}")
+
                 if "sub_layers" in layer and layer["sub_layers"]:
                     report.append("  Podwarstwy:")
                     for sub_layer in sorted(layer["sub_layers"]):
@@ -297,6 +389,20 @@ class ModelViewer(QMainWindow):
         logger.info("Uruchomiono Przeglądarkę Modeli PyTorch (UI)")
         self.setWindowTitle("Przeglądarka Modeli PyTorch")
         self.setGeometry(100, 100, 1200, 800)
+        # Ustaw ikonę aplikacji
+        icon_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "resources",
+            "img",
+            "icon.png",
+        )
+        icon_path = os.path.abspath(icon_path)
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+            logger.info(f"Ustawiono ikonę aplikacji: {icon_path}")
+        else:
+            logger.warning(f"Nie znaleziono pliku ikony: {icon_path}")
 
         # Kolory zgodne z Material Design i VS Code
         self.primary_color = "#007ACC"  # Niebieski VS Code
@@ -306,6 +412,11 @@ class ModelViewer(QMainWindow):
         self.surface = "#252526"  # Lekko jaśniejsze tło dla paneli
         self.border_color = "#3F3F46"  # Kolor obramowania
         self.text_color = "#CCCCCC"  # Kolor tekstu
+
+        # Inicjalizacja paska postępu
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        self.statusBar().addPermanentWidget(self.progress_bar)
 
         # Ścieżka do folderu z modelami
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -406,6 +517,17 @@ class ModelViewer(QMainWindow):
         tree_scroll.setWidgetResizable(True)
         tree_widget = QWidget()
         tree_layout = QVBoxLayout(tree_widget)
+
+        # Dodaj pole wyszukiwania do drzewa
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Szukaj:")
+        search_label.setStyleSheet(f"color: {self.text_color};")
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Wpisz nazwę warstwy lub parametru...")
+        self.search_input.textChanged.connect(self.filter_tree)
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.search_input)
+        tree_layout.addLayout(search_layout)
 
         # Nagłówek i przyciski dla drzewa
         tree_header = QWidget()
@@ -562,15 +684,22 @@ class ModelViewer(QMainWindow):
     def load_model_from_file(self, file_path):
         logger.info("Wczytywanie modelu z pliku: %s", file_path)
         try:
-            # Wyczyść pamięć podręczną przy ładowaniu nowego modelu
+            # Wyczyść pamięć podręczną i zwolnij poprzedni model
             if hasattr(self, "_details_cache"):
                 self._details_cache = {}
 
+            if hasattr(self, "model") and self.model is not None:
+                del self.model
+            if hasattr(self, "comparison_model") and self.comparison_model is not None:
+                del self.comparison_model
+
+            # Wymuś odśmiecanie
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
             self.model = torch.load(file_path, map_location=torch.device("cpu"))
             self.current_model_path = file_path
-            # Opcjonalnie: wymuś odśmiecanie
-            gc.collect()
-            torch.cuda.empty_cache() if torch.cuda.is_available() else None
 
             self.populate_tree()
             # Włącz wszystkie przyciski po załadowaniu modelu
@@ -583,8 +712,10 @@ class ModelViewer(QMainWindow):
             self.compare_models_button.setEnabled(True)
             logger.info("Model został poprawnie wczytany: %s", file_path)
         except Exception as e:
-            logger.error("Błąd podczas wczytywania modelu: %s", str(e))
-            self.details_text.setPlainText(f"Błąd podczas wczytywania modelu: {str(e)}")
+            error_msg = f"Błąd podczas wczytywania modelu: {str(e)}"
+            logger.error(error_msg)
+            self.details_text.setPlainText(error_msg)
+            self.show_message("Błąd", error_msg, QMessageBox.Icon.Critical)
 
     def show_context_menu(self, position):
         logger.info("Wyświetlenie menu kontekstowego dla drzewa modelu")
@@ -704,8 +835,10 @@ class ModelViewer(QMainWindow):
 
         logger.info(f"Rozpoczynam analizę modelu typu: {type(self.model)}")
 
-        # Wyłącz przycisk analizy podczas analizy
+        # Wyłącz przycisk analizy i pokaż pasek postępu
         self.analyze_button.setEnabled(False)
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setRange(0, 0)  # Tryb nieokreślony
         self.details_text.setPlainText("Analizuję model...")
 
         # Utwórz i uruchom wątek analizy
@@ -723,6 +856,7 @@ class ModelViewer(QMainWindow):
             formatted_report = report.replace("\n", "<br>")
             self.details_text.setHtml(formatted_report)
             self.analyze_button.setEnabled(True)
+            self.progress_bar.setVisible(False)
             logger.info("Analiza modelu zakończona i wyświetlona")
         except Exception as e:
             logger.error(f"Błąd podczas wyświetlania raportu: {str(e)}")
@@ -730,11 +864,13 @@ class ModelViewer(QMainWindow):
                 f"Błąd podczas wyświetlania raportu: {str(e)}"
             )
             self.analyze_button.setEnabled(True)
+            self.progress_bar.setVisible(False)
 
     def _on_analysis_error(self, error_msg):
         logger.error(f"Otrzymano sygnał błędu analizy: {error_msg}")
         self.details_text.setPlainText(f"Błąd podczas analizy: {error_msg}")
         self.analyze_button.setEnabled(True)
+        self.progress_bar.setVisible(False)
         logger.error(f"Błąd podczas analizy modelu: {error_msg}")
 
     def _on_progress_update(self, message):
@@ -778,16 +914,36 @@ class ModelViewer(QMainWindow):
         if not path:
             return None
 
-        current = self.model
-        for name in path[1:]:  # Pomijamy "Model" lub "State Dict"
-            if isinstance(current, torch.nn.Module):
-                current = getattr(current, name)
-            elif isinstance(current, dict):
-                current = current.get(name)
-            else:
-                return None
-
-        return current
+        try:
+            current = self.model
+            for name in path[1:]:  # Pomijamy "Model" lub "State Dict"
+                if isinstance(current, torch.nn.Module):
+                    if hasattr(current, name):
+                        current = getattr(current, name)
+                    else:
+                        try:
+                            current = current.get_parameter(name)
+                        except AttributeError:
+                            raise ValueError(
+                                f"Nie można znaleźć parametru: {name} "
+                                f"w ścieżce {' -> '.join(path[:-1])}"
+                            )
+                elif isinstance(current, dict):
+                    if name not in current:
+                        raise ValueError(
+                            f"Nie można znaleźć klucza: {name} "
+                            f"w ścieżce {' -> '.join(path[:-1])}"
+                        )
+                    current = current[name]
+                else:
+                    raise ValueError(
+                        f"Nieprawidłowy typ obiektu: {type(current)} "
+                        f"w ścieżce {' -> '.join(path[:-1])}"
+                    )
+            return current
+        except Exception as e:
+            logger.error(f"Błąd podczas pobierania parametru: {str(e)}")
+            raise
 
     def populate_tree(self):
         self.tree.clear()
@@ -879,47 +1035,61 @@ class ModelViewer(QMainWindow):
         if not path:
             return "Brak szczegółów"
 
-        current = self.model
-        for name in path[1:]:  # Pomijamy "Model" lub "State Dict"
-            # Wyciągnij czystą nazwę (bez typu i liczby parametrów)
-            name_clean = name.split(":")[0].split("(")[0].strip()
-            if isinstance(current, torch.nn.Module):
-                if hasattr(current, name_clean):
-                    current = getattr(current, name_clean)
+        try:
+            current = self.model
+            for name in path[1:]:  # Pomijamy "Model" lub "State Dict"
+                # Wyciągnij czystą nazwę (bez typu i liczby parametrów)
+                name_clean = name.split(":")[0].split("(")[0].strip()
+                if isinstance(current, torch.nn.Module):
+                    if hasattr(current, name_clean):
+                        current = getattr(current, name_clean)
+                    else:
+                        try:
+                            current = current.get_parameter(name_clean)
+                        except AttributeError:
+                            return (
+                                f"Nie można znaleźć atrybutu/parametru: {name_clean} "
+                                f"w {' -> '.join(path[:-1])}"
+                            )
+                elif isinstance(current, dict):
+                    if name_clean not in current:
+                        return f"Nie można znaleźć klucza: {name_clean}"
+                    current = current[name_clean]
                 else:
-                    # Może to być parametr
-                    try:
-                        current = dict(current.named_parameters())[name_clean]
-                    except Exception:
-                        return f"Nie można znaleźć: {' -> '.join(path)}"
-            elif isinstance(current, dict):
-                current = current.get(name_clean)
-            else:
-                return f"Nie można znaleźć: {' -> '.join(path)}"
+                    return f"Nie można znaleźć: {' -> '.join(path)}"
 
-        if isinstance(current, torch.nn.Module):
-            param_count = sum(p.numel() for p in current.parameters())
-            return f"Moduł: {current.__class__.__name__}\n" f"Parametry: {param_count}"
-        elif isinstance(current, torch.Tensor):
-            shape = list(current.shape)
-            dtype = str(current.dtype)
-            mean = float(current.float().mean().item()) if current.numel() > 0 else 0.0
-            min_val = (
-                float(current.float().min().item()) if current.numel() > 0 else 0.0
-            )
-            max_val = (
-                float(current.float().max().item()) if current.numel() > 0 else 0.0
-            )
-            return (
-                f"Tensor:\n"
-                f"  shape: {shape}\n"
-                f"  dtype: {dtype}\n"
-                f"  mean: {mean:.4f}\n"
-                f"  min: {min_val:.4f}\n"
-                f"  max: {max_val:.4f}"
-            )
-        else:
-            return str(current)
+            if isinstance(current, torch.nn.Module):
+                param_count = sum(p.numel() for p in current.parameters())
+                return (
+                    f"Moduł: {current.__class__.__name__}\n" f"Parametry: {param_count}"
+                )
+            elif isinstance(current, torch.Tensor):
+                shape = list(current.shape)
+                dtype = str(current.dtype)
+                if current.numel() > 0:
+                    mean = float(current.float().mean().item())
+                    min_val = float(current.float().min().item())
+                    max_val = float(current.float().max().item())
+                    std = float(current.float().std().item())
+                    return (
+                        f"Tensor:\n"
+                        f"  shape: {shape}\n"
+                        f"  dtype: {dtype}\n"
+                        f"  mean: {mean:.4f}\n"
+                        f"  std: {std:.4f}\n"
+                        f"  min: {min_val:.4f}\n"
+                        f"  max: {max_val:.4f}"
+                    )
+                else:
+                    return (
+                        f"Tensor (pusty):\n" f"  shape: {shape}\n" f"  dtype: {dtype}"
+                    )
+            else:
+                return str(current)
+        except Exception as e:
+            error_msg = f"Błąd podczas pobierania szczegółów: {str(e)}"
+            logger.error(error_msg)
+            return error_msg
 
     def export_to_onnx(self):
         if not isinstance(self.model, torch.nn.Module):
@@ -1369,24 +1539,63 @@ class ModelViewer(QMainWindow):
 
         ax = fig.add_subplot(111)
 
-        # Zbierz parametry z obu modeli
-        model1_params = []
-        model2_params = []
+        # Zbierz parametry z obu modeli jako słowniki
+        model1_params = {name: p for name, p in self.model.named_parameters()}
+        model2_params = {
+            name: p for name, p in self.comparison_model.named_parameters()
+        }
 
-        for p1, p2 in zip(self.model.parameters(), self.comparison_model.parameters()):
-            model1_params.extend(p1.detach().cpu().numpy().flatten())
-            model2_params.extend(p2.detach().cpu().numpy().flatten())
+        # Znajdź wspólne parametry
+        common_params = set(model1_params.keys()) & set(model2_params.keys())
+        only_in_model1 = set(model1_params.keys()) - set(model2_params.keys())
+        only_in_model2 = set(model2_params.keys()) - set(model1_params.keys())
+
+        # Przygotuj dane do wykresu
+        model1_values = []
+        model2_values = []
+        param_names = []
+
+        for name in common_params:
+            p1 = model1_params[name].detach().cpu().numpy().flatten()
+            p2 = model2_params[name].detach().cpu().numpy().flatten()
+            model1_values.extend(p1)
+            model2_values.extend(p2)
+            param_names.extend([name] * len(p1))
 
         # Narysuj wykres porównawczy
-        ax.scatter(model1_params, model2_params, alpha=0.5)
+        ax.scatter(model1_values, model2_values, alpha=0.5)
         ax.plot(
-            [min(model1_params), max(model1_params)],
-            [min(model1_params), max(model1_params)],
+            [min(model1_values), max(model1_values)],
+            [min(model1_values), max(model1_values)],
             "r--",
+            label="y=x",
         )
         ax.set_title("Porównanie wartości parametrów")
         ax.set_xlabel("Model 1")
         ax.set_ylabel("Model 2")
+        ax.legend()
+
+        # Dodaj informacje o różnicach w strukturze
+        if only_in_model1 or only_in_model2:
+            diff_info = "Różnice w strukturze:\n"
+            if only_in_model1:
+                diff_info += f"\nParametry tylko w modelu 1:\n"
+                for name in sorted(only_in_model1):
+                    diff_info += f"- {name}\n"
+            if only_in_model2:
+                diff_info += f"\nParametry tylko w modelu 2:\n"
+                for name in sorted(only_in_model2):
+                    diff_info += f"- {name}\n"
+
+            # Dodaj tekst do wykresu
+            ax.text(
+                0.02,
+                0.98,
+                diff_info,
+                transform=ax.transAxes,
+                verticalalignment="top",
+                bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+            )
 
     def toggle_tree_expansion(self):
         """Zwijanie/rozwijanie całej struktury drzewa."""
@@ -1405,6 +1614,36 @@ class ModelViewer(QMainWindow):
         msg_box.setText(message)
         msg_box.setIcon(icon)
         msg_box.exec()
+
+    def filter_tree(self, text):
+        """Filtruje drzewo na podstawie tekstu wyszukiwania."""
+
+        def filter_item(item):
+            if not text:
+                item.setHidden(False)
+                return True
+
+            text_lower = text.lower()
+            item_text = item.text(0).lower()
+
+            # Sprawdź czy tekst pasuje do elementu
+            matches = text_lower in item_text
+
+            # Rekurencyjnie sprawdź dzieci
+            has_visible_children = False
+            for i in range(item.childCount()):
+                child = item.child(i)
+                if filter_item(child):
+                    has_visible_children = True
+
+            # Pokaż element jeśli pasuje lub ma pasujące dzieci
+            item.setHidden(not (matches or has_visible_children))
+            return matches or has_visible_children
+
+        # Zastosuj filtrowanie do wszystkich elementów
+        root = self.tree.topLevelItem(0)
+        if root:
+            filter_item(root)
 
 
 def main():
