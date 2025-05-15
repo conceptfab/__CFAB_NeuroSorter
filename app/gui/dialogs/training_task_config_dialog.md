@@ -543,7 +543,7 @@
 - **Opis**: Polityka AutoAugment
 - **Wartości**: "imagenet", "cifar", "svhn"
 - **Kontrolka UI**: Dropdown
-- **Status**: ❌ Brak implementacji
+- **Status**: 🔄 Do sprawdzenia
 - **Zakładka**: Augmentacja
 
 ### randaugment.use
@@ -575,7 +575,7 @@
 - **Opis**: Czy używać TrivialAugment
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ❌ Brak implementacji
+- **Status**: 🔄 Do sprawdzenia
 - **Zakładka**: Augmentacja
 
 ### random_erase.use
@@ -583,7 +583,7 @@
 - **Opis**: Czy używać Random Erase
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ❌ Brak implementacji
+- **Status**: 🔄 Do sprawdzenia
 - **Zakładka**: Augmentacja
 
 ### random_erase.probability
@@ -591,7 +591,7 @@
 - **Opis**: Prawdopodobieństwo Random Erase
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x ≤ 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ❌ Brak implementacji
+- **Status**: 🔄 Do sprawdzenia
 - **Zakładka**: Augmentacja
 
 ### random_erase.scale
@@ -599,7 +599,7 @@
 - **Opis**: Zakres skali dla Random Erase
 - **Wartości**: [min, max] gdzie min, max to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Podwójny slider (range slider)
-- **Status**: ❌ Brak implementacji
+- **Status**: 🔄 Do sprawdzenia
 - **Zakładka**: Augmentacja
 
 ### random_erase.ratio

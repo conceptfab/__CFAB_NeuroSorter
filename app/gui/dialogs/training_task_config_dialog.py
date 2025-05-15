@@ -1254,6 +1254,61 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         cutmix_group.setLayout(cutmix_layout)
         layout.addWidget(cutmix_group)
 
+        # AutoAugment
+        autoaugment_group = QtWidgets.QGroupBox("AutoAugment")
+        autoaugment_layout = QtWidgets.QFormLayout()
+
+        self.autoaugment_check = QtWidgets.QCheckBox()
+        self.autoaugment_check.setChecked(False)
+        autoaugment_layout.addRow("Użyj AutoAugment:", self.autoaugment_check)
+
+        self.autoaugment_policy_combo = QtWidgets.QComboBox()
+        self.autoaugment_policy_combo.addItems(["imagenet", "cifar", "svhn"])
+        autoaugment_layout.addRow("Polityka:", self.autoaugment_policy_combo)
+
+        autoaugment_group.setLayout(autoaugment_layout)
+        layout.addWidget(autoaugment_group)
+
+        # TrivialAugment
+        trivialaugment_group = QtWidgets.QGroupBox("TrivialAugment")
+        trivialaugment_layout = QtWidgets.QFormLayout()
+
+        self.trivialaugment_check = QtWidgets.QCheckBox()
+        self.trivialaugment_check.setChecked(False)
+        trivialaugment_layout.addRow("Użyj TrivialAugment:", self.trivialaugment_check)
+
+        trivialaugment_group.setLayout(trivialaugment_layout)
+        layout.addWidget(trivialaugment_group)
+
+        # Random Erase
+        random_erase_group = QtWidgets.QGroupBox("Random Erase")
+        random_erase_layout = QtWidgets.QFormLayout()
+
+        self.random_erase_check = QtWidgets.QCheckBox()
+        self.random_erase_check.setChecked(False)
+        random_erase_layout.addRow("Użyj Random Erase:", self.random_erase_check)
+
+        self.random_erase_prob_spin = QtWidgets.QDoubleSpinBox()
+        self.random_erase_prob_spin.setRange(0.0, 1.0)
+        self.random_erase_prob_spin.setValue(0.5)
+        self.random_erase_prob_spin.setDecimals(2)
+        random_erase_layout.addRow("Prawdopodobieństwo:", self.random_erase_prob_spin)
+
+        self.random_erase_scale_min_spin = QtWidgets.QDoubleSpinBox()
+        self.random_erase_scale_min_spin.setRange(0.0, 1.0)
+        self.random_erase_scale_min_spin.setValue(0.02)
+        self.random_erase_scale_min_spin.setDecimals(2)
+        random_erase_layout.addRow("Min. skala:", self.random_erase_scale_min_spin)
+
+        self.random_erase_scale_max_spin = QtWidgets.QDoubleSpinBox()
+        self.random_erase_scale_max_spin.setRange(0.0, 1.0)
+        self.random_erase_scale_max_spin.setValue(0.33)
+        self.random_erase_scale_max_spin.setDecimals(2)
+        random_erase_layout.addRow("Max. skala:", self.random_erase_scale_max_spin)
+
+        random_erase_group.setLayout(random_erase_layout)
+        layout.addWidget(random_erase_group)
+
         tab.setLayout(layout)
         return tab
 
@@ -1893,7 +1948,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.logger.info("=== TWORZENIE NOWEGO ZADANIA TRENINGOWEGO ===")
             self.logger.info(f"Nazwa zadania: {task_name}")
 
-            # Podstawowe augmentacje
+            # Konfiguracja augmentacji
             augmentation = {
                 "basic": {
                     "use": self.basic_aug_check.isChecked(),
@@ -1914,6 +1969,21 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 "cutmix": {
                     "use": self.cutmix_check.isChecked(),
                     "alpha": self.cutmix_alpha_spin.value(),
+                },
+                "autoaugment": {
+                    "use": self.autoaugment_check.isChecked(),
+                    "policy": self.autoaugment_policy_combo.currentText(),
+                },
+                "trivialaugment": {
+                    "use": self.trivialaugment_check.isChecked(),
+                },
+                "random_erase": {
+                    "use": self.random_erase_check.isChecked(),
+                    "probability": self.random_erase_prob_spin.value(),
+                    "scale": [
+                        self.random_erase_scale_min_spin.value(),
+                        self.random_erase_scale_max_spin.value(),
+                    ],
                 },
             }
 
@@ -2094,4 +2164,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
     def _toggle_unfreeze_after_epochs_spin(self, strategy_text):
         """Włącza/wyłącza kontrolkę unfreeze_after_epochs_spin w zależności od wybranej strategii."""
         is_enabled = "unfreeze_after_epoochs" in strategy_text
+        self.unfreeze_after_epochs_spin.setEnabled(is_enabled)
+
         self.unfreeze_after_epochs_spin.setEnabled(is_enabled)
