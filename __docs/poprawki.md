@@ -1,159 +1,205 @@
-Zmiana 1: Dodanie prawidłowego odczytywania parametrów w pliku ai/classifier.py
-W funkcji train_from_json_config w pliku ai/classifier.py należy wprowadzić następujące poprawki:
-pythondef train_from_json_config(json_config_path):
-    """
-    Rozpoczyna trening na podstawie pliku JSON z konfiguracją zadania.
-    Args:
-        json_config_path: Ścieżka do pliku JSON z konfiguracją zadania
-    """
-    import json
+Wizualizacja użycia GPU podczas procesów treningowych w PyQt6
+Tak, procesy treningowe mogą wizualizować pracę GPU. W dostarczonym kodzie, szczególnie w TrainingVisualization z pliku training_visualization.py, istnieje już infrastruktura do wyświetlania metryk treningu w czasie rzeczywistym. Można ją rozszerzyć, aby monitorować również użycie GPU.
+Zmiany w kodzie
+Zmiana 1: Dodanie monitorowania GPU w training_visualization.py
+python# W pliku training_visualization.py
+# Dodajemy import biblioteki do monitorowania GPU
+import torch
+# Można również użyć pynvml lub GPUtil dla bardziej szczegółowych informacji
 
-    from ai.models import get_model
-    from ai.optimized_training import train_model_optimized
+def get_theme_colors(self):
+    """Zwraca kolory dla ciemnego motywu."""
+    colors = {
+        # istniejące kolory...
+        "background": (45, 45, 45),
+        "foreground": (220, 220, 220),
+        "grid": (80, 80, 80),
+        "train_loss": (0, 150, 255),
+        # ...
 
-    with open(json_config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
+        # Dodajemy nowe kolory dla metryk GPU
+        "gpu_usage": (255, 215, 0),  # Złoty
+        "gpu_memory": (255, 69, 0),  # Czerwono-pomarańczowy
+    }
+    return colors
+Zmiana 2: Dodanie nowych pól danych w konstruktorze TrainingVisualization
+pythondef __init__(self, parent=None, settings=None):
+    super().__init__(parent)
+    self.settings = settings if settings is not None else {}
+    self.setup_ui()
 
-    # Wyodrębnij parametry z JSON
-    training_config = config.get("config", {})
-    model_config = training_config.get("model", {})
-    training_params = training_config.get("training", {})
-    regularization_params = training_config.get("regularization", {})
-    augmentation_params = training_config.get("augmentation", {})
-    optimization_params = training_config.get("optimization", {})
-    monitoring_params = training_config.get("monitoring", {})
-
-    # Pobierz input_size
-    input_size = model_config.get("input_size", 224)
-    if isinstance(input_size, int):
-        input_size = (input_size, input_size)
-
-    # Inne parametry modelu
-    architecture = model_config.get("architecture", "EfficientNet")
-    variant = model_config.get("variant", "EfficientNet-B0")
-    num_classes = model_config.get("num_classes", 10)
-
-    # Parametry treningu
-    epochs = training_params.get("epochs", 120)
-    batch_size = training_params.get("batch_size", 32)
-    learning_rate = training_params.get("learning_rate", 0.0001)
-    optimizer = training_params.get("optimizer", "AdamW")
-    scheduler = training_params.get("scheduler", "CosineAnnealingWarmRestarts")
-    mixed_precision = training_params.get("mixed_precision", True)
-    freeze_base_model = training_params.get("freeze_base_model", False)
-    warmup_epochs = training_params.get("warmup_epochs", 5)
-
-    # Parametry regularyzacji
-    weight_decay = regularization_params.get("weight_decay", 0.0001)
-    gradient_clip = regularization_params.get("gradient_clip", 1.0)
-    label_smoothing = regularization_params.get("label_smoothing", 0.1)
-    dropout_rate = regularization_params.get("dropout_rate", 0.4)
-
-    # Parametry monitorowania
-    early_stopping = monitoring_params.get("early_stopping", {})
-    early_stopping_patience = (
-        early_stopping.get("patience", 20) if early_stopping.get("enabled", True) else 0
-    )
-
-    # Tworzenie modelu z odpowiednim input_size i dropout_rate
-    model = get_model(
-        model_arch=variant.replace("EfficientNet-", "").lower(),
-        num_classes=num_classes,
-        input_size=input_size,
-        dropout_rate=dropout_rate,
-    )
-
-    # Przekaż wszystkie istotne parametry do funkcji trenującej
-    result = train_model_optimized(
-        model=model,
-        train_dir=training_config.get("train_dir"),
-        val_dir=training_config.get("val_dir"),
-        input_size=input_size,
-        num_epochs=epochs,
-        batch_size=batch_size,
-        learning_rate=learning_rate,
-        optimizer_type=optimizer.lower(),
-        lr_scheduler_type=scheduler.lower().replace(
-            "cosineannealingwarmrestarts", "cosine"
-        ),
-        label_smoothing=label_smoothing,
-        weight_decay=weight_decay,
-        use_mixed_precision=mixed_precision,
-        freeze_backbone=freeze_base_model,
-        early_stopping_patience=early_stopping_patience,
-        warmup_epochs=warmup_epochs,
-        augmentation_params=(
-            augmentation_params.get("basic", {}) if augmentation_params else None
-        ),
-        gradient_clip=gradient_clip,
-    )
-
-    return result
-Powyższe zmiany zapewnią prawidłowe odczytanie parametrów z pliku konfiguracyjnego JSON i przekazanie ich do funkcji train_model_optimized.
-Zmiana 2: Modyfikacje w funkcji train_model_optimized
-W funkcji train_model_optimized w pliku ai/optimized_training.py należy wprowadzić następujące zmiany:
-python# Dodać parametr early_stopping_patience
-def train_model_optimized(
-    # ... istniejące parametry ...
-    early_stopping_patience=5,
-    # ... pozostałe parametry ...
-):
-    # ... 
-    
-    # Zastąpić stałą wartość patience wartością z parametru
-    patience = early_stopping_patience
-    
+    # Inicjalizacja danych (istniejące)
+    self.train_loss_data = []
     # ...
-Zmiana 3: Poprawne obsługiwanie parametrów augmentacji
-W pliku zadania znajduje się rozbudowana konfiguracja augmentacji danych, która powinna być prawidłowo przekazana do funkcji get_extended_augmentation_transforms.
-python# W funkcji train_model_optimized:
-if augmentation_mode == "extended":
-    # Upewnij się, że augmentation_params ma image_size
-    if augmentation_params is None:
-        augmentation_params = {}
-    augmentation_params["image_size"] = input_size
-    train_transform = get_extended_augmentation_transforms(
-        image_size=input_size, params=augmentation_params
+
+    # Nowe pola do monitorowania GPU
+    self.gpu_usage_data = []
+    self.gpu_memory_data = []
+Zmiana 3: Dodanie nowych konfiguracji linii do funkcji get_line_configs
+pythondef get_line_configs(self):
+    """Zwraca konfiguracje dla wszystkich linii wykresu."""
+    return [
+        # Istniejące metryki...
+        
+        # Dodaj nowe metryki GPU
+        {
+            "data": self.gpu_usage_data,
+            "color": (255, 215, 0),  # Złoty
+            "width": 2,
+            "style": Qt.PenStyle.DashLine,
+            "name": "Użycie GPU (%)",
+            "symbol": "s",
+            "symbol_size": 3,
+            "dash": [5, 5],
+        },
+        {
+            "data": self.gpu_memory_data,
+            "color": (255, 69, 0),  # Czerwono-pomarańczowy
+            "width": 2,
+            "style": Qt.PenStyle.DashLine,
+            "name": "Pamięć GPU (MB)",
+            "symbol": "t",
+            "symbol_size": 3,
+            "dash": [2, 4],
+        },
+    ]
+Zmiana 4: Rozszerzenie metody update_data o parametry GPU
+pythondef update_data(
+    self,
+    epoch,
+    train_loss,
+    train_acc,
+    val_loss=None,
+    val_acc=None,
+    val_top3=None,
+    val_top5=None,
+    val_precision=None,
+    val_recall=None,
+    val_f1=None,
+    val_auc=None,
+    learning_rate=None,
+    gpu_usage=None,  # Nowy parametr
+    gpu_memory=None,  # Nowy parametr
+):
+    """Aktualizuje dane wykresu."""
+    print(
+        f"[TrainingVisualization] update_data: epoka={epoch}, "
+        f"train_loss={train_loss}, train_acc={train_acc}, "
+        f"val_loss={val_loss}, val_acc={val_acc}, "
+        f"gpu_usage={gpu_usage}, gpu_memory={gpu_memory}"  # Dodane nowe parametry do logowania
     )
-Podsumowanie analizy
-Funkcja train_from_json_config w pliku ai/classifier.py już istnieje i wydaje się prawidłowo odczytywać kluczowe parametry z pliku JSON z konfiguracją zadania. W szczególności:
+    try:
+        # Konwersja i walidacja danych
+        try:
+            epoch = int(epoch)
+            # ...istniejące konwersje...
+            
+            # Nowe konwersje dla GPU
+            gpu_usage = float(gpu_usage) if gpu_usage is not None else None
+            gpu_memory = float(gpu_memory) if gpu_memory is not None else None
+        except (ValueError, TypeError) as e:
+            print(f"BŁĄD konwersji danych: {e}")
+            return
 
-Odczytuje podstawowe parametry konfiguracyjne:
+        # Dodaj nowe dane tylko jeśli epoka jest dodatnia
+        if epoch > 0:
+            # Sprawdź czy ta epoka już istnieje
+            if epoch in self.epochs:
+                idx = self.epochs.index(epoch)
+                # ...istniejące przypisania...
+                
+                # Dodanie danych GPU
+                if gpu_usage is not None:
+                    self.gpu_usage_data[idx] = gpu_usage
+                if gpu_memory is not None:
+                    self.gpu_memory_data[idx] = gpu_memory
+            else:
+                self.epochs.append(epoch)
+                # ...istniejące dodania...
+                
+                # Dodanie danych GPU
+                self.gpu_usage_data.append(gpu_usage)
+                self.gpu_memory_data.append(gpu_memory)
 
-architecture, variant, num_classes i input_size z sekcji model
-epochs, batch_size, learning_rate, optimizer, scheduler, mixed_precision, freeze_base_model i warmup_epochs z sekcji training
-weight_decay, gradient_clip, label_smoothing i dropout_rate z sekcji regularization
-Parametry monitorowania, jak early_stopping_patience
+            self.data_updated = True
+            self.update_plot()
 
-
-Tworzy model za pomocą funkcji get_model z odpowiednimi parametrami.
-Przekazuje odczytane parametry do funkcji train_model_optimized.
-
-Funkcja train_model_optimized przyjmuje prawidłowe parametry, w tym early_stopping_patience, jednak istnieje kilka potencjalnych problemów:
-
-W funkcji train_model_optimized używana jest stała wartość patience = 5 dla early stopping, zamiast używać przekazanego parametru early_stopping_patience.
-Parametr augmentation_params w funkcji train_model_optimized może nie być prawidłowo przetworzony, ponieważ struktura oczekiwana przez get_extended_augmentation_transforms może różnić się od struktury w pliku konfiguracyjnym.
-Parametry związane z SWA (Stochastic Weight Averaging) jak use_swa i swa_start_epoch mogą nie być prawidłowo przekazywane z pliku konfiguracyjnego.
-
-Jednak train_model_optimized wydaje się prawidłowo przetwarzać większość potrzebnych parametrów. Funkcja jest wystarczająco elastyczna, aby obsłużyć różne konfiguracje, i powinna być w stanie przetworzyć dane z pliku konfiguracyjnego EfficientNet-B2_42cls_2025-05-15_21-26-51.json.
-Rekomendowane poprawki w plikach
-Plik: ai/optimized_training.py
-python# Zamiana stałej wartości patience na parametr
-patience = early_stopping_patience  # Użyj przekazanej wartości zamiast stałej 5
-Plik: ai/classifier.py
-Dodanie obsługi parametrów SWA z pliku konfiguracyjnego:
-python# W funkcji train_from_json_config dodać:
-# Parametry SWA
-swa_config = regularization_params.get("swa", {})
-use_swa = swa_config.get("use", False)
-swa_start_epoch = swa_config.get("start_epoch", 90)
-swa_lr = swa_config.get("lr_swa", 0.001)
-
-# I przekazać je do train_model_optimized:
-result = train_model_optimized(
-    # ... istniejące parametry ...
-    use_swa=use_swa,
-    swa_start_epoch=swa_start_epoch,
-    # ... pozostałe parametry ...
-)
-Z przeprowadzonej analizy wynika, że funkcja train_model_optimized w pliku ai/optimized_training.py powinna być w stanie obsłużyć większość parametrów z pliku konfiguracyjnego zadania, jednak istnieją pewne niezgodności, które mogą wpłynąć na prawidłowe działanie treningu.
+    except Exception as e:
+        print(f"Błąd w update_data: {e}")
+        import traceback
+        print(traceback.format_exc())
+Zmiana 5: Dodanie funkcji pobierania danych GPU w queue_manager.py
+pythondef _on_task_progress(self, task_name, progress, details):
+    """Obsługa postępu zadania."""
+    # Aktualizuj wizualizację
+    if self.training_visualization:
+        epoch = int(details.get("epoch", 0))
+        train_loss = details.get("train_loss")
+        train_acc = details.get("train_acc")
+        val_loss = details.get("val_loss")
+        val_acc = details.get("val_acc")
+        val_top3 = details.get("val_top3")
+        val_top5 = details.get("val_top5")
+        val_precision = details.get("val_precision")
+        val_recall = details.get("val_recall")
+        val_f1 = details.get("val_f1")
+        val_auc = details.get("val_auc")
+        
+        # Dodaj pobieranie informacji o GPU
+        gpu_usage = None
+        gpu_memory = None
+        if torch.cuda.is_available():
+            try:
+                # Pobierz wykorzystanie GPU
+                gpu_usage = torch.cuda.utilization()  # Procentowe wykorzystanie
+                # Pobierz wykorzystanie pamięci w MB
+                gpu_memory = torch.cuda.memory_allocated() / (1024 * 1024)
+            except Exception as e:
+                print(f"Błąd podczas pobierania danych GPU: {e}")
+        
+        if epoch > 0:
+            self.training_visualization.update_data(
+                epoch=epoch,
+                train_loss=train_loss,
+                train_acc=train_acc,
+                val_loss=val_loss,
+                val_acc=val_acc,
+                val_top3=val_top3,
+                val_top5=val_top5,
+                val_precision=val_precision,
+                val_recall=val_recall,
+                val_f1=val_f1,
+                val_auc=val_auc,
+                gpu_usage=gpu_usage,       # Nowy parametr
+                gpu_memory=gpu_memory,     # Nowy parametr
+            )
+Zmiana 6: Dodanie grupy informacyjnej w interfejsie
+pythondef setup_ui(self):
+    """Konfiguruje interfejs użytkownika."""
+    layout = QVBoxLayout(self)
+    
+    # ...istniejące elementy...
+    
+    # Dodaj nową grupę informacji o GPU
+    self.gpu_info_group = QGroupBox("Informacje o GPU")
+    self.gpu_info_layout = QHBoxLayout()
+    
+    self.gpu_usage_label = QLabel("Wykorzystanie GPU: -")
+    self.gpu_memory_label = QLabel("Pamięć GPU: -")
+    
+    self.gpu_info_layout.addWidget(self.gpu_usage_label)
+    self.gpu_info_layout.addWidget(self.gpu_memory_label)
+    
+    self.gpu_info_group.setLayout(self.gpu_info_layout)
+    layout.addWidget(self.gpu_info_group)
+    
+    # ...istniejące elementy...
+Zmiana 7: Aktualizacja etykiet GPU w metodzie update_data
+pythondef update_data(self, ...):
+    # ...istniejący kod...
+    
+    # Aktualizuj etykiety GPU
+    if gpu_usage is not None:
+        self.gpu_usage_label.setText(f"Wykorzystanie GPU: {gpu_usage:.1f}%")
+    if gpu_memory is not None:
+        self.gpu_memory_label.setText(f"Pamięć GPU: {gpu_memory:.1f} MB")

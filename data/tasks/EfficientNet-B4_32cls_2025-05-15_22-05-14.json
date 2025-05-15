@@ -1,16 +1,16 @@
 {
-    "name": "EfficientNet-B2_30cls_2025-05-15_21-47-06",
+    "name": "EfficientNet-B4_32cls_2025-05-15_22-05-14",
     "type": "training",
     "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-15T21:47:06.818003",
+    "created_at": "2025-05-15T22:05:14.181028",
     "config": {
-        "train_dir": "F:/_set_DATA_B2/train",
-        "val_dir": "F:/_set_DATA_B2/valid",
+        "train_dir": "F:/_set_DATA_B4/train",
+        "val_dir": "F:/_set_DATA_B4/valid",
         "model": {
             "architecture": "EfficientNet",
-            "variant": "EfficientNet-B2",
-            "input_size": 260,
+            "variant": "EfficientNet-B4",
+            "input_size": 380,
             "num_classes": 32,
             "pretrained": true,
             "pretrained_weights": "imagenet",
@@ -21,21 +21,21 @@
             "last_layer_activation": "softmax"
         },
         "training": {
-            "epochs": 150,
-            "batch_size": 64,
-            "learning_rate": 0.0005,
+            "epochs": 200,
+            "batch_size": 32,
+            "learning_rate": 0.0003,
             "optimizer": "AdamW",
             "scheduler": {
                 "type": "CosineAnnealingWarmRestarts",
                 "T_0": 10,
                 "T_mult": 2,
-                "eta_min": 1e-07
+                "eta_min": 0.0
             },
             "num_workers": 12,
-            "warmup_epochs": 5,
+            "warmup_epochs": 8,
             "warmup_lr_init": 1e-06,
             "mixed_precision": true,
-            "gradient_accumulation_steps": 3,
+            "gradient_accumulation_steps": 6,
             "gradient_clip": 1.0,
             "evaluation_freq": 1,
             "use_ema": true,
@@ -43,15 +43,15 @@
             "freeze_base_model": true,
             "unfreeze_layers": "last_block",
             "unfreeze_strategy": "unfreeze_gradual_end",
-            "unfreeze_after_epochs": 20,
+            "unfreeze_after_epochs": 30,
             "frozen_lr": 1e-05,
-            "unfrozen_lr": 0.0003,
+            "unfrozen_lr": 0.0002,
             "validation_split": 0.2
         },
         "regularization": {
-            "weight_decay": 5e-05,
+            "weight_decay": 3e-05,
             "label_smoothing": 0.1,
-            "dropout_rate": 0.3,
+            "dropout_rate": 0.4,
             "drop_connect_rate": 0.2,
             "gradient_clip": 1.0,
             "momentum": 0.9,
@@ -62,7 +62,7 @@
             },
             "swa": {
                 "use": true,
-                "start_epoch": 80,
+                "start_epoch": 120,
                 "lr_swa": 1e-05
             }
         },
@@ -81,7 +81,7 @@
             },
             "mixup": {
                 "use": true,
-                "alpha": 0.3
+                "alpha": 0.4
             },
             "cutmix": {
                 "use": true,
@@ -124,8 +124,8 @@
             "resize": {
                 "enabled": true,
                 "size": [
-                    260,
-                    260
+                    380,
+                    380
                 ],
                 "mode": "bicubic"
             },
@@ -168,7 +168,7 @@
             },
             "random_resize_crop": {
                 "enabled": true,
-                "size": 260,
+                "size": 380,
                 "scale": [
                     0.8,
                     1.0
@@ -196,7 +196,7 @@
             },
             "tensorboard": {
                 "enabled": true,
-                "log_dir": "logs/efficientnet_b2_classification",
+                "log_dir": "logs/efficientnet_b4_classification",
                 "update_freq": 50
             },
             "wandb": {
@@ -206,12 +206,12 @@
                 "tags": [
                     "efficientnet",
                     "classification",
-                    "b2"
+                    "b4"
                 ]
             },
             "checkpoint": {
                 "enabled": true,
-                "dir": "checkpoints/efficientnet_b2_classification",
+                "dir": "checkpoints/efficientnet_b4_classification",
                 "save_best_only": true,
                 "monitor": "val_loss",
                 "mode": "min",
@@ -221,7 +221,7 @@
                 "enabled": true,
                 "monitor": "val_loss",
                 "mode": "min",
-                "patience": 15,
+                "patience": 20,
                 "min_delta": 0.0005
             },
             "reduce_lr": {
@@ -241,7 +241,7 @@
             "gradient_clip_val": 1.0,
             "gradient_clip_norm": 1.0,
             "gradient_clip_algorithm": "norm",
-            "accumulate_grad_batches": 3,
+            "accumulate_grad_batches": 6,
             "sync_batchnorm": false,
             "precision": "16-mixed",
             "amp_level": "O1",

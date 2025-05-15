@@ -1,5 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
+import torch
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QGroupBox,
@@ -32,6 +33,8 @@ class TrainingVisualization(QWidget):
         self.val_auc_data = []
         self.loss_diff_data = []  # Nowa metryka
         self.learning_rates_data = []  # Nowa metryka
+        self.gpu_usage_data = []  # Nowa metryka GPU
+        self.gpu_memory_data = []  # Nowa metryka GPU
         self.epochs = []
 
         # Flaga wskazująca czy dane zostały zaktualizowane
@@ -53,6 +56,8 @@ class TrainingVisualization(QWidget):
             "val_recall": (255, 50, 255),  # Jaśniejszy magenta
             "val_f1": (255, 255, 50),  # Jaśniejszy żółty
             "val_auc": (180, 50, 180),  # Jaśniejszy fioletowy
+            "gpu_usage": (255, 215, 0),  # Złoty
+            "gpu_memory": (255, 69, 0),  # Czerwono-pomarańczowy
         }
 
     def setup_ui(self):
@@ -102,6 +107,19 @@ class TrainingVisualization(QWidget):
         self.early_stopping_layout.addWidget(self.early_stopping_progress)
         self.early_stopping_group.setLayout(self.early_stopping_layout)
         layout.addWidget(self.early_stopping_group)
+
+        # --- GPU Info ---
+        self.gpu_info_group = QGroupBox("Informacje o GPU")
+        self.gpu_info_layout = QHBoxLayout()
+
+        self.gpu_usage_label = QLabel("Wykorzystanie GPU: -")
+        self.gpu_memory_label = QLabel("Pamięć GPU: -")
+
+        self.gpu_info_layout.addWidget(self.gpu_usage_label)
+        self.gpu_info_layout.addWidget(self.gpu_memory_label)
+
+        self.gpu_info_group.setLayout(self.gpu_info_layout)
+        layout.addWidget(self.gpu_info_group)
 
         # Style dla linii epok
         self.epoch_line_pen = pg.mkPen(
@@ -231,6 +249,27 @@ class TrainingVisualization(QWidget):
                 "symbol_size": 2,
                 "dash": [6, 3, 2, 3, 2, 3],
             },
+            # Nowe metryki GPU
+            {
+                "data": self.gpu_usage_data,
+                "color": (255, 215, 0),  # Złoty
+                "width": 2,
+                "style": Qt.PenStyle.DashLine,
+                "name": "Użycie GPU (%)",
+                "symbol": "s",
+                "symbol_size": 3,
+                "dash": [5, 5],
+            },
+            {
+                "data": self.gpu_memory_data,
+                "color": (255, 69, 0),  # Czerwono-pomarańczowy
+                "width": 2,
+                "style": Qt.PenStyle.DashLine,
+                "name": "Pamięć GPU (MB)",
+                "symbol": "t",
+                "symbol_size": 3,
+                "dash": [2, 4],
+            },
         ]
 
     def update_plot(self):
@@ -290,13 +329,16 @@ class TrainingVisualization(QWidget):
         val_recall=None,
         val_f1=None,
         val_auc=None,
-        learning_rate=None,  # Nowy parametr
+        learning_rate=None,
+        gpu_usage=None,  # Nowy parametr
+        gpu_memory=None,  # Nowy parametr
     ):
         """Aktualizuje dane wykresu."""
         print(
             f"[TrainingVisualization] update_data: epoka={epoch}, "
             f"train_loss={train_loss}, train_acc={train_acc}, "
-            f"val_loss={val_loss}, val_acc={val_acc}"
+            f"val_loss={val_loss}, val_acc={val_acc}, "
+            f"gpu_usage={gpu_usage}, gpu_memory={gpu_memory}"  # Dodane nowe parametry
         )
         try:
             # Konwersja i walidacja danych
@@ -317,6 +359,9 @@ class TrainingVisualization(QWidget):
                 learning_rate = (
                     float(learning_rate) if learning_rate is not None else None
                 )
+                # Nowe konwersje dla GPU
+                gpu_usage = float(gpu_usage) if gpu_usage is not None else None
+                gpu_memory = float(gpu_memory) if gpu_memory is not None else None
             except (ValueError, TypeError) as e:
                 print(f"BŁĄD konwersji danych: {e}")
                 return
@@ -328,27 +373,20 @@ class TrainingVisualization(QWidget):
                     idx = self.epochs.index(epoch)
                     self.train_loss_data[idx] = train_loss
                     self.train_acc_data[idx] = train_acc
-                    if val_loss is not None:
-                        self.val_loss_data[idx] = val_loss
-                    if val_acc is not None:
-                        self.val_acc_data[idx] = val_acc
-                    if val_top3 is not None:
-                        self.val_top3_data[idx] = val_top3
-                    if val_top5 is not None:
-                        self.val_top5_data[idx] = val_top5
-                    if val_precision is not None:
-                        self.val_precision_data[idx] = val_precision
-                    if val_recall is not None:
-                        self.val_recall_data[idx] = val_recall
-                    if val_f1 is not None:
-                        self.val_f1_data[idx] = val_f1
-                    if val_auc is not None:
-                        self.val_auc_data[idx] = val_auc
-                    if learning_rate is not None:
-                        self.learning_rates_data[idx] = learning_rate
-                    # Oblicz różnicę między stratami
-                    if train_loss is not None and val_loss is not None:
-                        self.loss_diff_data[idx] = abs(train_loss - val_loss)
+                    self.val_loss_data[idx] = val_loss
+                    self.val_acc_data[idx] = val_acc
+                    self.val_top3_data[idx] = val_top3
+                    self.val_top5_data[idx] = val_top5
+                    self.val_precision_data[idx] = val_precision
+                    self.val_recall_data[idx] = val_recall
+                    self.val_f1_data[idx] = val_f1
+                    self.val_auc_data[idx] = val_auc
+                    self.learning_rates_data[idx] = learning_rate
+                    # Dodanie danych GPU
+                    if gpu_usage is not None:
+                        self.gpu_usage_data[idx] = gpu_usage
+                    if gpu_memory is not None:
+                        self.gpu_memory_data[idx] = gpu_memory
                 else:
                     self.epochs.append(epoch)
                     self.train_loss_data.append(train_loss)
@@ -362,11 +400,15 @@ class TrainingVisualization(QWidget):
                     self.val_f1_data.append(val_f1)
                     self.val_auc_data.append(val_auc)
                     self.learning_rates_data.append(learning_rate)
-                    # Oblicz różnicę między stratami
-                    if train_loss is not None and val_loss is not None:
-                        self.loss_diff_data.append(abs(train_loss - val_loss))
-                    else:
-                        self.loss_diff_data.append(None)
+                    # Dodanie danych GPU
+                    self.gpu_usage_data.append(gpu_usage)
+                    self.gpu_memory_data.append(gpu_memory)
+
+            # Aktualizuj etykiety GPU
+            if gpu_usage is not None:
+                self.gpu_usage_label.setText(f"Wykorzystanie GPU: {gpu_usage:.1f}%")
+            if gpu_memory is not None:
+                self.gpu_memory_label.setText(f"Pamięć GPU: {gpu_memory:.1f} MB")
 
             self.data_updated = True
             self.update_plot()
@@ -392,6 +434,8 @@ class TrainingVisualization(QWidget):
         self.val_auc_data = []
         self.loss_diff_data = []  # Nowa metryka
         self.learning_rates_data = []  # Nowa metryka
+        self.gpu_usage_data = []  # Nowa metryka GPU
+        self.gpu_memory_data = []  # Nowa metryka GPU
         self.data_updated = False
         self.update_plot()
         self.early_stopping_label.setText("Czekam na dane...")

@@ -1,16 +1,16 @@
 {
-    "name": "EfficientNet-B2_30cls_2025-05-15_21-47-06",
+    "name": "EfficientNet-B5_32cls_2025-05-15_22-06-18",
     "type": "training",
     "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-15T21:47:06.818003",
+    "created_at": "2025-05-15T22:06:18.993803",
     "config": {
-        "train_dir": "F:/_set_DATA_B2/train",
-        "val_dir": "F:/_set_DATA_B2/valid",
+        "train_dir": "F:/_set_DATA_B5/train",
+        "val_dir": "F:/_set_DATA_B5/valid",
         "model": {
             "architecture": "EfficientNet",
-            "variant": "EfficientNet-B2",
-            "input_size": 260,
+            "variant": "EfficientNet-B5",
+            "input_size": 456,
             "num_classes": 32,
             "pretrained": true,
             "pretrained_weights": "imagenet",
@@ -21,38 +21,38 @@
             "last_layer_activation": "softmax"
         },
         "training": {
-            "epochs": 150,
-            "batch_size": 64,
-            "learning_rate": 0.0005,
+            "epochs": 220,
+            "batch_size": 24,
+            "learning_rate": 0.0002,
             "optimizer": "AdamW",
             "scheduler": {
                 "type": "CosineAnnealingWarmRestarts",
-                "T_0": 10,
+                "T_0": 12,
                 "T_mult": 2,
-                "eta_min": 1e-07
+                "eta_min": 0.0
             },
-            "num_workers": 12,
-            "warmup_epochs": 5,
-            "warmup_lr_init": 1e-06,
+            "num_workers": 14,
+            "warmup_epochs": 10,
+            "warmup_lr_init": 8e-07,
             "mixed_precision": true,
-            "gradient_accumulation_steps": 3,
+            "gradient_accumulation_steps": 8,
             "gradient_clip": 1.0,
             "evaluation_freq": 1,
             "use_ema": true,
-            "ema_decay": 0.9998,
+            "ema_decay": 0.9999,
             "freeze_base_model": true,
             "unfreeze_layers": "last_block",
             "unfreeze_strategy": "unfreeze_gradual_end",
-            "unfreeze_after_epochs": 20,
-            "frozen_lr": 1e-05,
-            "unfrozen_lr": 0.0003,
+            "unfreeze_after_epochs": 40,
+            "frozen_lr": 8e-06,
+            "unfrozen_lr": 0.00015,
             "validation_split": 0.2
         },
         "regularization": {
-            "weight_decay": 5e-05,
+            "weight_decay": 2e-05,
             "label_smoothing": 0.1,
-            "dropout_rate": 0.3,
-            "drop_connect_rate": 0.2,
+            "dropout_rate": 0.4,
+            "drop_connect_rate": 0.3,
             "gradient_clip": 1.0,
             "momentum": 0.9,
             "epsilon": 1e-06,
@@ -62,8 +62,8 @@
             },
             "swa": {
                 "use": true,
-                "start_epoch": 80,
-                "lr_swa": 1e-05
+                "start_epoch": 140,
+                "lr_swa": 8e-06
             }
         },
         "augmentation": {
@@ -81,7 +81,7 @@
             },
             "mixup": {
                 "use": true,
-                "alpha": 0.3
+                "alpha": 0.4
             },
             "cutmix": {
                 "use": true,
@@ -124,8 +124,8 @@
             "resize": {
                 "enabled": true,
                 "size": [
-                    260,
-                    260
+                    456,
+                    456
                 ],
                 "mode": "bicubic"
             },
@@ -168,7 +168,7 @@
             },
             "random_resize_crop": {
                 "enabled": true,
-                "size": 260,
+                "size": 456,
                 "scale": [
                     0.8,
                     1.0
@@ -196,7 +196,7 @@
             },
             "tensorboard": {
                 "enabled": true,
-                "log_dir": "logs/efficientnet_b2_classification",
+                "log_dir": "logs/efficientnet_b5_classification",
                 "update_freq": 50
             },
             "wandb": {
@@ -206,12 +206,12 @@
                 "tags": [
                     "efficientnet",
                     "classification",
-                    "b2"
+                    "b5"
                 ]
             },
             "checkpoint": {
                 "enabled": true,
-                "dir": "checkpoints/efficientnet_b2_classification",
+                "dir": "checkpoints/efficientnet_b5_classification",
                 "save_best_only": true,
                 "monitor": "val_loss",
                 "mode": "min",
@@ -221,7 +221,7 @@
                 "enabled": true,
                 "monitor": "val_loss",
                 "mode": "min",
-                "patience": 15,
+                "patience": 25,
                 "min_delta": 0.0005
             },
             "reduce_lr": {
@@ -229,7 +229,7 @@
                 "monitor": "val_loss",
                 "mode": "min",
                 "factor": 0.5,
-                "patience": 8,
+                "patience": 10,
                 "min_delta": 0.0001,
                 "min_lr": 1e-07
             }
@@ -241,7 +241,7 @@
             "gradient_clip_val": 1.0,
             "gradient_clip_norm": 1.0,
             "gradient_clip_algorithm": "norm",
-            "accumulate_grad_batches": 3,
+            "accumulate_grad_batches": 8,
             "sync_batchnorm": false,
             "precision": "16-mixed",
             "amp_level": "O1",

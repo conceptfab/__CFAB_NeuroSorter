@@ -1,6 +1,6 @@
 TODO 0.4
 
-
+- brak   GPU w pasku
 - dodac CONNNEXT i warianty
 
 - porównywark modeli - klasyfikacji
