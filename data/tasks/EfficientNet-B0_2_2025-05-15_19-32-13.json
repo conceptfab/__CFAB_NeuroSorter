@@ -1,10 +1,13 @@
 {
+    "name": "EfficientNet-B0_2_2025-05-15_19-32-13",
     "type": "training",
-    "info": "Profil dla EfficientNet EfficientNet-B0",
-    "description": "Profil utworzony przez użytkownika",
-    "data_required": "Standardowe dane treningowe",
-    "hardware_required": "Standardowy sprzęt",
+    "status": "Nowy",
+    "priority": 0,
+    "created_at": "2025-05-15 19:32:13",
     "config": {
+        "train_dir": "F:/_set_DATA_B2/train",
+        "data_dir": "F:/_set_DATA_B2/train",
+        "val_dir": "F:/_set_DATA_B2/valid",
         "model": {
             "architecture": "EfficientNet",
             "variant": "EfficientNet-B0",
@@ -22,6 +25,8 @@
             "epochs": 50,
             "batch_size": 32,
             "learning_rate": 0.001,
+            "frozen_lr": 0.0,
+            "unfrozen_lr": 0.0,
             "optimizer": "Adam",
             "scheduler": {
                 "type": "None",
@@ -35,7 +40,12 @@
             "mixed_precision": true,
             "evaluation_freq": 1,
             "use_ema": false,
-            "ema_decay": 0.999
+            "ema_decay": 0.999,
+            "freeze_base_model": false,
+            "unfreeze_layers": "all",
+            "unfreeze_strategy": "unfreeze_all",
+            "unfreeze_after_epochs": 0,
+            "gradient_accumulation_steps": 1
         },
         "regularization": {
             "weight_decay": 0.0001,
@@ -112,16 +122,7 @@
         "optimization": {
             "batch_size": 32,
             "num_workers": 4,
-            "use_mixed_precision": true,
-            "memory_efficient": false,
-            "cudnn_benchmark": true,
-            "pin_memory": true,
-            "dataloader": {
-                "shuffle": true,
-                "prefetch_factor": 4,
-                "persistent_workers": true,
-                "drop_last": true
-            }
+            "use_mixed_precision": true
         },
         "monitoring": {
             "metrics": {
@@ -143,6 +144,11 @@
                 "save_frequency": 1,
                 "metric": "val_loss"
             }
+        },
+        "preprocessing": {
+            "normalization": "RGB",
+            "resize_mode": "bilinear",
+            "cache_dataset": false
         }
     }
 }

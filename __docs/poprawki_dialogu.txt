@@ -1,0 +1,92 @@
+Parametry częściowo spełniające kryteria (⚠️) (wymagają drobnych poprawek):
+model.last_layer_activation:
+Wczytywanie z profilu: OK
+Kontrolka UI: Istnieje (self.last_layer_activation_combo), ale jest w zakładce "Dane i Model", podczas gdy plik .md sugeruje "Parametry Treningu".
+Zapis do zadania: OK.
+training.unfreeze_after_epochs:
+Wczytywanie z profilu: Odczytuje wartość, ale używa bezpośredniego dostępu training_config["unfreeze_after_epochs"] co może prowadzić do błędu, jeśli klucz nie istnieje. Zalecane użycie .get().
+Kontrolka UI: Istnieje (self.unfreeze_after_epochs_spin), ale znajduje się w zakładce "Zaawansowane", a nie "Parametry Treningu" jak w .md.
+Zapis do zadania: OK.
+regularization.stochastic_depth.use:
+Wczytywanie z profilu: Wartość jest odczytywana z config["regularization"] ale nie jest przypisywana do kontrolki UI self.use_stoch_depth_check w metodzie _apply_profile.
+Kontrolka UI: Istnieje (self.use_stoch_depth_check).
+Zapis do zadania: OK.
+regularization.stochastic_depth.survival_probability:
+Wczytywanie z profilu: Wartość jest odczytywana, ale nie przypisywana do kontrolki UI self.stoch_depth_survival_prob.
+Kontrolka UI: Istnieje (self.stoch_depth_survival_prob).
+Zapis do zadania: OK.
+regularization.swa.lr_swa:
+Wczytywanie z profilu: Wartość jest odczytywana, ale nie przypisywana do kontrolki UI self.swa_lr_spin.
+Kontrolka UI: Istnieje (self.swa_lr_spin).
+Zapis do zadania: OK.
+augmentation.autoaugment.policy:
+Wczytywanie z profilu: Brak wczytywania wartości do self.autoaugment_policy_combo w _apply_profile.
+Kontrolka UI: Istnieje (self.autoaugment_policy_combo).
+Zapis do zadania: OK.
+augmentation.randaugment.use:
+Wczytywanie z profilu: Brak wczytywania wartości do self.randaugment_check.
+Kontrolka UI: Istnieje (self.randaugment_check).
+Zapis do zadania: OK.
+augmentation.randaugment.n:
+Wczytywanie z profilu: Brak wczytywania wartości do self.randaugment_n_spin.
+Kontrolka UI: Istnieje (self.randaugment_n_spin).
+Zapis do zadania: OK.
+augmentation.randaugment.m:
+Wczytywanie z profilu: Brak wczytywania wartości do self.randaugment_m_spin.
+Kontrolka UI: Istnieje (self.randaugment_m_spin).
+Zapis do zadania: OK.
+augmentation.trivialaugment.use:
+Wczytywanie z profilu: Brak wczytywania wartości do self.trivialaugment_check.
+Kontrolka UI: Istnieje (self.trivialaugment_check).
+Zapis do zadania: OK.
+augmentation.random_erase.use:
+Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_check.
+Kontrolka UI: Istnieje (self.random_erase_check).
+Zapis do zadania: OK.
+augmentation.random_erase.probability:
+Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_prob_spin.
+Kontrolka UI: Istnieje (self.random_erase_prob_spin).
+Zapis do zadania: OK.
+augmentation.random_erase.scale:
+Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_scale_min_spin i self.random_erase_scale_max_spin.
+Kontrolka UI: Istnieją.
+Zapis do zadania: OK.
+augmentation.random_erase.ratio:
+Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_ratio_min_spin i self.random_erase_ratio_max_spin.
+Kontrolka UI: Istnieją.
+Zapis do zadania: OK.
+augmentation.grid_distortion.enabled:
+Wczytywanie z profilu: Brak wczytywania wartości do self.grid_distortion_check.
+Kontrolka UI: Istnieje (self.grid_distortion_check).
+Zapis do zadania: OK.
+augmentation.grid_distortion.probability:
+Wczytywanie z profilu: Brak wczytywania wartości do self.grid_distortion_prob_spin.
+Kontrolka UI: Istnieje (self.grid_distortion_prob_spin).
+Zapis do zadania: OK.
+augmentation.grid_distortion.distort_limit:
+Wczytywanie z profilu: Brak wczytywania wartości do self.grid_distortion_limit_spin.
+Kontrolka UI: Istnieje (self.grid_distortion_limit_spin).
+Zapis do zadania: OK.
+preprocessing.resize.enabled: (w .md jako resize.enabled, w UI jako self.resize_check)
+Wczytywanie z profilu: Brak wczytywania wartości z sekcji preprocessing profilu do self.resize_check.
+Kontrolka UI: Istnieje (self.resize_check), ale w zakładce "Augmentacja", a nie "Preprocessing".
+Zapis do zadania: OK (zapisuje jako config["augmentation"]["resize"]["enabled"]).
+
+Parametry niespełniające kryteriów (❌) (wymagają implementacji lub znaczących poprawek):
+training.frozen_lr:
+Problem: Istnieją dwie kontrolki UI o tej samej nazwie self.frozen_lr_spin (jedna w zakładce "Parametry Treningu", druga w "Zaawansowane"). Metoda _apply_profile próbuje ustawić wartość dla obu, a _on_accept odczytuje wartość z kontrolki z zakładki "Zaawansowane". Powoduje to niespójność i potencjalne błędy. Należy ujednolicić do jednej kontrolki i poprawić logikę.
+training.unfrozen_lr:
+Problem: Analogiczna sytuacja jak z frozen_lr. Dwie kontrolki self.unfrozen_lr_spin w różnych zakładkach.
+training.validation_split:
+Problem: Brak implementacji wczytywania z profilu, brak kontrolki UI, brak zapisu do zadania.
+preprocessing.color_jitter.contrast:
+Problem: Brak implementacji.
+preprocessing.color_jitter.hue:
+Problem: Brak implementacji.
+Zalecenia:
+Uzupełnić wczytywanie z profilu: Dla parametrów oznaczonych jako (⚠️), należy dodać logikę w _apply_profile, aby wczytywały swoje wartości z config (z odpowiednich sekcji, np. augmentation, regularization) i ustawiały je w odpowiednich kontrolkach UI.
+Poprawić duplikacje kontrolek: Dla frozen_lr i unfrozen_lr należy zdecydować, w której zakładce mają się znajdować te kontrolki, usunąć duplikaty i dostosować logikę w _apply_profile oraz _on_accept.
+Spójność zakładek: Dla last_layer_activation, unfreeze_after_epochs oraz resize.enabled, należy zweryfikować, czy kontrolki UI powinny być w zakładkach wskazanych przez plik .md, i ewentualnie przenieść je lub zaktualizować dokumentację.
+Implementacja brakujących parametrów: Parametry oznaczone (❌) wymagają pełnej implementacji (kontrolki UI, logika wczytywania i zapisywania).
+Bezpieczny odczyt z profilu: W metodzie _apply_profile, przy odczytywaniu wartości z training_config (np. dla unfreeze_after_epochs), warto używać metody .get(klucz, wartosc_domyslna), aby uniknąć błędów, gdyby klucz nie istniał w profilu.
+Czy chcesz, abym podjął próbę wprowadzenia tych poprawek? Proszę o wskazanie, które z nich mają być zrealizowane.

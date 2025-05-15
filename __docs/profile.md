@@ -2,3 +2,6 @@
 
 
 @training_task_config_dialog.py @training_task_config_dialog.md sprawdz czy parametry ze statusem "Do sprawdzenia" spełniają to kryterium: wczytywanie z profilu -> ręczne dostrojenie przez UI /sprawdzenie kontrolki UI -> walidacja i zapisanie do zadania
+
+
+ @training_task_config_dialog.md zacznij po kolei analizować rzeczy do zrobienia i wprowadzaj poprawki, po wprowadzeniu poprawki daj mi znac - zrobie test, potem zmienisz info Do zrobienia

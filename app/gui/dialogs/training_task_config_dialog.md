@@ -8,6 +8,7 @@
 - **Wartości**: "training"
 - **Kontrolka UI**: Pole tekstowe (tylko do odczytu)
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Dane i Model
 
 ### info
@@ -16,6 +17,7 @@
 - **Wartości**: Dowolny tekst
 - **Kontrolka UI**: Pole tekstowe
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Dane i Model
 
 ### description
@@ -24,6 +26,7 @@
 - **Wartości**: Dowolny tekst
 - **Kontrolka UI**: Obszar tekstowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Dane i Model
 
 ### data_required
@@ -32,6 +35,7 @@
 - **Wartości**: Dowolny tekst
 - **Kontrolka UI**: Obszar tekstowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Dane i Model
 
 ### hardware_required
@@ -40,6 +44,7 @@
 - **Wartości**: Dowolny tekst
 - **Kontrolka UI**: Obszar tekstowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Dane i Model
 
 ## Architektura modelu (model)
@@ -50,6 +55,7 @@
 - **Wartości**: "EfficientNet"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Dane i Model
 
 ### variant
@@ -58,6 +64,7 @@
 - **Wartości**: "EfficientNet-B0" do "EfficientNet-B7"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Dane i Model
 
 ### input_size
@@ -66,6 +73,7 @@
 - **Wartości**: Liczba całkowita (np. 260)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Dane i Model
 
 ### num_classes
@@ -74,6 +82,7 @@
 - **Wartości**: Liczba całkowita (np. 32, 40)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Dane i Model
 
 ### pretrained
@@ -82,6 +91,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik (toggle)
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### pretrained_weights
@@ -90,6 +100,7 @@
 - **Wartości**: "imagenet" lub inne
 - **Kontrolka UI**: Dropdown
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### feature_extraction_only
@@ -98,6 +109,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### activation
@@ -106,6 +118,7 @@
 - **Wartości**: "swish", "relu", "sigmoid", itp.
 - **Kontrolka UI**: Dropdown
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### dropout_at_inference
@@ -114,6 +127,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### global_pool
@@ -122,6 +136,7 @@
 - **Wartości**: "avg", "max"
 - **Kontrolka UI**: Dropdown
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### last_layer_activation
@@ -130,6 +145,7 @@
 - **Wartości**: "softmax", "sigmoid", "none"
 - **Kontrolka UI**: Dropdown
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Kontrolka UI: Istnieje (self.last_layer_activation_combo), ale jest w zakładce "Dane i Model", podczas gdy plik .md sugeruje "Parametry Treningu".
 - **Zakładka**: Parametry Treningu
 
 ## Parametry treningu (training)
@@ -140,6 +156,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### batch_size
@@ -148,6 +165,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### learning_rate
@@ -156,6 +174,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x < 1)
 - **Kontrolka UI**: Slider liczbowy lub pole numeryczne
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### optimizer
@@ -164,6 +183,7 @@
 - **Wartości**: "AdamW", "Adam", "SGD", "RMSprop"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### scheduler.type
@@ -172,6 +192,7 @@
 - **Wartości**: "CosineAnnealingWarmRestarts", "StepLR", "OneCycleLR"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### scheduler.T_0
@@ -180,6 +201,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### scheduler.T_mult
@@ -188,6 +210,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### scheduler.eta_min
@@ -196,6 +219,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (bliska 0)
 - **Kontrolka UI**: Pole numeryczne
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### num_workers
@@ -204,6 +228,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### warmup_epochs
@@ -212,6 +237,7 @@
 - **Wartości**: Liczba całkowita (≥0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### warmup_lr_init
@@ -220,6 +246,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Pole numeryczne
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### mixed_precision
@@ -228,6 +255,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### gradient_accumulation_steps
@@ -236,6 +264,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### gradient_clip
@@ -244,6 +273,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Pole numeryczne
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### evaluation_freq
@@ -252,6 +282,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### use_ema
@@ -260,6 +291,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### ema_decay
@@ -268,6 +300,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x < 1)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### freeze_base_model
@@ -276,6 +309,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### unfreeze_layers
@@ -284,6 +318,7 @@
 - **Wartości**: "all", "last_n", lista warstw
 - **Kontrolka UI**: Dropdown lub wielowybór
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### unfreeze_strategy
@@ -292,6 +327,7 @@
 - **Wartości**: "gradual", "all_at_once"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### unfreeze_after_epochs
@@ -300,6 +336,7 @@
 - **Wartości**: Liczba całkowita (≥0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Odczytuje wartość, ale używa bezpośredniego dostępu training_config["unfreeze_after_epochs"] co może prowadzić do błędu, jeśli klucz nie istnieje. Zalecane użycie .get(). Kontrolka UI: Istnieje (self.unfreeze_after_epochs_spin), ale znajduje się w zakładce "Zaawansowane", a nie "Parametry Treningu" jak w .md.
 - **Zakładka**: Parametry Treningu
 
 ### frozen_lr
@@ -308,6 +345,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Pole numeryczne
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Problem: Istnieją dwie kontrolki UI o tej samej nazwie self.frozen_lr_spin (jedna w zakładce "Parametry Treningu", druga w "Zaawansowane"). Metoda \_apply_profile próbuje ustawić wartość dla obu, a \_on_accept odczytuje wartość z kontrolki z zakładki "Zaawansowane". Powoduje to niespójność i potencjalne błędy. Należy ujednolicić do jednej kontrolki i poprawić logikę.
 - **Zakładka**: Parametry Treningu
 
 ### unfrozen_lr
@@ -316,6 +354,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Pole numeryczne
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Problem: Analogiczna sytuacja jak z frozen_lr. Dwie kontrolki self.unfrozen_lr_spin w różnych zakładkach.
 - **Zakładka**: Parametry Treningu
 
 ### validation_split
@@ -324,6 +363,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x < 1)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Problem: Brak implementacji wczytywania z profilu, brak kontrolki UI, brak zapisu do zadania.
 - **Zakładka**: Parametry Treningu
 
 ## Parametry regularyzacji (regularization)
@@ -334,6 +374,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Pole numeryczne
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Regularyzacja
 
 ### label_smoothing
@@ -342,6 +383,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x < 1)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Regularyzacja
 
 ### dropout_rate
@@ -350,6 +392,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x < 1)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Regularyzacja
 
 ### drop_connect_rate
@@ -358,6 +401,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x < 1)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Regularyzacja
 
 ### momentum
@@ -366,6 +410,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x < 1)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Regularyzacja
 
 ### epsilon
@@ -374,6 +419,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0, bliska 0)
 - **Kontrolka UI**: Pole numeryczne
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Regularyzacja
 
 ### stochastic_depth.use
@@ -382,6 +428,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Wartość jest odczytywana z config["regularization"] ale nie jest przypisywana do kontrolki UI self.use_stoch_depth_check w metodzie \_apply_profile.
 - **Zakładka**: Regularyzacja
 
 ### stochastic_depth.survival_probability
@@ -390,6 +437,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x ≤ 1)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Wartość jest odczytywana, ale nie przypisywana do kontrolki UI self.stoch_depth_survival_prob.
 - **Zakładka**: Regularyzacja
 
 ### swa.use
@@ -398,6 +446,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Regularyzacja
 
 ### swa.start_epoch
@@ -406,6 +455,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Regularyzacja
 
 ### swa.lr_swa
@@ -414,6 +464,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Pole numeryczne
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Wartość jest odczytywana, ale nie przypisywana do kontrolki UI self.swa_lr_spin.
 - **Zakładka**: Regularyzacja
 
 ## Parametry augmentacji danych (augmentation)
@@ -424,6 +475,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### basic.rotation
@@ -432,6 +484,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### basic.brightness
@@ -440,6 +493,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### basic.contrast
@@ -448,6 +502,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### basic.saturation
@@ -456,6 +511,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### basic.hue
@@ -464,6 +520,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### basic.shift
@@ -472,6 +529,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### basic.zoom
@@ -480,6 +538,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### basic.horizontal_flip
@@ -488,6 +547,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### basic.vertical_flip
@@ -496,6 +556,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### mixup.use
@@ -504,6 +565,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### mixup.alpha
@@ -512,6 +574,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### cutmix.use
@@ -520,6 +583,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### cutmix.alpha
@@ -528,6 +592,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### autoaugment.use
@@ -536,6 +601,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### autoaugment.policy
@@ -544,6 +610,7 @@
 - **Wartości**: "imagenet", "cifar", "svhn"
 - **Kontrolka UI**: Dropdown
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.autoaugment_policy_combo w \_apply_profile.
 - **Zakładka**: Augmentacja
 
 ### randaugment.use
@@ -551,7 +618,8 @@
 - **Opis**: Czy używać RandAugment
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
+- **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.randaugment_check.
 - **Zakładka**: Augmentacja
 
 ### randaugment.n
@@ -559,7 +627,8 @@
 - **Opis**: Liczba operacji RandAugment
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
+- **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.randaugment_n_spin.
 - **Zakładka**: Augmentacja
 
 ### randaugment.m
@@ -567,7 +636,8 @@
 - **Opis**: Intensywność operacji RandAugment
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
+- **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.randaugment_m_spin.
 - **Zakładka**: Augmentacja
 
 ### trivialaugment.use
@@ -576,6 +646,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.trivialaugment_check.
 - **Zakładka**: Augmentacja
 
 ### random_erase.use
@@ -584,6 +655,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_check.
 - **Zakładka**: Augmentacja
 
 ### random_erase.probability
@@ -592,6 +664,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x ≤ 1)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_prob_spin.
 - **Zakładka**: Augmentacja
 
 ### random_erase.scale
@@ -600,6 +673,7 @@
 - **Wartości**: [min, max] gdzie min, max to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Podwójny slider (range slider)
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_scale_min_spin i self.random_erase_scale_max_spin.
 - **Zakładka**: Augmentacja
 
 ### random_erase.ratio
@@ -607,7 +681,8 @@
 - **Opis**: Zakres proporcji dla Random Erase
 - **Wartości**: [min, max] gdzie min, max to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Podwójny slider (range slider)
-- **Status**: ❌ Brak implementacji
+- **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_ratio_min_spin i self.random_erase_ratio_max_spin.
 - **Zakładka**: Augmentacja
 
 ### grid_distortion.enabled
@@ -615,7 +690,8 @@
 - **Opis**: Czy używać zniekształcenia siatki
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ❌ Brak implementacji
+- **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.grid_distortion_check.
 - **Zakładka**: Augmentacja
 
 ### grid_distortion.probability
@@ -623,7 +699,8 @@
 - **Opis**: Prawdopodobieństwo zniekształcenia siatki
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x ≤ 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ❌ Brak implementacji
+- **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.grid_distortion_prob_spin.
 - **Zakładka**: Augmentacja
 
 ### grid_distortion.distort_limit
@@ -631,7 +708,8 @@
 - **Opis**: Limit zniekształcenia siatki
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ❌ Brak implementacji
+- **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.grid_distortion_limit_spin.
 - **Zakładka**: Augmentacja
 
 ## Parametry przetwarzania wstępnego (preprocessing)
@@ -641,7 +719,8 @@
 - **Opis**: Czy włączyć zmianę rozmiaru obrazów
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
+- **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości z sekcji preprocessing profilu do self.resize_check. Kontrolka UI: Istnieje (self.resize_check), ale w zakładce "Augmentacja", a nie "Preprocessing". Zapis do zadania: OK (zapisuje jako config["augmentation"]["resize"]["enabled"]).
 - **Zakładka**: Preprocessing
 
 ### resize.size
@@ -650,6 +729,7 @@
 - **Wartości**: [width, height] gdzie width, height to liczby całkowite
 - **Kontrolka UI**: Podwójny spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### resize.mode
@@ -658,6 +738,7 @@
 - **Wartości**: "bilinear", "bicubic", "nearest", "lanczos"
 - **Kontrolka UI**: Dropdown
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### normalize.enabled
@@ -666,6 +747,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### normalize.mean
@@ -674,6 +756,7 @@
 - **Wartości**: [R, G, B] gdzie R, G, B to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Trzy pola liczbowe
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### normalize.std
@@ -682,6 +765,7 @@
 - **Wartości**: [R, G, B] gdzie R, G, B to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Trzy pola liczbowe
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### grayscale.enabled
@@ -690,6 +774,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### grayscale.num_output_channels
@@ -698,6 +783,7 @@
 - **Wartości**: 1 lub 3
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### color_jitter.enabled
@@ -706,6 +792,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### color_jitter.brightness
@@ -714,6 +801,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### color_jitter.contrast
@@ -722,6 +810,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Problem: Brak implementacji.
 - **Zakładka**: Preprocessing
 
 ### color_jitter.saturation
@@ -730,6 +819,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### color_jitter.hue
@@ -738,6 +828,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: 🔄 Do sprawdzenia
+- **Do zrobienia**: Problem: Brak implementacji.
 - **Zakładka**: Preprocessing
 
 ### gaussian_blur.enabled
@@ -746,6 +837,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### gaussian_blur.kernel_size
@@ -754,6 +846,7 @@
 - **Wartości**: Liczba nieparzysta (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### gaussian_blur.sigma
@@ -762,6 +855,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Preprocessing
 
 ### cache_dataset
@@ -770,6 +864,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 
 ### scaling.method
 
@@ -777,6 +872,7 @@
 - **Wartości**: "Bicubic", "Bilinear", "Nearest"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 
 ### scaling.maintain_aspect_ratio
 
@@ -784,6 +880,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 
 ### scaling.pad_to_square
 
@@ -791,6 +888,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 
 ### scaling.pad_mode
 
@@ -798,6 +896,7 @@
 - **Wartości**: "reflection", "constant", "edge"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 
 ### scaling.pad_value
 
@@ -805,6 +904,7 @@
 - **Wartości**: Liczba całkowita (0-255)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 
 ### random_resize_crop.enabled
 
@@ -812,6 +912,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 
 ### random_resize_crop.size
 
@@ -819,6 +920,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 
 ### random_resize_crop.scale
 
@@ -826,6 +928,7 @@
 - **Wartości**: [min, max] gdzie min, max to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Podwójny slider (range slider)
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 
 ### random_resize_crop.ratio
 
@@ -833,6 +936,7 @@
 - **Wartości**: [min, max] gdzie min, max to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Podwójny slider (range slider)
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 
 ## Parametry monitorowania i logowania (monitoring)
 
@@ -842,6 +946,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 
 ### metrics.precision
 
@@ -849,6 +954,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 
 ### metrics.recall
 
@@ -856,6 +962,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 
 ### metrics.f1
 
@@ -863,6 +970,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 
 ### metrics.topk
 
@@ -870,6 +978,7 @@
 - **Wartości**: Lista liczb całkowitych
 - **Kontrolka UI**: Wielowybór lub pole tagów
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 
 ### metrics.confusion_matrix
 
@@ -877,6 +986,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 
 ### metrics.auc
 
@@ -884,6 +994,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 
 ### metrics.gpu_utilization
 
@@ -891,6 +1002,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 
 ### metrics.memory_usage
 
@@ -898,6 +1010,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 
 ### tensorboard.enabled
 
@@ -905,6 +1018,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### tensorboard.log_dir
@@ -913,6 +1027,7 @@
 - **Wartości**: Ścieżka do katalogu
 - **Kontrolka UI**: Pole tekstowe + przycisk wyboru katalogu
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### tensorboard.update_freq
@@ -921,6 +1036,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### wandb.enabled
@@ -929,6 +1045,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### wandb.project
@@ -937,6 +1054,7 @@
 - **Wartości**: Nazwa projektu
 - **Kontrolka UI**: Pole tekstowe
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### wandb.entity
@@ -945,6 +1063,7 @@
 - **Wartości**: Nazwa użytkownika/zespołu
 - **Kontrolka UI**: Pole tekstowe
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### wandb.tags
@@ -953,6 +1072,7 @@
 - **Wartości**: Lista tagów
 - **Kontrolka UI**: Pole tekstowe z możliwością dodawania wielu tagów
 - **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.enabled
@@ -961,6 +1081,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.dir
@@ -969,6 +1090,7 @@
 - **Wartości**: Ścieżka do katalogu
 - **Kontrolka UI**: Pole tekstowe + przycisk wyboru katalogu
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.save_best_only
@@ -977,6 +1099,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.monitor
@@ -985,6 +1108,7 @@
 - **Wartości**: Nazwa metryki
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.mode
@@ -993,6 +1117,7 @@
 - **Wartości**: "min" lub "max"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.save_freq
@@ -1001,6 +1126,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### early_stopping.enabled
@@ -1009,6 +1135,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### early_stopping.monitor
@@ -1017,6 +1144,7 @@
 - **Wartości**: Nazwa metryki
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### early_stopping.mode
@@ -1025,6 +1153,7 @@
 - **Wartości**: "min" lub "max"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### early_stopping.patience
@@ -1033,6 +1162,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### early_stopping.min_delta
@@ -1041,6 +1171,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.enabled
@@ -1049,6 +1180,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.monitor
@@ -1057,6 +1189,7 @@
 - **Wartości**: Nazwa metryki
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.mode
@@ -1065,6 +1198,7 @@
 - **Wartości**: "min" lub "max"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.factor
@@ -1073,6 +1207,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x < 1)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.patience
@@ -1081,6 +1216,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.min_delta
@@ -1089,6 +1225,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.min_lr
@@ -1097,6 +1234,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Monitoring i Logging
 
 ## Parametry zaawansowane (advanced)
@@ -1107,6 +1245,7 @@
 - **Wartości**: Liczba całkowita
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### deterministic
@@ -1115,6 +1254,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### benchmark
@@ -1123,6 +1263,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### num_workers
@@ -1131,6 +1272,7 @@
 - **Wartości**: Liczba całkowita (≥0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### pin_memory
@@ -1139,6 +1281,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### prefetch_factor
@@ -1147,6 +1290,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### persistent_workers
@@ -1155,6 +1299,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_val
@@ -1163,6 +1308,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_algorithm
@@ -1171,6 +1317,7 @@
 - **Wartości**: "norm", "value"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### accumulate_grad_batches
@@ -1179,6 +1326,7 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### sync_batchnorm
@@ -1187,6 +1335,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### precision
@@ -1195,6 +1344,7 @@
 - **Wartości**: 16, 32, 64, "bf16", "mixed"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### amp_level
@@ -1203,6 +1353,7 @@
 - **Wartości**: "O0", "O1", "O2", "O3"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_norm
@@ -1211,6 +1362,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_mode
@@ -1219,6 +1371,7 @@
 - **Wartości**: "norm", "value", "agc"
 - **Kontrolka UI**: Dropdown
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc
@@ -1227,6 +1380,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_clipping
@@ -1235,6 +1389,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps
@@ -1243,6 +1398,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_inside
@@ -1251,6 +1407,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_outside
@@ -1259,6 +1416,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_inside_scale
@@ -1267,6 +1425,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_outside_scale
@@ -1275,6 +1434,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_inside_scale_min
@@ -1283,6 +1443,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_outside_scale_min
@@ -1291,6 +1452,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_inside_scale_max
@@ -1299,6 +1461,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_outside_scale_max
@@ -1307,4 +1470,5 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Zaawansowane

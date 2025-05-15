@@ -652,6 +652,42 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             )
 
             if ok and name:
+                # Przygotuj konfigurację optymalizacji
+                optimization_config = {
+                    "batch_size": self.parameter_rows["batch_size"][
+                        "value_widget"
+                    ].value(),
+                    "num_workers": self.parameter_rows["num_workers"][
+                        "value_widget"
+                    ].value(),
+                    "use_mixed_precision": self.parameter_rows["use_mixed_precision"][
+                        "value_widget"
+                    ].isChecked(),
+                    "memory_efficient": self.parameter_rows["memory_efficient"][
+                        "value_widget"
+                    ].isChecked(),
+                    "cudnn_benchmark": self.parameter_rows["cudnn_benchmark"][
+                        "value_widget"
+                    ].isChecked(),
+                    "pin_memory": self.parameter_rows["pin_memory"][
+                        "value_widget"
+                    ].isChecked(),
+                    "dataloader": {
+                        "shuffle": self.parameter_rows["shuffle"][
+                            "value_widget"
+                        ].isChecked(),
+                        "prefetch_factor": self.parameter_rows["prefetch_factor"][
+                            "value_widget"
+                        ].value(),
+                        "persistent_workers": self.parameter_rows["persistent_workers"][
+                            "value_widget"
+                        ].isChecked(),
+                        "drop_last": self.parameter_rows["drop_last"][
+                            "value_widget"
+                        ].isChecked(),
+                    },
+                }
+
                 profile_data = {
                     "type": "training",
                     "info": (
@@ -755,7 +791,38 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                                 "use": self.cutmix_check.isChecked(),
                                 "alpha": self.cutmix_alpha_spin.value(),
                             },
+                            "autoaugment": {
+                                "use": self.autoaugment_check.isChecked(),
+                                "policy": self.autoaugment_policy_combo.currentText(),
+                            },
+                            "randaugment": {
+                                "use": self.randaugment_check.isChecked(),
+                                "n": self.randaugment_n_spin.value(),
+                                "m": self.randaugment_m_spin.value(),
+                            },
+                            "trivialaugment": {
+                                "use": self.trivialaugment_check.isChecked()
+                            },
+                            "random_erase": {
+                                "use": self.random_erase_check.isChecked(),
+                                "probability": self.random_erase_prob_spin.value(),
+                                "scale": [
+                                    self.random_erase_scale_min_spin.value(),
+                                    self.random_erase_scale_max_spin.value(),
+                                ],
+                                "ratio": [
+                                    self.random_erase_ratio_min_spin.value(),
+                                    self.random_erase_ratio_max_spin.value(),
+                                ],
+                            },
+                            "grid_distortion": {
+                                "enabled": self.grid_distortion_check.isChecked(),
+                                "probability": self.grid_distortion_prob_spin.value(),
+                                "distort_limit": self.grid_distortion_limit_spin.value(),
+                            },
+                            "resize": {"enabled": self.resize_check.isChecked()},
                         },
+                        "optimization": optimization_config,
                         "monitoring": {
                             "metrics": {
                                 "accuracy": self.accuracy_check.isChecked(),
@@ -768,6 +835,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                                 ),
                             },
                             "early_stopping": {
+                                "enabled": self.use_early_stopping_check.isChecked(),
                                 "patience": self.patience_spin.value(),
                                 "min_delta": self.min_delta_spin.value(),
                                 "monitor": self.monitor_combo.currentText(),
@@ -942,6 +1010,13 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.global_pool_combo = QtWidgets.QComboBox()
             self.global_pool_combo.addItems(["avg", "max"])
             form.addRow("Global pooling:", self.global_pool_combo)
+
+            # Last layer activation
+            self.last_layer_activation_combo = QtWidgets.QComboBox()
+            self.last_layer_activation_combo.addItems(["softmax", "sigmoid", "none"])
+            form.addRow(
+                "Aktywacja ostatniej warstwy:", self.last_layer_activation_combo
+            )
 
             # Liczba epok
             self.epochs_spin = QtWidgets.QSpinBox()
@@ -1306,8 +1381,81 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         self.random_erase_scale_max_spin.setDecimals(2)
         random_erase_layout.addRow("Max. skala:", self.random_erase_scale_max_spin)
 
+        self.random_erase_ratio_min_spin = QtWidgets.QDoubleSpinBox()
+        self.random_erase_ratio_min_spin.setRange(0.0, 1.0)
+        self.random_erase_ratio_min_spin.setValue(0.3)
+        self.random_erase_ratio_min_spin.setDecimals(2)
+        random_erase_layout.addRow("Min. proporcja:", self.random_erase_ratio_min_spin)
+
+        self.random_erase_ratio_max_spin = QtWidgets.QDoubleSpinBox()
+        self.random_erase_ratio_max_spin.setRange(0.0, 1.0)
+        self.random_erase_ratio_max_spin.setValue(3.3)
+        self.random_erase_ratio_max_spin.setDecimals(2)
+        random_erase_layout.addRow("Max. proporcja:", self.random_erase_ratio_max_spin)
+
         random_erase_group.setLayout(random_erase_layout)
         layout.addWidget(random_erase_group)
+
+        # Grid Distortion
+        grid_distortion_group = QtWidgets.QGroupBox("Grid Distortion")
+        grid_distortion_layout = QtWidgets.QFormLayout()
+
+        self.grid_distortion_check = QtWidgets.QCheckBox()
+        self.grid_distortion_check.setChecked(False)
+        grid_distortion_layout.addRow(
+            "Użyj Grid Distortion:", self.grid_distortion_check
+        )
+
+        self.grid_distortion_prob_spin = QtWidgets.QDoubleSpinBox()
+        self.grid_distortion_prob_spin.setRange(0.0, 1.0)
+        self.grid_distortion_prob_spin.setValue(0.2)
+        self.grid_distortion_prob_spin.setDecimals(2)
+        grid_distortion_layout.addRow(
+            "Prawdopodobieństwo:", self.grid_distortion_prob_spin
+        )
+
+        self.grid_distortion_limit_spin = QtWidgets.QDoubleSpinBox()
+        self.grid_distortion_limit_spin.setRange(0.0, 1.0)
+        self.grid_distortion_limit_spin.setValue(0.1)
+        self.grid_distortion_limit_spin.setDecimals(2)
+        grid_distortion_layout.addRow(
+            "Limit zniekształcenia:", self.grid_distortion_limit_spin
+        )
+
+        grid_distortion_group.setLayout(grid_distortion_layout)
+        layout.addWidget(grid_distortion_group)
+
+        # Resize
+        resize_group = QtWidgets.QGroupBox("Zmiana rozmiaru")
+        resize_layout = QtWidgets.QFormLayout()
+
+        self.resize_check = QtWidgets.QCheckBox()
+        self.resize_check.setChecked(True)
+        resize_layout.addRow("Włącz zmianę rozmiaru:", self.resize_check)
+
+        resize_group.setLayout(resize_layout)
+        layout.addWidget(resize_group)
+
+        # RandAugment
+        randaugment_group = QtWidgets.QGroupBox("RandAugment")
+        randaugment_layout = QtWidgets.QFormLayout()
+
+        self.randaugment_check = QtWidgets.QCheckBox()
+        self.randaugment_check.setChecked(False)
+        randaugment_layout.addRow("Użyj RandAugment:", self.randaugment_check)
+
+        self.randaugment_n_spin = QtWidgets.QSpinBox()
+        self.randaugment_n_spin.setRange(1, 10)
+        self.randaugment_n_spin.setValue(2)
+        randaugment_layout.addRow("Liczba operacji (n):", self.randaugment_n_spin)
+
+        self.randaugment_m_spin = QtWidgets.QSpinBox()
+        self.randaugment_m_spin.setRange(1, 30)
+        self.randaugment_m_spin.setValue(10)
+        randaugment_layout.addRow("Intensywność (m):", self.randaugment_m_spin)
+
+        randaugment_group.setLayout(randaugment_layout)
+        layout.addWidget(randaugment_group)
 
         tab.setLayout(layout)
         return tab
@@ -1571,17 +1719,17 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             )
 
             # Dodanie kontrolek dla learning rate
-            self.frozen_lr_spin = QtWidgets.QDoubleSpinBox()
-            self.frozen_lr_spin.setRange(0.0, 0.1)
-            self.frozen_lr_spin.setValue(0.0001)
-            self.frozen_lr_spin.setDecimals(6)
-            transfer_layout.addRow("LR dla zamrożonych warstw:", self.frozen_lr_spin)
+            # self.frozen_lr_spin = QtWidgets.QDoubleSpinBox() # Zostawiamy tę w Parametry Treningu
+            # self.frozen_lr_spin.setRange(0.0, 0.1)
+            # self.frozen_lr_spin.setValue(0.0001)
+            # self.frozen_lr_spin.setDecimals(6)
+            # transfer_layout.addRow("LR dla zamrożonych warstw:", self.frozen_lr_spin)
 
-            self.unfrozen_lr_spin = QtWidgets.QDoubleSpinBox()
-            self.unfrozen_lr_spin.setRange(0.0, 0.1)
-            self.unfrozen_lr_spin.setValue(0.001)
-            self.unfrozen_lr_spin.setDecimals(6)
-            transfer_layout.addRow("LR dla odmrożonych warstw:", self.unfrozen_lr_spin)
+            # self.unfrozen_lr_spin = QtWidgets.QDoubleSpinBox() # Zostawiamy tę w Parametry Treningu
+            # self.unfrozen_lr_spin.setRange(0.0, 0.1)
+            # self.unfrozen_lr_spin.setValue(0.001)
+            # self.unfrozen_lr_spin.setDecimals(6)
+            # transfer_layout.addRow("LR dla odmrożonych warstw:", self.unfrozen_lr_spin)
 
             transfer_group.setLayout(transfer_layout)
 
@@ -1682,25 +1830,39 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             params_group = QtWidgets.QGroupBox("Parametry optymalizacyjne")
             params_layout = QtWidgets.QFormLayout()
 
-            # Dodaj parametry optymalizacyjne (bez learning_rate, epochs, gradient_accumulation_steps)
+            # Dodaj parametry optymalizacyjne (bez learning_rate, epochs,
+            # gradient_accumulation_steps)
             params = [
                 ("Batch size", "batch_size", 32, "int", 1, 1024, 1),
                 ("Workers", "num_workers", 4, "int", 0, 32, 1),
-                (
-                    "Mixed Precision",
-                    "use_mixed_precision",
-                    True,
-                    "bool",
-                    None,
-                    None,
-                    None,
-                ),
+                ("Mixed Precision", "use_mixed_precision", True, "bool"),
+                ("Memory Efficient", "memory_efficient", False, "bool"),
+                # Dodane parametry:
+                ("CUDNN Benchmark", "cudnn_benchmark", True, "bool"),
+                ("Pin Memory", "pin_memory", True, "bool"),
+                ("Shuffle (Dataloader)", "shuffle", True, "bool"),
+                ("Prefetch Factor (Dataloader)", "prefetch_factor", 4, "int", 0, 16, 1),
+                ("Persistent Workers (Dataloader)", "persistent_workers", True, "bool"),
+                ("Drop Last Batch (Dataloader)", "drop_last", True, "bool"),
             ]
 
             self.optimization_params = []
-            for name, key, default, type_, min_, max_, step in params:
+            if not hasattr(self, "parameter_rows"):
+                self.parameter_rows = {}
+
+            for name, key, default, type_, *args in params:
+                min_val, max_val, step = None, None, None
+                if args:
+                    if type_ == "int" or type_ == "float":  # Mimo że float nie ma tu
+                        if len(args) == 3:
+                            min_val, max_val, step = args
+                        elif len(args) == 2:
+                            min_val, max_val = args
+                        elif len(args) == 1:
+                            min_val = args[0]
+
                 row = self._create_parameter_row(
-                    name, key, default, type_, min_, max_, step
+                    name, key, default, type_, min_val, max_val, step
                 )
                 params_layout.addRow(name + ":", row)
                 if key in self.parameter_rows:
@@ -1718,7 +1880,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
         except Exception as e:
             self.logger.error(
-                f"Błąd podczas tworzenia zakładki: {str(e)}", exc_info=True
+                f"Błąd podczas tworzenia zakładki optymalizacji: {e!s}", exc_info=True
             )
             raise
 
@@ -1764,6 +1926,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             "epochs": "max_epochs",
             "num_workers": "recommended_workers",
             "use_mixed_precision": "use_mixed_precision",
+            "memory_efficient": "memory_efficient",
         }.get(param_key, param_key)
         # Pobierz wartość z profilu sprzętowego lub wyświetl "Brak"
         hw_value_actual = self.hardware_profile.get(profile_key)
@@ -1852,6 +2015,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 "batch_size": "recommended_batch_size",
                 "num_workers": "recommended_workers",
                 "use_mixed_precision": "use_mixed_precision",
+                "memory_efficient": "memory_efficient",
             }.get(param_key, param_key)
             if profile_key in self.hardware_profile:
                 # Wymuś ustawienie checkboxa profilu sprzętowego (to wywoła _on_hw_toggle)
@@ -1974,9 +2138,12 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                     "use": self.autoaugment_check.isChecked(),
                     "policy": self.autoaugment_policy_combo.currentText(),
                 },
-                "trivialaugment": {
-                    "use": self.trivialaugment_check.isChecked(),
+                "randaugment": {
+                    "use": self.randaugment_check.isChecked(),
+                    "n": self.randaugment_n_spin.value(),
+                    "m": self.randaugment_m_spin.value(),
                 },
+                "trivialaugment": {"use": self.trivialaugment_check.isChecked()},
                 "random_erase": {
                     "use": self.random_erase_check.isChecked(),
                     "probability": self.random_erase_prob_spin.value(),
@@ -1984,7 +2151,17 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                         self.random_erase_scale_min_spin.value(),
                         self.random_erase_scale_max_spin.value(),
                     ],
+                    "ratio": [
+                        self.random_erase_ratio_min_spin.value(),
+                        self.random_erase_ratio_max_spin.value(),
+                    ],
                 },
+                "grid_distortion": {
+                    "enabled": self.grid_distortion_check.isChecked(),
+                    "probability": self.grid_distortion_prob_spin.value(),
+                    "distort_limit": self.grid_distortion_limit_spin.value(),
+                },
+                "resize": {"enabled": self.resize_check.isChecked()},
             }
 
             # Pobranie konfiguracji optymalizacyjnej
