@@ -1,0 +1,95 @@
+{
+    "name": "EfficientNet-B2_32_32_8",
+    "type": "training",
+    "status": "Nowy",
+    "priority": 0,
+    "created_at": "2025-05-15 12:10:07",
+    "config": {
+        "train_dir": "F:/_set_DATA_B2/train",
+        "data_dir": "F:/_set_DATA_B2/train",
+        "val_dir": "F:/_set_DATA_B2/valid",
+        "model": {
+            "architecture": "EfficientNet",
+            "variant": "EfficientNet-B2",
+            "input_size": 260,
+            "num_classes": 32
+        },
+        "training": {
+            "epochs": 120,
+            "batch_size": 32,
+            "learning_rate": 0.0002,
+            "optimizer": "AdamW",
+            "scheduler": "CosineAnnealingWarmRestarts",
+            "num_workers": 8,
+            "warmup_epochs": 8,
+            "mixed_precision": true,
+            "freeze_base_model": true,
+            "unfreeze_layers": "all",
+            "unfreeze_strategy": "unfreeze_all",
+            "gradient_accumulation_steps": 1
+        },
+        "regularization": {
+            "weight_decay": 0.0001,
+            "gradient_clip": 1.0,
+            "label_smoothing": 0.1,
+            "drop_connect_rate": 0.15,
+            "dropout_rate": 0.3,
+            "momentum": 0.9,
+            "epsilon": 1e-06,
+            "swa": {
+                "use": true,
+                "start_epoch": 90
+            }
+        },
+        "augmentation": {
+            "basic": {
+                "use": true,
+                "rotation": 20,
+                "brightness": 0.25,
+                "shift": 0.1,
+                "zoom": 0.2,
+                "horizontal_flip": true,
+                "vertical_flip": false
+            },
+            "mixup": {
+                "use": true,
+                "alpha": 0.25
+            },
+            "cutmix": {
+                "use": true,
+                "alpha": 1.0
+            }
+        },
+        "optimization": {
+            "batch_size": 32,
+            "num_workers": 8,
+            "use_mixed_precision": true
+        },
+        "monitoring": {
+            "metrics": {
+                "accuracy": true,
+                "precision": true,
+                "recall": true,
+                "f1": true,
+                "topk": true,
+                "confusion_matrix": true
+            },
+            "early_stopping": {
+                "enabled": true,
+                "patience": 20,
+                "min_delta": 0.0001,
+                "monitor": "val_loss"
+            },
+            "checkpointing": {
+                "best_only": true,
+                "save_frequency": 1,
+                "metric": "val_loss"
+            }
+        },
+        "preprocessing": {
+            "normalization": "RGB",
+            "resize_mode": "bilinear",
+            "cache_dataset": false
+        }
+    }
+}

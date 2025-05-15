@@ -1,5 +1,5 @@
 {
-  "name": "EfficientNet-B2_32_32_8",
+  "name": "EfficientNet-B2_32_64_10",
   "type": "training",
   "status": "Nowy",
   "priority": 0,
@@ -16,11 +16,11 @@
     },
     "training": {
       "epochs": 120,
-      "batch_size": 32,
+      "batch_size": 64,
       "learning_rate": 0.0002,
       "optimizer": "AdamW",
       "scheduler": "CosineAnnealingWarmRestarts",
-      "num_workers": 8,
+      "num_workers": 10,
       "warmup_epochs": 8,
       "mixed_precision": true,
       "freeze_base_model": true,
@@ -61,8 +61,8 @@
       }
     },
     "optimization": {
-      "batch_size": 32,
-      "num_workers": 8,
+      "batch_size": 64,
+      "num_workers": 10,
       "use_mixed_precision": true
     },
     "monitoring": {
