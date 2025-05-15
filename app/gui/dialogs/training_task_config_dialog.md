@@ -90,7 +90,7 @@
 - **Opis**: Czy używać wstępnie wytrenowanych wag
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik (toggle)
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -99,7 +99,7 @@
 - **Opis**: Źródło wag pretrenowanych
 - **Wartości**: "imagenet" lub inne
 - **Kontrolka UI**: Dropdown
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -108,7 +108,7 @@
 - **Opis**: Czy używać modelu tylko do ekstrakcji cech
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -117,7 +117,7 @@
 - **Opis**: Funkcja aktywacji w modelu
 - **Wartości**: "swish", "relu", "sigmoid", itp.
 - **Kontrolka UI**: Dropdown
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -126,7 +126,7 @@
 - **Opis**: Czy używać dropoutu podczas inferencji
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -135,7 +135,7 @@
 - **Opis**: Typ global pooling
 - **Wartości**: "avg", "max"
 - **Kontrolka UI**: Dropdown
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -144,8 +144,8 @@
 - **Opis**: Aktywacja ostatniej warstwy
 - **Wartości**: "softmax", "sigmoid", "none"
 - **Kontrolka UI**: Dropdown
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Kontrolka UI: Istnieje (self.last_layer_activation_combo), ale jest w zakładce "Dane i Model", podczas gdy plik .md sugeruje "Parametry Treningu".
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ## Parametry treningu (training)
@@ -200,7 +200,7 @@
 - **Opis**: Parametr T_0 dla CosineAnnealingWarmRestarts
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -209,7 +209,7 @@
 - **Opis**: Parametr T_mult dla CosineAnnealingWarmRestarts
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -218,7 +218,7 @@
 - **Opis**: Minimalna wartość learning rate
 - **Wartości**: Liczba zmiennoprzecinkowa (bliska 0)
 - **Kontrolka UI**: Pole numeryczne
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -245,7 +245,7 @@
 - **Opis**: Początkowy learning rate dla rozgrzewki
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Pole numeryczne
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -281,7 +281,7 @@
 - **Opis**: Częstotliwość ewaluacji (co ile epok)
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -290,7 +290,7 @@
 - **Opis**: Czy używać Exponential Moving Average
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -299,7 +299,7 @@
 - **Opis**: Współczynnik EMA decay
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x < 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
@@ -335,8 +335,8 @@
 - **Opis**: Po ilu epokach odmrozić warstwy
 - **Wartości**: Liczba całkowita (≥0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Odczytuje wartość, ale używa bezpośredniego dostępu training_config["unfreeze_after_epochs"] co może prowadzić do błędu, jeśli klucz nie istnieje. Zalecane użycie .get(). Kontrolka UI: Istnieje (self.unfreeze_after_epochs_spin), ale znajduje się w zakładce "Zaawansowane", a nie "Parametry Treningu" jak w .md.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### frozen_lr
@@ -344,8 +344,8 @@
 - **Opis**: Learning rate dla zamrożonych warstw
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Pole numeryczne
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Problem: Istnieją dwie kontrolki UI o tej samej nazwie self.frozen_lr_spin (jedna w zakładce "Parametry Treningu", druga w "Zaawansowane"). Metoda \_apply_profile próbuje ustawić wartość dla obu, a \_on_accept odczytuje wartość z kontrolki z zakładki "Zaawansowane". Powoduje to niespójność i potencjalne błędy. Należy ujednolicić do jednej kontrolki i poprawić logikę.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### unfrozen_lr
@@ -353,8 +353,8 @@
 - **Opis**: Learning rate dla odmrożonych warstw
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Pole numeryczne
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Problem: Analogiczna sytuacja jak z frozen_lr. Dwie kontrolki self.unfrozen_lr_spin w różnych zakładkach.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ### validation_split
@@ -362,8 +362,8 @@
 - **Opis**: Część danych do walidacji
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x < 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Problem: Brak implementacji wczytywania z profilu, brak kontrolki UI, brak zapisu do zadania.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Parametry Treningu
 
 ## Parametry regularyzacji (regularization)
@@ -427,8 +427,8 @@
 - **Opis**: Czy używać stochastic depth
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Wartość jest odczytywana z config["regularization"] ale nie jest przypisywana do kontrolki UI self.use_stoch_depth_check w metodzie \_apply_profile.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Regularyzacja
 
 ### stochastic_depth.survival_probability
@@ -436,8 +436,8 @@
 - **Opis**: Prawdopodobieństwo przetrwania dla stochastic depth
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x ≤ 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Wartość jest odczytywana, ale nie przypisywana do kontrolki UI self.stoch_depth_survival_prob.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Regularyzacja
 
 ### swa.use
@@ -463,8 +463,8 @@
 - **Opis**: Learning rate dla SWA
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Pole numeryczne
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Wartość jest odczytywana, ale nie przypisywana do kontrolki UI self.swa_lr_spin.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Regularyzacja
 
 ## Parametry augmentacji danych (augmentation)
@@ -501,7 +501,7 @@
 - **Opis**: Zakres zmiany kontrastu
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
@@ -510,7 +510,7 @@
 - **Opis**: Zakres zmiany nasycenia
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
@@ -519,7 +519,7 @@
 - **Opis**: Zakres zmiany odcienia
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
@@ -528,7 +528,7 @@
 - **Opis**: Maksymalne przesunięcie (piksele lub %)
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
@@ -537,7 +537,7 @@
 - **Opis**: Zakres powiększenia/zmniejszenia
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
@@ -546,7 +546,7 @@
 - **Opis**: Czy stosować odbicia poziome
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
@@ -555,7 +555,7 @@
 - **Opis**: Czy stosować odbicia pionowe
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
@@ -564,7 +564,7 @@
 - **Opis**: Czy używać augmentacji Mixup
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
@@ -573,7 +573,7 @@
 - **Opis**: Parametr alpha dla Mixup
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
@@ -582,7 +582,7 @@
 - **Opis**: Czy używać augmentacji CutMix
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
@@ -591,7 +591,7 @@
 - **Opis**: Parametr alpha dla CutMix
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
+- **Status**: ✅ Zaimplementowane
 - **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
@@ -609,8 +609,8 @@
 - **Opis**: Polityka AutoAugment
 - **Wartości**: "imagenet", "cifar", "svhn"
 - **Kontrolka UI**: Dropdown
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.autoaugment_policy_combo w \_apply_profile.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### randaugment.use
@@ -618,8 +618,8 @@
 - **Opis**: Czy używać RandAugment
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.randaugment_check.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### randaugment.n
@@ -627,8 +627,8 @@
 - **Opis**: Liczba operacji RandAugment
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.randaugment_n_spin.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### randaugment.m
@@ -636,8 +636,8 @@
 - **Opis**: Intensywność operacji RandAugment
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.randaugment_m_spin.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### trivialaugment.use
@@ -645,8 +645,8 @@
 - **Opis**: Czy używać TrivialAugment
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.trivialaugment_check.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### random_erase.use
@@ -654,8 +654,8 @@
 - **Opis**: Czy używać Random Erase
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_check.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### random_erase.probability
@@ -663,8 +663,8 @@
 - **Opis**: Prawdopodobieństwo Random Erase
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x ≤ 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_prob_spin.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### random_erase.scale
@@ -672,8 +672,8 @@
 - **Opis**: Zakres skali dla Random Erase
 - **Wartości**: [min, max] gdzie min, max to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Podwójny slider (range slider)
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_scale_min_spin i self.random_erase_scale_max_spin.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### random_erase.ratio
@@ -681,8 +681,8 @@
 - **Opis**: Zakres proporcji dla Random Erase
 - **Wartości**: [min, max] gdzie min, max to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Podwójny slider (range slider)
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.random_erase_ratio_min_spin i self.random_erase_ratio_max_spin.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### grid_distortion.enabled
@@ -690,8 +690,8 @@
 - **Opis**: Czy używać zniekształcenia siatki
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.grid_distortion_check.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### grid_distortion.probability
@@ -699,8 +699,8 @@
 - **Opis**: Prawdopodobieństwo zniekształcenia siatki
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x ≤ 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.grid_distortion_prob_spin.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ### grid_distortion.distort_limit
@@ -708,8 +708,8 @@
 - **Opis**: Limit zniekształcenia siatki
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości do self.grid_distortion_limit_spin.
+- **Status**: ✅ Zaimplementowane
+- **Do zrobienia**: Brak uwag
 - **Zakładka**: Augmentacja
 
 ## Parametry przetwarzania wstępnego (preprocessing)

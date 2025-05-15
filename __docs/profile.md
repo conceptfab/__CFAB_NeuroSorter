@@ -5,3 +5,7 @@
 
 
  @training_task_config_dialog.md zacznij po kolei analizować rzeczy do zrobienia i wprowadzaj poprawki, po wprowadzeniu poprawki daj mi znac - zrobie test, potem zmienisz info Do zrobienia
+
+
+
+@training_task_config_dialog.py przeanalizuj @training_task_config_dialog.md i jesli dany parametr spełnia to kryterium i jesli dany parametr spełnia to kryterium: wczytywanie z profilu -> ręczne dostrojenie przez UI /sprawdzenie kontrolki UI -> walidacja i zapisanie do zadania zmien - **Do zrobienia**: na Brak uwag
