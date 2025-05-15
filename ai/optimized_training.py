@@ -79,6 +79,7 @@ def train_model_optimized(
     gradient_clip=None,
     use_swa=False,
     swa_start_epoch=90,
+    cutmix=None,
 ):
     """
     Trenuje model na podanym zbiorze danych z wykorzystaniem optymalnych parametrów sprzętowych.
@@ -182,6 +183,10 @@ def train_model_optimized(
         input_size = model.input_size
     elif input_size is None:
         input_size = (224, 224)  # Domyślny rozmiar
+    else:
+        # Konwersja liczby pojedynczej na krotkę
+        if isinstance(input_size, int):
+            input_size = (input_size, input_size)
 
     # Przygotuj dane treningowe
     train_transform = None
@@ -316,6 +321,26 @@ def train_model_optimized(
         train_total = 0
         batch_count = 0
 
+        # Obsługa mixup i cutmix z pliku konfiguracyjnego
+        y_a_mixup, y_b_mixup, lam_mixup = None, None, 1.0
+        use_mixup_curr = False
+        use_cutmix_curr = False
+
+        # Sprawdź, czy mixup i cutmix są włączone, i pobierz ich parametry
+        if isinstance(mixup, dict):
+            use_mixup_curr = mixup.get("use", False) and epoch >= warmup_epochs
+            mixup_alpha = mixup.get("alpha", 0.2)
+        else:
+            use_mixup_curr = bool(mixup) and epoch >= warmup_epochs
+            mixup_alpha = 0.2
+
+        if isinstance(cutmix, dict):
+            use_cutmix_curr = cutmix.get("use", False) and epoch >= warmup_epochs
+            cutmix_alpha = cutmix.get("alpha", 1.0)
+        else:
+            use_cutmix_curr = bool(cutmix) and epoch >= warmup_epochs
+            cutmix_alpha = 1.0
+
         # Trening na batchu
         try:
             # print(f"DEBUG optimized_training: Rozpoczynam pętlę po batchach. Liczba batchy (len(train_loader)): {len(train_loader)}")
@@ -379,6 +404,37 @@ def train_model_optimized(
                 # print(f"Dokładność: {batch_acc:.4f}")
                 # print(f"DEBUG Batch {batch_idx + 1}: Zakończono przetwarzanie.")
 
+                # Aplikowanie technik augmentacji
+                if use_mixup_curr and not use_cutmix_curr:
+                    # Tylko mixup
+                    mixed_inputs, y_a_mixup, y_b_mixup, lam_mixup = mixup_data(
+                        inputs, targets, alpha=mixup_alpha, device=device
+                    )
+                    inputs = mixed_inputs
+                elif use_cutmix_curr and not use_mixup_curr:
+                    # Tylko cutmix - dodać implementację
+                    # mixed_inputs, y_a_cutmix, y_b_cutmix, lam_cutmix = cutmix_data(
+                    #     inputs, targets, alpha=cutmix_alpha, device=device
+                    # )
+                    # inputs = mixed_inputs
+                    # y_a_mixup, y_b_mixup, lam_mixup = y_a_cutmix, y_b_cutmix, lam_cutmix
+                    pass
+                elif use_mixup_curr and use_cutmix_curr:
+                    # Losowo wybierz jedną z technik
+                    if torch.rand(1).item() > 0.5:
+                        # Mixup
+                        mixed_inputs, y_a_mixup, y_b_mixup, lam_mixup = mixup_data(
+                            inputs, targets, alpha=mixup_alpha, device=device
+                        )
+                    else:
+                        # Cutmix - dodać implementację
+                        # mixed_inputs, y_a_cutmix, y_b_cutmix, lam_cutmix = cutmix_data(
+                        #     inputs, targets, alpha=cutmix_alpha, device=device
+                        # )
+                        # y_a_mixup, y_b_mixup, lam_mixup = y_a_cutmix, y_b_cutmix, lam_cutmix
+                        pass
+                    inputs = mixed_inputs
+
             # Koniec pętli po batchach
             # print(f"DEBUG optimized_training: Pętla po batchach dla epoki {epoch + 1} zakończona normalnie.")
 
@@ -441,10 +497,18 @@ def train_model_optimized(
             y_prob = np.array(all_probs)
             try:
                 val_precision = precision_score(
-                    y_true, y_pred, average="macro", zero_division=0
+                    y_true,
+                    y_pred,
+                    average="macro",
+                    zero_division=0,
+                    labels=np.unique(y_true),
                 )
                 val_recall = recall_score(
-                    y_true, y_pred, average="macro", zero_division=0
+                    y_true,
+                    y_pred,
+                    average="macro",
+                    zero_division=0,
+                    labels=np.unique(y_true),
                 )
                 val_f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
             except Exception:
@@ -794,3 +858,31 @@ def ewc_loss(model, old_model, fisher_diag, importance=1000.0):
     ):
         loss += (fisher * (param - param_old).pow(2)).sum() * importance
     return loss
+
+
+def evaluate_model(model, dataloader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    running_corrects = 0
+    all_preds = []
+    all_targets = []
+    all_probs = []
+
+    with torch.no_grad():
+        for inputs, targets in dataloader:
+            inputs, targets = inputs.to(device), targets.to(device)
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+
+            running_loss += loss.item() * inputs.size(0)
+            _, preds = torch.max(outputs, 1)
+            running_corrects += torch.sum(preds == targets.data)
+
+            all_preds.extend(preds.cpu().numpy())
+            all_targets.extend(targets.cpu().numpy())
+            all_probs.extend(torch.softmax(outputs, dim=1).cpu().numpy())
+
+    epoch_loss = running_loss / len(dataloader.dataset)
+    epoch_acc = running_corrects.double() / len(dataloader.dataset)
+
+    return epoch_loss, epoch_acc, all_preds, all_targets, all_probs

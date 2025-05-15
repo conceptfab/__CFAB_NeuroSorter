@@ -53,35 +53,35 @@ def get_model(
         # EfficientNet
         "b0": lambda: models.efficientnet_b0(
             weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1,
-            dropout=drop_connect_rate,
+            dropout=dropout_rate,
         ),
         "b1": lambda: models.efficientnet_b1(
             weights=models.EfficientNet_B1_Weights.IMAGENET1K_V1,
-            dropout=drop_connect_rate,
+            dropout=dropout_rate,
         ),
         "b2": lambda: models.efficientnet_b2(
             weights=models.EfficientNet_B2_Weights.IMAGENET1K_V1,
-            dropout=drop_connect_rate,
+            dropout=dropout_rate,
         ),
         "b3": lambda: models.efficientnet_b3(
             weights=models.EfficientNet_B3_Weights.IMAGENET1K_V1,
-            dropout=drop_connect_rate,
+            dropout=dropout_rate,
         ),
         "b4": lambda: models.efficientnet_b4(
             weights=models.EfficientNet_B4_Weights.IMAGENET1K_V1,
-            dropout=drop_connect_rate,
+            dropout=dropout_rate,
         ),
         "b5": lambda: models.efficientnet_b5(
             weights=models.EfficientNet_B5_Weights.IMAGENET1K_V1,
-            dropout=drop_connect_rate,
+            dropout=dropout_rate,
         ),
         "b6": lambda: models.efficientnet_b6(
             weights=models.EfficientNet_B6_Weights.IMAGENET1K_V1,
-            dropout=drop_connect_rate,
+            dropout=dropout_rate,
         ),
         "b7": lambda: models.efficientnet_b7(
             weights=models.EfficientNet_B7_Weights.IMAGENET1K_V1,
-            dropout=drop_connect_rate,
+            dropout=dropout_rate,
         ),
         # ResNet
         "18": lambda: models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1),

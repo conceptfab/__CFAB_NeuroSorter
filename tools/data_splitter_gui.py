@@ -17,6 +17,7 @@ try:
 except ImportError:
     PIL_AVAILABLE = False
 
+from button_styles import BUTTON_STYLES
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 # For ResolutionScanner's plot
@@ -177,6 +178,7 @@ class FileSplitter:
         split_value,
         use_validation=True,
         selected_categories=None,
+        move_files=False,  # Nowy parametr
     ):
         ds_logger.info("Inicjalizacja FileSplitter")
         self.input_dir = Path(input_dir)
@@ -189,8 +191,9 @@ class FileSplitter:
         self.json_report = {}
         self.min_files_in_selection_for_report = 0
         self.folders_with_min_for_report = []
+        self.move_files = move_files  # Zapisanie parametru
         ds_logger.info(
-            f"FileSplitter zainicjalizowany: tryb={split_mode}, wartość={split_value}, walidacja={use_validation}"
+            f"FileSplitter zainicjalizowany: tryb={split_mode}, wartość={split_value}, walidacja={use_validation}, przenoszenie={move_files}"
         )
 
     def get_min_files_in_selected_categories_for_processing(self):
@@ -425,15 +428,24 @@ class FileSplitter:
                     if cancel_check and cancel_check():
                         break
                     try:
-                        shutil.copy2(file_path, current_train_path / file_path.name)
+                        # Wybierz funkcję w zależności od tego, czy przenosimy czy kopiujemy
+                        file_operation = (
+                            shutil.move if self.move_files else shutil.copy2
+                        )
+                        file_operation(file_path, current_train_path / file_path.name)
                         self.stats["train"][str(relative_path)] += 1
                         self.json_report[str(relative_path)]["train"].append(
                             file_path.name
                         )
                         processed_files_count += 1
                     except Exception as e:
-                        ds_logger.error(f"Błąd kopiowania {file_path} (trening): {e}")
-                        return None, f"Błąd kopiowania {file_path} (trening): {e}"
+                        ds_logger.error(
+                            f"Błąd {'przenoszenia' if self.move_files else 'kopiowania'} {file_path} (trening): {e}"
+                        )
+                        return (
+                            None,
+                            f"Błąd {'przenoszenia' if self.move_files else 'kopiowania'} {file_path} (trening): {e}",
+                        )
                 if cancel_check and cancel_check():
                     break
 
@@ -443,7 +455,13 @@ class FileSplitter:
                         break
                     try:
                         if current_valid_path:  # Ensure path exists
-                            shutil.copy2(file_path, current_valid_path / file_path.name)
+                            # Wybierz funkcję w zależności od tego, czy przenosimy czy kopiujemy
+                            file_operation = (
+                                shutil.move if self.move_files else shutil.copy2
+                            )
+                            file_operation(
+                                file_path, current_valid_path / file_path.name
+                            )
                             if (
                                 self.use_validation
                             ):  # Double check, though num_valid > 0 implies this
@@ -453,8 +471,13 @@ class FileSplitter:
                                 )
                             processed_files_count += 1
                     except Exception as e:
-                        ds_logger.error(f"Błąd kopiowania {file_path} (walidacja): {e}")
-                        return None, f"Błąd kopiowania {file_path} (walidacja): {e}"
+                        ds_logger.error(
+                            f"Błąd {'przenoszenia' if self.move_files else 'kopiowania'} {file_path} (walidacja): {e}"
+                        )
+                        return (
+                            None,
+                            f"Błąd {'przenoszenia' if self.move_files else 'kopiowania'} {file_path} (walidacja): {e}",
+                        )
                 if cancel_check and cancel_check():
                     break
 
@@ -477,7 +500,8 @@ class FileSplitter:
             return None, str(e)
 
     def _generate_report(self):
-        report = ["=== RAPORT KOPIOWANIA ===", ""]
+        operation_type = "przenoszenia" if self.move_files else "kopiowania"
+        report = [f"=== RAPORT {operation_type.upper()} ===", ""]
         if self.split_mode == "percent":
             report.append(f"Algorytm: Podział procentowy (dla wybranych kategorii)")
             train_percent = self.split_value
@@ -541,7 +565,9 @@ class FileSplitter:
             else 0
         )
         report.append("=== PODSUMOWANIE OGÓLNE ===")
-        report.append(f"Łącznie skopiowano: {total_train + total_valid} plików")
+        report.append(
+            f"Łącznie {'przeniesiono' if self.move_files else 'skopiowano'}: {total_train + total_valid} plików"
+        )
         report.append(f"  - {TRAIN_FOLDER_NAME}: {total_train} plików")
         report.append(f"  - {VALID_FOLDER_NAME}: {total_valid} plików")
         return "\n".join(report)
@@ -560,6 +586,7 @@ class DS_Worker(QThread):  # Renamed to DS_Worker
         split_value,
         use_validation=True,
         selected_categories=None,
+        move_files=False,  # Nowy parametr
     ):
         super().__init__()
         ds_logger.info("Inicjalizacja wątku DS_Worker")
@@ -570,6 +597,7 @@ class DS_Worker(QThread):  # Renamed to DS_Worker
             split_value,
             use_validation,
             selected_categories,
+            move_files,  # Przekazanie parametru
         )
         self.is_cancelled = False
 
@@ -696,6 +724,7 @@ class DataSplitterApp(QWidget):
         self.processing_thread = None
         self.files_list = []  # Stores Path objects
         self.files_scanner_thread = None  # For QThread based file scanner
+        self.move_files = False  # Domyślnie kopiowanie plików
 
         self.threadpool = QThreadPool()
         self.log_to_main_console.emit(
@@ -893,7 +922,10 @@ class DataSplitterApp(QWidget):
         self.start_button = QPushButton("Rozpocznij kopiowanie")
         self.start_button.setProperty("action", "success")
         self.start_button.clicked.connect(self.start_processing)
-        self.empty_button = QPushButton("Przycisk")
+        self.empty_button = QPushButton("Przenieś pliki")  # Zmiana nazwy przycisku
+        self.empty_button.clicked.connect(
+            self.start_moving
+        )  # Powiązanie z nową funkcją
         self.cancel_button = QPushButton("Anuluj")
         self.cancel_button.clicked.connect(self.cancel_processing)
         self.cancel_button.setEnabled(False)
@@ -918,6 +950,15 @@ class DataSplitterApp(QWidget):
         self.setLayout(layout)
         # self.show() # Main app shows this widget
         self.update_split_mode_visibility(0)  # Initial setup based on combobox
+
+        # Style dla przycisków w DataSplitterApp
+        self.start_button.setStyleSheet(BUTTON_STYLES["success"])
+        self.empty_button.setStyleSheet(BUTTON_STYLES["warning"])
+        self.cancel_button.setStyleSheet(BUTTON_STYLES["stop"])
+        in_button.setStyleSheet(BUTTON_STYLES["default"])
+        out_button.setStyleSheet(BUTTON_STYLES["default"])
+        self.select_all_button.setStyleSheet(BUTTON_STYLES["default"])
+        self.deselect_all_button.setStyleSheet(BUTTON_STYLES["default"])
 
     def update_split_mode_visibility(self, index):
         is_percent_mode = index == 0
@@ -1340,7 +1381,7 @@ class DataSplitterApp(QWidget):
             )
             return
 
-        self.log_message(f"Wybrane kategorie: {selected_categories}")
+        self.log_message(f"Wybrane kategorie do kopiowania: {selected_categories}")
 
         input_path = Path(self.input_dir)
         output_path = Path(self.output_dir)
@@ -1364,7 +1405,6 @@ class DataSplitterApp(QWidget):
         self._set_controls_enabled(False)
         self.cancel_button.setEnabled(True)
         self.progress_bar.setValue(0)
-        # self.log_edit.clear() # Clear local log if it existed
 
         split_mode_str = "percent" if self.mode_combo.currentIndex() == 0 else "files"
         split_val = (
@@ -1378,6 +1418,7 @@ class DataSplitterApp(QWidget):
             f"Parametry: tryb={split_mode_str}, wartość={split_val}, walidacja={use_val_check}"
         )
 
+        self.move_files = False  # Ustawiamy flagę przenoszenia na False
         self.processing_thread = DS_Worker(  # Use DS_Worker
             self.input_dir,
             self.output_dir,
@@ -1385,6 +1426,7 @@ class DataSplitterApp(QWidget):
             split_val,
             use_val_check,
             selected_categories,
+            move_files=False,  # Parametr move_files=False
         )
         self.processing_thread.progress_updated.connect(self.update_progress_display)
         self.processing_thread.finished.connect(self.processing_finished_display)
@@ -1453,6 +1495,95 @@ class DataSplitterApp(QWidget):
             child_item.setCheckState(0, Qt.CheckState.Unchecked)
         # No need to call update_files_limit... here
 
+    def start_moving(self):
+        """Funkcja analogiczna do start_processing, ale przenosi pliki zamiast kopiować"""
+        self.log_message("Rozpoczynam przenoszenie plików")
+        if not self.input_dir or not Path(self.input_dir).is_dir():
+            QMessageBox.warning(
+                self, "Brak folderu", "Wybierz prawidłowy folder źródłowy."
+            )
+            return
+        if not self.output_dir:
+            QMessageBox.warning(self, "Brak folderu", "Wybierz folder docelowy.")
+            return
+
+        selected_categories = self.get_selected_categories_names()
+        if not selected_categories:
+            QMessageBox.warning(
+                self,
+                "Brak kategorii",
+                "Wybierz przynajmniej jedną kategorię do przetworzenia.",
+            )
+            return
+
+        self.log_message(f"Wybrane kategorie do przeniesienia: {selected_categories}")
+
+        input_path = Path(self.input_dir)
+        output_path = Path(self.output_dir)
+        if input_path == output_path or output_path.is_relative_to(input_path):
+            reply = QMessageBox.question(
+                self,
+                "Potwierdzenie ścieżki",
+                f"Folder docelowy ('{output_path}') jest taki sam jak źródłowy lub znajduje się wewnątrz niego. "
+                f"Spowoduje to utworzenie '{TRAIN_FOLDER_NAME}' i '{VALID_FOLDER_NAME}' w '{output_path}'.\n"
+                "Kontynuować?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.No:
+                self.log_message(
+                    "Użytkownik anulował operację ze względu na ścieżki.",
+                    level=logging.INFO,
+                )
+                return
+
+        # Dodatkowe ostrzeżenie, ponieważ przenoszenie jest operacją nieodwracalną
+        reply = QMessageBox.question(
+            self,
+            "Potwierdzenie przenoszenia",
+            "UWAGA: Przenoszenie plików jest operacją nieodwracalną i spowoduje usunięcie oryginałów."
+            "\nCzy na pewno chcesz kontynuować?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.No:
+            self.log_message(
+                "Użytkownik anulował operację przenoszenia.", level=logging.INFO
+            )
+            return
+
+        self._set_controls_enabled(False)
+        self.cancel_button.setEnabled(True)
+        self.progress_bar.setValue(0)
+
+        split_mode_str = "percent" if self.mode_combo.currentIndex() == 0 else "files"
+        split_val = (
+            self.split_slider.value()
+            if split_mode_str == "percent"
+            else self.files_spin.value()
+        )
+        use_val_check = self.validation_check.isChecked()
+
+        self.log_message(
+            f"Parametry przenoszenia: tryb={split_mode_str}, wartość={split_val}, walidacja={use_val_check}"
+        )
+
+        self.move_files = True  # Ustawiamy flagę przenoszenia na True
+        self.processing_thread = DS_Worker(  # Use DS_Worker
+            self.input_dir,
+            self.output_dir,
+            split_mode_str,
+            split_val,
+            use_val_check,
+            selected_categories,
+            move_files=True,  # Parametr move_files=True
+        )
+        self.processing_thread.progress_updated.connect(self.update_progress_display)
+        self.processing_thread.finished.connect(self.processing_finished_display)
+        self.processing_thread.error_occurred.connect(self.processing_error_display)
+        self.log_message("Uruchamiam wątek przenoszenia DataSplitter")
+        self.processing_thread.start()
+
 
 class DS_ReportDialog(QDialog):  # Renamed
     def __init__(self, report_text, parent=None):
@@ -1465,7 +1596,12 @@ class DS_ReportDialog(QDialog):  # Renamed
         if self.log_to_main_console:
             self.log_to_main_console.emit("Inicjalizacja okna raportu DataSplitter")
 
-        self.setWindowTitle("Raport kopiowania (Data Splitter)")
+        # Ustaw tytuł okna na podstawie zawartości raportu
+        if "RAPORT PRZENOSZENIA" in report_text:
+            self.setWindowTitle("Raport przenoszenia (Data Splitter)")
+        else:
+            self.setWindowTitle("Raport kopiowania (Data Splitter)")
+
         self.setMinimumSize(700, 500)  # Adjusted size
         layout = QVBoxLayout(self)
         self.text_edit = QTextEdit()
@@ -1493,6 +1629,9 @@ class DS_ReportDialog(QDialog):  # Renamed
         html = report_text.replace("\n", "<br>")
         # Basic formatting for headers
         html = html.replace("=== RAPORT KOPIOWANIA ===", "<h2>RAPORT KOPIOWANIA</h2>")
+        html = html.replace(
+            "=== RAPORT PRZENOSZENIA ===", "<h2>RAPORT PRZENOSZENIA</h2>"
+        )
         html = html.replace(
             "=== PODSUMOWANIE OGÓLNE ===", "<h2>PODSUMOWANIE OGÓLNE</h2>"
         )
@@ -1734,6 +1873,11 @@ class ScallerApp(QWidget):  # Renamed
         # layout.addWidget(self.status_text_edit)
 
         self.setLayout(layout)
+
+        # Style dla przycisków w ScallerApp
+        self.start_button.setStyleSheet(BUTTON_STYLES["success"])
+        self.stop_button.setStyleSheet(BUTTON_STYLES["stop"])
+        self.browse_button.setStyleSheet(BUTTON_STYLES["default"])
 
     def browse_folder(self):
         folder = QFileDialog.getExistingDirectory(
@@ -2104,6 +2248,11 @@ class FixPngApp(QWidget):  # Renamed
         # main_layout.addWidget(log_group)
         main_layout.addStretch()
 
+        # Style dla przycisków w FixPngApp
+        self.process_btn.setStyleSheet(BUTTON_STYLES["success"])
+        self.stop_btn_fix_png.setStyleSheet(BUTTON_STYLES["stop"])
+        self.select_folder_btn.setStyleSheet(BUTTON_STYLES["default"])
+
     def select_folder(self):
         folder_path = QFileDialog.getExistingDirectory(
             self, "Wybierz folder", self.selected_folder_fix_png or str(Path.home())
@@ -2454,6 +2603,12 @@ class ResolutionScannerWidget(QWidget):
         main_layout.addWidget(results_group)
 
         self.setLayout(main_layout)
+
+        # Style dla przycisków w ResolutionScannerWidget
+        self.start_scan_btn.setStyleSheet(BUTTON_STYLES["success"])
+        self.stop_btn_res.setStyleSheet(BUTTON_STYLES["stop"])
+        self.resize_btn.setStyleSheet(BUTTON_STYLES["warning"])
+        self.select_dir_btn.setStyleSheet(BUTTON_STYLES["default"])
 
     def select_directory(self):
         directory = QFileDialog.getExistingDirectory(
@@ -3040,6 +3195,9 @@ class CombinedApp(QMainWindow):
         console_layout_internal.addLayout(button_row_layout)
 
         parent_layout.addWidget(console_group)
+
+        # Style dla przycisku czyszczenia konsoli
+        clear_btn.setStyleSheet(BUTTON_STYLES["default"])
 
     def _append_log_to_console(self, message):
         if hasattr(self, "console_text"):

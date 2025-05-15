@@ -1,240 +1,249 @@
-Analiza konfiguracji EfficientNet z plików JSON
-Przeanalizowałem dostarczone pliki JSON oraz kod i znalazłem kilka niezgodności między konfiguracją EfficientNet w plikach JSON a jej obsługą w kodzie. Poniżej przedstawiam proponowane zmiany, aby kod poprawnie obsługiwał wszystkie ustawienia z profilu zadania.
-1. Zmiana w pliku ai/models.py
-Problem: Parametr input_size z plików JSON nie jest poprawnie przekazywany do modelu.
-python# Zmiana w funkcji get_model
+Zmiany w pliku tools/data_splitter_gui.py
+Zmiana w klasie FileSplitter
+Potrzebujemy dodać parametr move_files do klasy FileSplitter, aby określić, czy pliki mają być kopiowane czy przenoszone:
+pythonclass FileSplitter:
+    def __init__(
+        self,
+        input_dir,
+        output_dir,
+        split_mode,
+        split_value,
+        use_validation=True,
+        selected_categories=None,
+        move_files=False,  # Nowy parametr
+    ):
+        ds_logger.info("Inicjalizacja FileSplitter")
+        self.input_dir = Path(input_dir)
+        self.output_dir = Path(output_dir)
+        self.split_mode = split_mode
+        self.split_value = split_value
+        self.use_validation = use_validation
+        self.selected_categories = selected_categories if selected_categories else []
+        self.stats = {"train": {}, "valid": {}}
+        self.json_report = {}
+        self.min_files_in_selection_for_report = 0
+        self.folders_with_min_for_report = []
+        self.move_files = move_files  # Zapisanie parametru
+        ds_logger.info(
+            f"FileSplitter zainicjalizowany: tryb={split_mode}, wartość={split_value}, walidacja={use_validation}, przenoszenie={move_files}"
+        )
+Modyfikacja metody process_files w klasie FileSplitter
+Zmodyfikuj metodę process_files, aby używała shutil.move zamiast shutil.copy2 gdy self.move_files jest True:
+python# Modyfikacja w sekcji kopiowania plików treningowych - zmiana na odpowiednią funkcję
+for file_path in train_files_to_copy:
+    if cancel_check and cancel_check():
+        break
+    try:
+        # Wybierz funkcję w zależności od tego, czy przenosimy czy kopiujemy
+        file_operation = shutil.move if self.move_files else shutil.copy2
+        file_operation(file_path, current_train_path / file_path.name)
+        self.stats["train"][str(relative_path)] += 1
+        self.json_report[str(relative_path)]["train"].append(
+            file_path.name
+        )
+        processed_files_count += 1
+    except Exception as e:
+        ds_logger.error(f"Błąd {'przenoszenia' if self.move_files else 'kopiowania'} {file_path} (trening): {e}")
+        return None, f"Błąd {'przenoszenia' if self.move_files else 'kopiowania'} {file_path} (trening): {e}"
 
-def get_model(
-    model_arch: str,
-    num_classes: Optional[int] = None,
-    logger: Optional[Callable] = None,
-    drop_connect_rate: float = 0.2,
-    dropout_rate: float = 0.3,
-    input_size: Optional[Union[int, Tuple[int, int]]] = None
-) -> nn.Module:
-    # [istniejący kod]
+# Modyfikacja w sekcji kopiowania plików walidacyjnych
+for file_path in valid_files_to_copy:
+    if cancel_check and cancel_check():
+        break
+    try:
+        if current_valid_path:  # Ensure path exists
+            # Wybierz funkcję w zależności od tego, czy przenosimy czy kopiujemy
+            file_operation = shutil.move if self.move_files else shutil.copy2
+            file_operation(file_path, current_valid_path / file_path.name)
+            if (
+                self.use_validation
+            ):  # Double check, though num_valid > 0 implies this
+                self.stats["valid"][str(relative_path)] += 1
+                self.json_report[str(relative_path)]["valid"].append(
+                    file_path.name
+                )
+            processed_files_count += 1
+    except Exception as e:
+        ds_logger.error(f"Błąd {'przenoszenia' if self.move_files else 'kopiowania'} {file_path} (walidacja): {e}")
+        return None, f"Błąd {'przenoszenia' if self.move_files else 'kopiowania'} {file_path} (walidacja): {e}"
+Modyfikacja metody _generate_report w klasie FileSplitter
+Zaktualizuj metodę generowania raportu, aby uwzględniała, czy pliki były kopiowane czy przenoszone:
+pythondef _generate_report(self):
+    operation_type = "przenoszenia" if self.move_files else "kopiowania"
+    report = [f"=== RAPORT {operation_type.upper()} ===", ""]
+    # Pozostała część metody bez zmian
+    # ...
     
-    # Utwórz model
-    model = model_factories[model_arch]()
-    
-    # Dostosuj liczbę klas jeśli podano
-    if num_classes is not None:
-        # [istniejący kod dla dostosowania liczby klas]
-    
-    # Dodanie input_size jako atrybutu modelu
-    if input_size is not None:
-        if isinstance(input_size, int):
-            input_size = (input_size, input_size)
-        setattr(model, "input_size", input_size)
-    else:
-        setattr(model, "input_size", (224, 224))  # Domyślny rozmiar
+    report.append(f"Łącznie {'przeniesiono' if self.move_files else 'skopiowano'}: {total_train + total_valid} plików")
+    report.append(f"  - {TRAIN_FOLDER_NAME}: {total_train} plików")
+    report.append(f"  - {VALID_FOLDER_NAME}: {total_valid} plików")
+    return "\n".join(report)
+Modyfikacja klasy DS_Worker
+Dodajemy parametr move_files do klasy DS_Worker i przekazujemy go do klasy FileSplitter:
+pythonclass DS_Worker(QThread):  # Renamed to DS_Worker
+    progress_updated = pyqtSignal(int, str)
+    finished = pyqtSignal(str)
+    error_occurred = pyqtSignal(str)
 
-    return model
-2. Zmiana w pliku ai/classifier.py
-Problem: Funkcja train_from_json_config nie obsługuje wszystkich ustawień z pliku JSON, takich jak wielkość wsadu czy wartości parametrów regularyzacji.
-pythondef train_from_json_config(json_config_path):
-    """
-    Rozpoczyna trening na podstawie pliku JSON z konfiguracją zadania.
-    Args:
-        json_config_path: Ścieżka do pliku JSON z konfiguracją zadania
-    """
-    import json
+    def __init__(
+        self,
+        input_dir,
+        output_dir,
+        split_mode,
+        split_value,
+        use_validation=True,
+        selected_categories=None,
+        move_files=False,  # Nowy parametr
+    ):
+        super().__init__()
+        ds_logger.info("Inicjalizacja wątku DS_Worker")
+        self.splitter = FileSplitter(
+            input_dir,
+            output_dir,
+            split_mode,
+            split_value,
+            use_validation,
+            selected_categories,
+            move_files,  # Przekazanie parametru
+        )
+        self.is_cancelled = False
+Modyfikacja klasy DataSplitterApp
+Teraz zmodyfikujemy klasę DataSplitterApp, aby powiązać przycisk "Przycisk" z funkcją przenoszenia plików:
+pythondef initUI(self):
+    # ... istniejący kod ...
+    
+    control_buttons_layout = QHBoxLayout()
+    self.start_button = QPushButton("Rozpocznij kopiowanie")
+    self.start_button.setProperty("action", "success")
+    self.start_button.clicked.connect(self.start_processing)
+    self.empty_button = QPushButton("Przenieś pliki")  # Zmiana nazwy przycisku
+    self.empty_button.clicked.connect(self.start_moving)  # Powiązanie z nową funkcją
+    self.cancel_button = QPushButton("Anuluj")
+    self.cancel_button.clicked.connect(self.cancel_processing)
+    self.cancel_button.setEnabled(False)
+    control_buttons_layout.addWidget(self.start_button)
+    control_buttons_layout.addWidget(self.empty_button)
+    control_buttons_layout.addWidget(self.cancel_button)
+    layout.addLayout(control_buttons_layout)  # Add QHBoxLayout directly
+    
+    # ... pozostały kod ...
+Dodanie nowej metody start_moving do klasy DataSplitterApp
+Dodajemy nową metodę do klasy DataSplitterApp, która będzie analogiczna do start_processing, ale z parametrem move_files=True:
+pythondef start_moving(self):
+    """Funkcja analogiczna do start_processing, ale przenosi pliki zamiast kopiować"""
+    self.log_message("Rozpoczynam przenoszenie plików")
+    if not self.input_dir or not Path(self.input_dir).is_dir():
+        QMessageBox.warning(
+            self, "Brak folderu", "Wybierz prawidłowy folder źródłowy."
+        )
+        return
+    if not self.output_dir:
+        QMessageBox.warning(self, "Brak folderu", "Wybierz folder docelowy.")
+        return
 
-    from ai.models import get_model
-    from ai.optimized_training import train_model_optimized
+    selected_categories = self.get_selected_categories_names()
+    if not selected_categories:
+        QMessageBox.warning(
+            self,
+            "Brak kategorii",
+            "Wybierz przynajmniej jedną kategorię do przetworzenia.",
+        )
+        return
 
-    with open(json_config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
-    
-    # Wyodrębnij parametry z JSON
-    training_config = config.get("config", {})
-    model_config = training_config.get("model", {})
-    training_params = training_config.get("training", {})
-    regularization_params = training_config.get("regularization", {})
-    augmentation_params = training_config.get("augmentation", {})
-    optimization_params = training_config.get("optimization", {})
-    monitoring_params = training_config.get("monitoring", {})
-    
-    # Pobierz input_size
-    input_size = model_config.get("input_size", 224)
-    if isinstance(input_size, int):
-        input_size = (input_size, input_size)
-    
-    # Inne parametry modelu
-    architecture = model_config.get("architecture", "EfficientNet")
-    variant = model_config.get("variant", "EfficientNet-B0")
-    num_classes = model_config.get("num_classes", 10)
-    
-    # Parametry treningu
-    epochs = training_params.get("epochs", 120)
-    batch_size = training_params.get("batch_size", 32)
-    learning_rate = training_params.get("learning_rate", 0.0001)
-    optimizer = training_params.get("optimizer", "AdamW")
-    scheduler = training_params.get("scheduler", "CosineAnnealingWarmRestarts")
-    mixed_precision = training_params.get("mixed_precision", True)
-    freeze_base_model = training_params.get("freeze_base_model", False)
-    warmup_epochs = training_params.get("warmup_epochs", 5)
-    
-    # Parametry regularyzacji
-    weight_decay = regularization_params.get("weight_decay", 0.0001)
-    gradient_clip = regularization_params.get("gradient_clip", 1.0)
-    label_smoothing = regularization_params.get("label_smoothing", 0.1)
-    dropout_rate = regularization_params.get("dropout_rate", 0.4)
-    
-    # Parametry monitorowania
-    early_stopping = monitoring_params.get("early_stopping", {})
-    early_stopping_patience = early_stopping.get("patience", 20) if early_stopping.get("enabled", True) else 0
-    
-    # Tworzenie modelu z odpowiednim input_size i dropout_rate
-    model = get_model(
-        model_arch=variant.replace("EfficientNet-", "").lower(),
-        num_classes=num_classes,
-        input_size=input_size,
-        dropout_rate=dropout_rate
+    self.log_message(f"Wybrane kategorie do przeniesienia: {selected_categories}")
+
+    input_path = Path(self.input_dir)
+    output_path = Path(self.output_dir)
+    if input_path == output_path or output_path.is_relative_to(input_path):
+        reply = QMessageBox.question(
+            self,
+            "Potwierdzenie ścieżki",
+            f"Folder docelowy ('{output_path}') jest taki sam jak źródłowy lub znajduje się wewnątrz niego. "
+            f"Spowoduje to utworzenie '{TRAIN_FOLDER_NAME}' i '{VALID_FOLDER_NAME}' w '{output_path}'.\n"
+            "Kontynuować?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.No:
+            self.log_message(
+                "Użytkownik anulował operację ze względu na ścieżki.",
+                level=logging.INFO,
+            )
+            return
+
+    # Dodatkowe ostrzeżenie, ponieważ przenoszenie jest operacją nieodwracalną
+    reply = QMessageBox.question(
+        self,
+        "Potwierdzenie przenoszenia",
+        "UWAGA: Przenoszenie plików jest operacją nieodwracalną i spowoduje usunięcie oryginałów."
+        "\nCzy na pewno chcesz kontynuować?",
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        QMessageBox.StandardButton.No,
     )
-    
-    # Przekaż wszystkie istotne parametry do funkcji trenującej
-    result = train_model_optimized(
-        model=model,
-        train_dir=training_config.get("train_dir"),
-        val_dir=training_config.get("val_dir"),
-        input_size=input_size,
-        num_epochs=epochs,
-        batch_size=batch_size,
-        learning_rate=learning_rate,
-        optimizer_type=optimizer.lower(),
-        lr_scheduler_type=scheduler.lower().replace("cosineannealingwarmrestarts", "cosine"),
-        label_smoothing=label_smoothing,
-        weight_decay=weight_decay,
-        use_mixed_precision=mixed_precision,
-        freeze_backbone=freeze_base_model,
-        early_stopping_patience=early_stopping_patience,
-        warmup_epochs=warmup_epochs,
-        augmentation_params=augmentation_params.get("basic", {}) if augmentation_params else None
+    if reply == QMessageBox.StandardButton.No:
+        self.log_message("Użytkownik anulował operację przenoszenia.", level=logging.INFO)
+        return
+
+    self._set_controls_enabled(False)
+    self.cancel_button.setEnabled(True)
+    self.progress_bar.setValue(0)
+
+    split_mode_str = "percent" if self.mode_combo.currentIndex() == 0 else "files"
+    split_val = (
+        self.split_slider.value()
+        if split_mode_str == "percent"
+        else self.files_spin.value()
     )
-    
-    return result
-3. Zmiana w pliku ai/optimized_training.py
-Problem: Funkcja train_model_optimized nie obsługuje pełnego zakresu parametrów konfiguracyjnych z pliku JSON.
-pythondef train_model_optimized(
-    model,
-    train_dir,
-    val_dir=None,
-    num_epochs=10,
-    batch_size=None,
-    learning_rate=0.001,
-    device=None,
-    progress_callback=None,
-    freeze_backbone=False,
-    lr_scheduler_type="plateau",
-    early_stopping=True,
-    mixup=True,
-    label_smoothing=0.1,
-    weight_decay=0.03,
-    optimizer_type="adamw",
-    profiler=None,
-    augmentation_mode="extended",
-    augmentation_params=None,
-    should_stop_callback=None,
-    use_cross_validation=False,
-    k_folds=5,
-    freeze_layers_ratio=0.7,
-    model_log_path=None,
-    model_source_info=None,
-    output_dir=None,
-    model_save_path=None,
-    input_size=None,
-    warmup_epochs=1,
-    gradient_clip=None,
-):
-    # [Istniejący kod]
-    
-    # Dodaj obsługę parametru gradient_clip jeśli podany
-    if gradient_clip is not None and gradient_clip > 0:
-        # Implementacja klipowania gradientu w pętli treningu
-        # np. torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clip)
-        pass
-        
-    # [Reszta istniejącego kodu]
-4. Obsługa SWA (Stochastic Weight Averaging)
-W plikach JSON istnieje konfiguracja dla SWA, ale nie znalazłem jej obsługi w kodzie. Oto propozycja implementacji:
-python# Dodaj to do pliku ai/optimized_training.py
+    use_val_check = self.validation_check.isChecked()
 
-def train_model_optimized(
-    # [pozostałe parametry]
-    use_swa=False,
-    swa_start_epoch=90,
-    # [pozostałe parametry]
-):
-    # [istniejący kod]
-    
-    # Konfiguracja SWA
-    swa_model = None
-    swa_scheduler = None
-    if use_swa and torch.cuda.is_available():
-        from torch.optim.swa_utils import AveragedModel, SWALR
-        
-        swa_model = AveragedModel(model)
-        swa_scheduler = SWALR(optimizer, 
-                              anneal_strategy="cos", 
-                              anneal_epochs=5, 
-                              swa_lr=learning_rate/10)
-    
-    # W pętli treningu, po epoce:
-    if use_swa and epoch >= swa_start_epoch:
-        swa_model.update_parameters(model)
-        swa_scheduler.step()
-    
-    # Po zakończeniu treningu:
-    if use_swa:
-        # Aktualizacja statystyk batch norm
-        torch.optim.swa_utils.update_bn(train_loader, swa_model)
-        # Zapisz model SWA zamiast zwykłego
-        model = swa_model
-        
-    # [pozostały kod]
-5. Obsługa parametrów mixup i cutmix
-W pliku JSON są też konfiguracje dla mixup i cutmix, które powinny być lepiej obsługiwane:
-python# Dodaj to do pliku ai/optimized_training.py lub zaktualizuj istniejący kod
+    self.log_message(
+        f"Parametry przenoszenia: tryb={split_mode_str}, wartość={split_val}, walidacja={use_val_check}"
+    )
 
-def train_model_optimized(
-    # [pozostałe parametry]
-    mixup_config=None,
-    cutmix_config=None,
-    # [pozostałe parametry]
-):
-    # Zamiast prostego flagu mixup=True, obsługa pełnej konfiguracji
-    use_mixup = False
-    mixup_alpha = 0.2
-    if mixup_config and mixup_config.get("use", False):
-        use_mixup = True
-        mixup_alpha = mixup_config.get("alpha", 0.2)
-    
-    use_cutmix = False
-    cutmix_alpha = 1.0
-    if cutmix_config and cutmix_config.get("use", False):
-        use_cutmix = True
-        cutmix_alpha = cutmix_config.get("alpha", 1.0)
-    
-    # W pętli treningu, przed forward passem:
-    if use_mixup and np.random.random() < 0.5:  # 50% szansy na mixup
-        inputs, targets_a, targets_b, lam = mixup_data(inputs, targets, mixup_alpha, device)
-        outputs = model(inputs)
-        loss = mixup_criterion(criterion, outputs, targets_a, targets_b, lam)
-    elif use_cutmix and np.random.random() < 0.5:  # 50% szansy na cutmix
-        inputs, targets_a, targets_b, lam = cutmix_data(inputs, targets, cutmix_alpha, device)
-        outputs = model(inputs)
-        loss = mixup_criterion(criterion, outputs, targets_a, targets_b, lam)
-    else:
-        # Standardowy forward pass
-        outputs = model(inputs)
-        loss = criterion(outputs, targets)
-Podsumowanie niezbędnych zmian:
+    self.processing_thread = DS_Worker(  # Use DS_Worker
+        self.input_dir,
+        self.output_dir,
+        split_mode_str,
+        split_val,
+        use_val_check,
+        selected_categories,
+        move_files=True,  # Parametr move_files=True
+    )
+    self.processing_thread.progress_updated.connect(self.update_progress_display)
+    self.processing_thread.finished.connect(self.processing_finished_display)
+    self.processing_thread.error_occurred.connect(self.processing_error_display)
+    self.log_message("Uruchamiam wątek przenoszenia DataSplitter")
+    self.processing_thread.start()
+Zmiana klasy DS_ReportDialog
+Zaktualizujmy też tytuł okna raportu, aby uwzględniał, czy pliki były kopiowane czy przenoszone:
+pythonclass DS_ReportDialog(QDialog):  # Renamed
+    def __init__(self, report_text, parent=None):
+        super().__init__(parent)
+        self.log_to_main_console = (
+            parent.log_to_main_console
+            if hasattr(parent, "log_to_main_console")
+            else None
+        )
+        if self.log_to_main_console:
+            self.log_to_main_console.emit("Inicjalizacja okna raportu DataSplitter")
 
-Poprawna obsługa parametru input_size w get_model
-Kompleksowa obsługa wszystkich parametrów JSON w train_from_json_config
-Dodanie obsługi gradient_clip w głównej pętli treningu
-Implementacja Stochastic Weight Averaging (SWA)
-Lepsza obsługa konfiguracji mixup i cutmix
-
-Te zmiany zapewnią, że kod poprawnie obsłuży wszystkie ustawienia z profilu zadania zawarte w plikach JSON.
+        # Ustaw tytuł okna na podstawie zawartości raportu
+        if "RAPORT PRZENOSZENIA" in report_text:
+            self.setWindowTitle("Raport przenoszenia (Data Splitter)")
+        else:
+            self.setWindowTitle("Raport kopiowania (Data Splitter)")
+            
+        self.setMinimumSize(700, 500)  # Adjusted size
+        # ... reszta metody bez zmian
+Zmiana metody _format_report_to_html w klasie DS_ReportDialog
+pythondef _format_report_to_html(self, report_text):
+    html = report_text.replace("\n", "<br>")
+    # Basic formatting for headers
+    html = html.replace("=== RAPORT KOPIOWANIA ===", "<h2>RAPORT KOPIOWANIA</h2>")
+    html = html.replace("=== RAPORT PRZENOSZENIA ===", "<h2>RAPORT PRZENOSZENIA</h2>")
+    html = html.replace(
+        "=== PODSUMOWANIE OGÓLNE ===", "<h2>PODSUMOWANIE OGÓLNE</h2>"
+    )
+    # Highlight folder names or key stats if needed, e.g. by wrapping with <strong>
+    return f"<body style='color:{DS_TEXT_COLOR}; background-color:{DS_BACKGROUND};'>{html}</body>"
+To są wszystkie niezbędne zmiany, które należy wprowadzić w pliku tools/data_splitter_gui.py, aby dodać funkcjonalność przenoszenia plików do przycisku wcześniej opisanego jako "Przycisk".

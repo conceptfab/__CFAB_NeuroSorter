@@ -441,33 +441,56 @@ class ModelManager(QWidget, TabInterface):
                 return
 
             self.parent.logger.info(f"Ładowanie modelu z: {model_path}")
-            # Zakładamy, że self.parent ma atrybut classifier
+
+            # Dodane: Zwolnienie zasobów poprzedniego modelu przed załadowaniem nowego
             if (
                 hasattr(self.parent, "classifier")
                 and self.parent.classifier is not None
             ):
                 try:
-                    # Jeśli ImageClassifier ma metodę load_weights
-                    # (co jest typowe, ale zależy od implementacji)
-                    self.parent.classifier._load_weights(
-                        model_path
-                    )  # Użyj _load_weights
+                    self.parent.logger.info("Zwalnianie zasobów poprzedniego modelu...")
+                    if (
+                        hasattr(self.parent.classifier, "model")
+                        and self.parent.classifier.model is not None
+                    ):
+                        # Usunięcie modelu z GPU jeśli był tam przeniesiony
+                        self.parent.classifier.model.cpu()
+                        # Usuń referencje do modelu
+                        self.parent.classifier.model = None
+
+                    # Wywołanie garbage collectora
+                    import gc
+
+                    gc.collect()
+
+                    # Jeśli używamy PyTorch z CUDA, wyczyść również pamięć CUDA
+                    import torch
+
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+
                     self.parent.logger.info(
-                        "Załadowano wagi do istniejącego klasyfikatora dla "
-                        f"modelu: {model_name_to_load}"
+                        "Zasoby poprzedniego modelu zostały zwolnione"
                     )
-                except AttributeError:  # Jeśli nie ma _load_weights, utwórz nowy
-                    self.parent.logger.info(
-                        "Tworzenie nowego klasyfikatora dla "
-                        f"modelu: {model_name_to_load}"
+                except Exception as e_cleanup:
+                    self.parent.logger.warning(
+                        f"Błąd podczas zwalniania zasobów poprzedniego modelu: {e_cleanup}"
                     )
-                    self.parent.classifier = ImageClassifier(weights_path=model_path)
-            else:
+
+            # Tworzenie nowego klasyfikatora
+            try:
                 self.parent.logger.info(
-                    "Tworzenie nowego klasyfikatora dla "
-                    f"modelu: {model_name_to_load}"
+                    f"Tworzenie nowego klasyfikatora dla modelu: {model_name_to_load}"
                 )
                 self.parent.classifier = ImageClassifier(weights_path=model_path)
+            except Exception as e_load:
+                self.parent.logger.error(f"Błąd ładowania modelu: {e_load}")
+                QMessageBox.critical(
+                    self,
+                    "Błąd",
+                    f"Nie udało się załadować modelu {model_name_to_load}: {e_load}",
+                )
+                return
 
             self.parent.model_loaded = True
             self.parent.model_path = model_path

@@ -77,22 +77,30 @@ def get_extended_augmentation_transforms(image_size=(224, 224), params=None):
     saturation = params.get("saturation", 0.2)
     hue = params.get("hue", 0.1)
     rotation = params.get("rotation", 15)
+    horizontal_flip = params.get("horizontal_flip", True)
     vertical_flip = params.get("vertical_flip", False)
+    shift = params.get("shift", 0.1)
+    zoom = params.get("zoom", 0.1)
     grayscale = params.get("grayscale", False)
     perspective = params.get("perspective", False)
 
     # Prosta konstrukcja listy transformacji
     transform_list = [
-        transforms.RandomResizedCrop(image_size),
-        transforms.RandomHorizontalFlip(),
+        transforms.RandomResizedCrop(image_size, scale=(1.0 - zoom, 1.0 + zoom)),
     ]
 
     # Dodawanie opcjonalnych transformacji
+    if horizontal_flip:
+        transform_list.append(transforms.RandomHorizontalFlip(p=0.5))
+
     if vertical_flip:
-        transform_list.append(transforms.RandomVerticalFlip())
+        transform_list.append(transforms.RandomVerticalFlip(p=0.5))
 
     if rotation > 0:
         transform_list.append(transforms.RandomRotation(rotation))
+
+    if shift > 0:
+        transform_list.append(transforms.RandomAffine(0, translate=(shift, shift)))
 
     if params.get("trivialaugment", {}).get("use", False):
         transform_list.append(TrivialAugmentWide())
@@ -103,8 +111,8 @@ def get_extended_augmentation_transforms(image_size=(224, 224), params=None):
     if params.get("randaugment", {}).get("use", False):
         transform_list.append(
             transforms.RandAugment(
-                n=params.get("randaugment", {}).get("n", 2),
-                m=params.get("randaugment", {}).get("m", 9),
+                num_ops=params.get("randaugment", {}).get("n", 2),
+                magnitude=params.get("randaugment", {}).get("m", 9),
             )
         )
 

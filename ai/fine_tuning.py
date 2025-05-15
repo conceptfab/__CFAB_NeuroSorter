@@ -1003,6 +1003,13 @@ def fine_tune_model(
     if layer_freezing_strategy == "gradual":  # Zamroź `num_to_freeze` pierwszych warstw
         for i, (name, param) in enumerate(all_model_parameters):
             param.requires_grad = i >= num_to_freeze
+    elif layer_freezing_strategy == "unfreeze_all":
+        # Odmrażanie wszystkich warstw
+        for name, param in all_model_parameters:
+            param.requires_grad = True
+        print(
+            "  Strategia 'unfreeze_all': Wszystkie warstwy ustawione jako treningowe."
+        )
     elif layer_freezing_strategy == "selective":
         # Zamrażaj wszystkie warstwy oprócz tych w nowej głowicy (jeśli była zmieniona)
         # i ewentualnie kilku ostatnich bloków. To wymaga bardziej szczegółowej logiki.

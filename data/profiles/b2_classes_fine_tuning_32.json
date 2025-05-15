@@ -1,19 +1,19 @@
 {
   "type": "fine_tuning",
   "info": "Profil dla klasyfikacji wieloklasowej (32)-FIXED",
-  "description": "Profil dostosowany do klasyfikacji około 32 różnych klas-FIXED",
+  "description": "Profil dostosowany do klasyfikacji około 32 różnych klas-FIXED",https://claude.ai/chat/b73d9726-dbf8-44c1-a0c5-89daef844090
   "data_required": "Zestaw danych zawierający przykłady z około 32 różnych klas-FIXED",
   "hardware_required": "Standardowy sprzęt",
   "config": {
     "model": {
       "architecture": "EfficientNet",
-      "variant": "b2",
+      "variant": "EfficientNet-B2",
       "input_size": 260,
       "num_classes": 32,
       "pretrained": true,
       "pretrained_weights": "imagenet",
       "feature_extraction_only": false,
-      "activation": "relu",
+      "activation": "swish",
       "dropout_at_inference": false,
       "global_pool": "avg",
       "last_layer_activation": "softmax"
@@ -23,14 +23,18 @@
       "batch_size": 48,
       "learning_rate": 0.0002,
       "optimizer": "AdamW",
-      "scheduler": "CosineAnnealingWarmRestarts",
+      "scheduler": {
+        "type": "CosineAnnealingWarmRestarts",
+        "T_0": 10,
+        "T_mult": 2,
+        "eta_min": 1e-7
+      },
       "num_workers": 4,
       "warmup_epochs": 5,
       "warmup_lr_init": 5e-7,
       "mixed_precision": true,
       "gradient_accumulation_steps": 2,
       "gradient_clip": 1.0,
-      "validation_split": 0.2,
       "evaluation_freq": 1,
       "use_ema": false,
       "ema_decay": 0.9999,

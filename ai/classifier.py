@@ -122,9 +122,39 @@ class ImageClassifier:
             msg = f"Nieobsługiwany typ modelu: {self.model_type}"
             raise ValueError(msg)
 
+    def release_resources(self):
+        """Zwalnia zasoby używane przez model."""
+        if self.model is not None:
+            try:
+                # Przeniesienie modelu z GPU na CPU
+                self.model.cpu()
+                # Usunięcie modelu
+                self.model = None
+
+                # Wywołanie garbage collectora
+                import gc
+
+                gc.collect()
+
+                # Wyczyszczenie pamięci CUDA
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
+                return True
+            except Exception as e:
+                print(f"Błąd zwalniania zasobów: {e}")
+                return False
+        return True
+
     def _load_weights(self, weights_path):
         """Ładowanie wag modelu"""
         try:
+            # Przed załadowaniem nowych wag, zwolnij poprzednie zasoby
+            self.release_resources()
+
+            # Utwórz nowy model przed załadowaniem wag
+            self.model = self._create_model()
+
             # Załaduj checkpoint
             checkpoint = torch.load(
                 weights_path, map_location=self.device, weights_only=False

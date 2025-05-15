@@ -1,27 +1,27 @@
 {
-    "name": "EfficientNet-B3_42_2025-05-14_21-32-38",
+    "name": "EfficientNet-B2_32_2025-05-15_12-10-07",
     "type": "training",
-    "status": "Zakończony",
+    "status": "Nowy",
     "priority": 0,
-    "created_at": "2025-05-14 21:32:38",
+    "created_at": "2025-05-15 12:10:07",
     "config": {
-        "train_dir": "F:/_set_DATA_B3/train",
-        "data_dir": "F:/_set_DATA_B3/train",
-        "val_dir": "F:/_set_DATA_B3/valid",
+        "train_dir": "F:/_set_DATA_B2/train",
+        "data_dir": "F:/_set_DATA_B2/train",
+        "val_dir": "F:/_set_DATA_B2/valid",
         "model": {
             "architecture": "EfficientNet",
-            "variant": "EfficientNet-B3",
-            "input_size": 300,
+            "variant": "EfficientNet-B2",
+            "input_size": 260,
             "num_classes": 32
         },
         "training": {
             "epochs": 120,
-            "batch_size": 32,
-            "learning_rate": 0.00012,
+            "batch_size": 96,
+            "learning_rate": 0.0002,
             "optimizer": "AdamW",
             "scheduler": "CosineAnnealingWarmRestarts",
             "num_workers": 8,
-            "warmup_epochs": 5,
+            "warmup_epochs": 8,
             "mixed_precision": true,
             "freeze_base_model": true,
             "unfreeze_layers": "all",
@@ -32,7 +32,7 @@
             "weight_decay": 0.0001,
             "gradient_clip": 1.0,
             "label_smoothing": 0.1,
-            "drop_connect_rate": 0.2,
+            "drop_connect_rate": 0.15,
             "dropout_rate": 0.3,
             "momentum": 0.9,
             "epsilon": 1e-06,
@@ -44,7 +44,7 @@
         "augmentation": {
             "basic": {
                 "use": true,
-                "rotation": 25,
+                "rotation": 20,
                 "brightness": 0.25,
                 "shift": 0.1,
                 "zoom": 0.2,
@@ -61,7 +61,7 @@
             }
         },
         "optimization": {
-            "batch_size": 32,
+            "batch_size": 96,
             "num_workers": 8,
             "use_mixed_precision": true
         },
@@ -91,12 +91,5 @@
             "resize_mode": "bilinear",
             "cache_dataset": false
         }
-    },
-    "training_time": 5562.28,
-    "training_time_str": "1:32:42",
-    "train_acc": 0.7317708333333334,
-    "train_loss": 1.457258451730013,
-    "val_acc": 0.7447916666666666,
-    "val_loss": 1.5993556330601375,
-    "plot_path": "data\\plots\\EfficientNet-B3_42_2025-05-14_21-32-38_2025-05-15_00-30.png"
+    }
 }
