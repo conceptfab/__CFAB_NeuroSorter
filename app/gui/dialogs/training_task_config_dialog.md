@@ -155,8 +155,8 @@
 - **Opis**: Liczba epok treningu
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Parametry Treningu
 
 ### batch_size
@@ -164,8 +164,8 @@
 - **Opis**: Rozmiar batcha
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Parametry Treningu
 
 ### learning_rate
@@ -173,8 +173,8 @@
 - **Opis**: Współczynnik uczenia
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x < 1)
 - **Kontrolka UI**: Slider liczbowy lub pole numeryczne
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Parametry Treningu
 
 ### optimizer
@@ -182,8 +182,8 @@
 - **Opis**: Optymalizator
 - **Wartości**: "AdamW", "Adam", "SGD", "RMSprop"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Parametry Treningu
 
 ### scheduler.type
@@ -191,8 +191,8 @@
 - **Opis**: Typ harmonogramu uczenia
 - **Wartości**: "CosineAnnealingWarmRestarts", "StepLR", "OneCycleLR"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Parametry Treningu
 
 ### scheduler.T_0
@@ -373,8 +373,8 @@
 - **Opis**: Współczynnik weight decay
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Pole numeryczne
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Regularyzacja
 
 ### label_smoothing
@@ -382,8 +382,8 @@
 - **Opis**: Współczynnik wygładzania etykiet
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x < 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Regularyzacja
 
 ### dropout_rate
@@ -391,8 +391,8 @@
 - **Opis**: Współczynnik dropoutu
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x < 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Regularyzacja
 
 ### drop_connect_rate
@@ -400,8 +400,8 @@
 - **Opis**: Współczynnik drop connect
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x < 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Regularyzacja
 
 ### momentum
@@ -409,8 +409,8 @@
 - **Opis**: Współczynnik momentum (dla SGD)
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x < 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Regularyzacja
 
 ### epsilon
@@ -418,8 +418,8 @@
 - **Opis**: Epsilon dla optymalizatora
 - **Wartości**: Liczba zmiennoprzecinkowa (>0, bliska 0)
 - **Kontrolka UI**: Pole numeryczne
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Regularyzacja
 
 ### stochastic_depth.use
@@ -427,8 +427,8 @@
 - **Opis**: Czy używać stochastic depth
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Regularyzacja
 
 ### stochastic_depth.survival_probability
@@ -436,8 +436,8 @@
 - **Opis**: Prawdopodobieństwo przetrwania dla stochastic depth
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x ≤ 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Regularyzacja
 
 ### swa.use
@@ -474,8 +474,8 @@
 - **Opis**: Czy używać podstawowych augmentacji
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### basic.rotation
@@ -483,8 +483,8 @@
 - **Opis**: Maksymalny kąt rotacji (stopnie)
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### basic.brightness
@@ -492,8 +492,8 @@
 - **Opis**: Zakres zmiany jasności
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### basic.contrast
@@ -501,8 +501,8 @@
 - **Opis**: Zakres zmiany kontrastu
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### basic.saturation
@@ -510,8 +510,8 @@
 - **Opis**: Zakres zmiany nasycenia
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### basic.hue
@@ -519,8 +519,8 @@
 - **Opis**: Zakres zmiany odcienia
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### basic.shift
@@ -528,8 +528,8 @@
 - **Opis**: Maksymalne przesunięcie (piksele lub %)
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### basic.zoom
@@ -537,8 +537,8 @@
 - **Opis**: Zakres powiększenia/zmniejszenia
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### basic.horizontal_flip
@@ -546,8 +546,8 @@
 - **Opis**: Czy stosować odbicia poziome
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### basic.vertical_flip
@@ -555,8 +555,8 @@
 - **Opis**: Czy stosować odbicia pionowe
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### mixup.use
@@ -564,8 +564,8 @@
 - **Opis**: Czy używać augmentacji Mixup
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### mixup.alpha
@@ -573,8 +573,8 @@
 - **Opis**: Parametr alpha dla Mixup
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### cutmix.use
@@ -582,8 +582,8 @@
 - **Opis**: Czy używać augmentacji CutMix
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### cutmix.alpha
@@ -591,8 +591,8 @@
 - **Opis**: Parametr alpha dla CutMix
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### autoaugment.use
@@ -600,8 +600,8 @@
 - **Opis**: Czy używać AutoAugment
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### autoaugment.policy
@@ -609,8 +609,8 @@
 - **Opis**: Polityka AutoAugment
 - **Wartości**: "imagenet", "cifar", "svhn"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### randaugment.use
@@ -618,8 +618,8 @@
 - **Opis**: Czy używać RandAugment
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### randaugment.n
@@ -627,8 +627,8 @@
 - **Opis**: Liczba operacji RandAugment
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### randaugment.m
@@ -636,8 +636,8 @@
 - **Opis**: Intensywność operacji RandAugment
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### trivialaugment.use
@@ -645,8 +645,8 @@
 - **Opis**: Czy używać TrivialAugment
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### random_erase.use
@@ -654,8 +654,8 @@
 - **Opis**: Czy używać Random Erase
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### random_erase.probability
@@ -663,8 +663,8 @@
 - **Opis**: Prawdopodobieństwo Random Erase
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x ≤ 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### random_erase.scale
@@ -672,8 +672,8 @@
 - **Opis**: Zakres skali dla Random Erase
 - **Wartości**: [min, max] gdzie min, max to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Podwójny slider (range slider)
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### random_erase.ratio
@@ -681,8 +681,8 @@
 - **Opis**: Zakres proporcji dla Random Erase
 - **Wartości**: [min, max] gdzie min, max to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Podwójny slider (range slider)
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### grid_distortion.enabled
@@ -690,8 +690,8 @@
 - **Opis**: Czy używać zniekształcenia siatki
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### grid_distortion.probability
@@ -699,8 +699,8 @@
 - **Opis**: Prawdopodobieństwo zniekształcenia siatki
 - **Wartości**: Liczba zmiennoprzecinkowa (0 ≤ x ≤ 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ### grid_distortion.distort_limit
@@ -708,8 +708,8 @@
 - **Opis**: Limit zniekształcenia siatki
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Augmentacja
 
 ## Parametry przetwarzania wstępnego (preprocessing)
@@ -720,7 +720,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Wczytywanie z profilu: Brak wczytywania wartości z sekcji preprocessing profilu do self.resize_check. Kontrolka UI: Istnieje (self.resize_check), ale w zakładce "Augmentacja", a nie "Preprocessing". Zapis do zadania: OK (zapisuje jako config["augmentation"]["resize"]["enabled"]).
+- **Do zrobienia**: Brak wczytywania z profilu do kontrolki UI. Kontrolka istnieje (self.resize_check) w zakładce Augmentacja, nie Preprocessing. Zapis do zadania: TAK (config["augmentation"]["resize"]["enabled"]).
 - **Zakładka**: Preprocessing
 
 ### resize.size
@@ -728,8 +728,8 @@
 - **Opis**: Docelowy rozmiar obrazów
 - **Wartości**: [width, height] gdzie width, height to liczby całkowite
 - **Kontrolka UI**: Podwójny spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### resize.mode
@@ -738,7 +738,7 @@
 - **Wartości**: "bilinear", "bicubic", "nearest", "lanczos"
 - **Kontrolka UI**: Dropdown
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### normalize.enabled
@@ -746,8 +746,8 @@
 - **Opis**: Czy włączyć normalizację
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### normalize.mean
@@ -755,8 +755,8 @@
 - **Opis**: Średnie wartości dla normalizacji
 - **Wartości**: [R, G, B] gdzie R, G, B to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Trzy pola liczbowe
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### normalize.std
@@ -764,8 +764,8 @@
 - **Opis**: Odchylenia standardowe dla normalizacji
 - **Wartości**: [R, G, B] gdzie R, G, B to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Trzy pola liczbowe
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### grayscale.enabled
@@ -774,7 +774,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### grayscale.num_output_channels
@@ -783,7 +783,7 @@
 - **Wartości**: 1 lub 3
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### color_jitter.enabled
@@ -792,7 +792,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### color_jitter.brightness
@@ -801,7 +801,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### color_jitter.contrast
@@ -809,8 +809,8 @@
 - **Opis**: Zakres zmiany kontrastu
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Problem: Brak implementacji.
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### color_jitter.saturation
@@ -819,7 +819,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### color_jitter.hue
@@ -827,8 +827,8 @@
 - **Opis**: Zakres zmiany odcienia
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: 🔄 Do sprawdzenia
-- **Do zrobienia**: Problem: Brak implementacji.
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### gaussian_blur.enabled
@@ -837,7 +837,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### gaussian_blur.kernel_size
@@ -846,7 +846,7 @@
 - **Wartości**: Liczba nieparzysta (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### gaussian_blur.sigma
@@ -855,7 +855,7 @@
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Preprocessing
 
 ### cache_dataset
@@ -871,40 +871,45 @@
 - **Opis**: Metoda skalowania obrazów
 - **Wartości**: "Bicubic", "Bilinear", "Nearest"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Preprocessing
 
 ### scaling.maintain_aspect_ratio
 
 - **Opis**: Czy zachować proporcje obrazu
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Preprocessing
 
 ### scaling.pad_to_square
 
 - **Opis**: Czy dopełniać obraz do kwadratu
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Preprocessing
 
 ### scaling.pad_mode
 
 - **Opis**: Typ dopełnienia
 - **Wartości**: "reflection", "constant", "edge"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Preprocessing
 
 ### scaling.pad_value
 
 - **Opis**: Wartość dopełnienia (dla "constant")
 - **Wartości**: Liczba całkowita (0-255)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Preprocessing
 
 ### random_resize_crop.enabled
 
@@ -912,7 +917,8 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Preprocessing
 
 ### random_resize_crop.size
 
@@ -920,7 +926,8 @@
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Preprocessing
 
 ### random_resize_crop.scale
 
@@ -928,7 +935,8 @@
 - **Wartości**: [min, max] gdzie min, max to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Podwójny slider (range slider)
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Preprocessing
 
 ### random_resize_crop.ratio
 
@@ -936,7 +944,8 @@
 - **Wartości**: [min, max] gdzie min, max to liczby zmiennoprzecinkowe
 - **Kontrolka UI**: Podwójny slider (range slider)
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Preprocessing
 
 ## Parametry monitorowania i logowania (monitoring)
 
@@ -945,48 +954,54 @@
 - **Opis**: Czy obliczać dokładność
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Monitoring i Logging
 
 ### metrics.precision
 
 - **Opis**: Czy obliczać precyzję
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Monitoring i Logging
 
 ### metrics.recall
 
 - **Opis**: Czy obliczać recall
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Monitoring i Logging
 
 ### metrics.f1
 
 - **Opis**: Czy obliczać F1-score
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Monitoring i Logging
 
 ### metrics.topk
 
 - **Opis**: Lista k dla top-k accuracy
 - **Wartości**: Lista liczb całkowitych
 - **Kontrolka UI**: Wielowybór lub pole tagów
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Monitoring i Logging
 
 ### metrics.confusion_matrix
 
 - **Opis**: Czy generować macierz pomyłek
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Monitoring i Logging
 
 ### metrics.auc
 
@@ -994,7 +1009,8 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Monitoring i Logging
 
 ### metrics.gpu_utilization
 
@@ -1002,7 +1018,8 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Monitoring i Logging
 
 ### metrics.memory_usage
 
@@ -1010,15 +1027,16 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
+- **Zakładka**: Monitoring i Logging
 
 ### tensorboard.enabled
 
 - **Opis**: Czy włączyć logowanie do TensorBoard
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### tensorboard.log_dir
@@ -1026,8 +1044,8 @@
 - **Opis**: Katalog do zapisywania logów TensorBoard
 - **Wartości**: Ścieżka do katalogu
 - **Kontrolka UI**: Pole tekstowe + przycisk wyboru katalogu
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### tensorboard.update_freq
@@ -1035,8 +1053,8 @@
 - **Opis**: Częstotliwość aktualizacji logów
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### wandb.enabled
@@ -1045,7 +1063,7 @@
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### wandb.project
@@ -1054,7 +1072,7 @@
 - **Wartości**: Nazwa projektu
 - **Kontrolka UI**: Pole tekstowe
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### wandb.entity
@@ -1063,7 +1081,7 @@
 - **Wartości**: Nazwa użytkownika/zespołu
 - **Kontrolka UI**: Pole tekstowe
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### wandb.tags
@@ -1072,7 +1090,7 @@
 - **Wartości**: Lista tagów
 - **Kontrolka UI**: Pole tekstowe z możliwością dodawania wielu tagów
 - **Status**: ❌ Brak implementacji
-- **Do zrobienia**: Brak uwag
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.enabled
@@ -1080,8 +1098,8 @@
 - **Opis**: Czy włączyć zapisywanie checkpointów
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.dir
@@ -1089,8 +1107,8 @@
 - **Opis**: Katalog do zapisywania checkpointów
 - **Wartości**: Ścieżka do katalogu
 - **Kontrolka UI**: Pole tekstowe + przycisk wyboru katalogu
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.save_best_only
@@ -1098,8 +1116,8 @@
 - **Opis**: Czy zapisywać tylko najlepszy model
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.monitor
@@ -1107,8 +1125,8 @@
 - **Opis**: Metryka do monitorowania
 - **Wartości**: Nazwa metryki
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.mode
@@ -1116,8 +1134,8 @@
 - **Opis**: Tryb monitorowania
 - **Wartości**: "min" lub "max"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### checkpoint.save_freq
@@ -1125,8 +1143,8 @@
 - **Opis**: Częstotliwość zapisywania checkpointów
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### early_stopping.enabled
@@ -1134,8 +1152,8 @@
 - **Opis**: Czy włączyć wczesne zatrzymywanie
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### early_stopping.monitor
@@ -1143,8 +1161,8 @@
 - **Opis**: Metryka do monitorowania
 - **Wartości**: Nazwa metryki
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### early_stopping.mode
@@ -1152,8 +1170,8 @@
 - **Opis**: Tryb monitorowania
 - **Wartości**: "min" lub "max"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### early_stopping.patience
@@ -1161,8 +1179,8 @@
 - **Opis**: Liczba epok bez poprawy przed zatrzymaniem
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### early_stopping.min_delta
@@ -1170,8 +1188,8 @@
 - **Opis**: Minimalna zmiana uznawana za poprawę
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.enabled
@@ -1179,8 +1197,8 @@
 - **Opis**: Czy włączyć redukcję learning rate
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.monitor
@@ -1188,8 +1206,8 @@
 - **Opis**: Metryka do monitorowania
 - **Wartości**: Nazwa metryki
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.mode
@@ -1197,8 +1215,8 @@
 - **Opis**: Tryb monitorowania
 - **Wartości**: "min" lub "max"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.factor
@@ -1206,8 +1224,8 @@
 - **Opis**: Współczynnik redukcji learning rate
 - **Wartości**: Liczba zmiennoprzecinkowa (0 < x < 1)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.patience
@@ -1215,8 +1233,8 @@
 - **Opis**: Liczba epok bez poprawy przed redukcją
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.min_delta
@@ -1224,8 +1242,8 @@
 - **Opis**: Minimalna zmiana uznawana za poprawę
 - **Wartości**: Liczba zmiennoprzecinkowa (≥0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ### reduce_lr.min_lr
@@ -1233,8 +1251,8 @@
 - **Opis**: Minimalna wartość learning rate
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Monitoring i Logging
 
 ## Parametry zaawansowane (advanced)
@@ -1244,8 +1262,8 @@
 - **Opis**: Ziarno losowości
 - **Wartości**: Liczba całkowita
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### deterministic
@@ -1253,8 +1271,8 @@
 - **Opis**: Czy używać deterministycznych operacji
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### benchmark
@@ -1262,8 +1280,8 @@
 - **Opis**: Czy włączyć benchmark CUDA
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### num_workers
@@ -1271,8 +1289,8 @@
 - **Opis**: Liczba workerów do ładowania danych
 - **Wartości**: Liczba całkowita (≥0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### pin_memory
@@ -1280,8 +1298,8 @@
 - **Opis**: Czy używać pin memory
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### prefetch_factor
@@ -1289,8 +1307,8 @@
 - **Opis**: Liczba próbek do prefetchowania
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### persistent_workers
@@ -1298,8 +1316,8 @@
 - **Opis**: Czy używać persistent workers
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_val
@@ -1307,8 +1325,8 @@
 - **Opis**: Wartość przycinania gradientów
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_algorithm
@@ -1316,8 +1334,8 @@
 - **Opis**: Algorytm przycinania gradientów
 - **Wartości**: "norm", "value"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### accumulate_grad_batches
@@ -1325,8 +1343,8 @@
 - **Opis**: Liczba batchy do akumulacji gradientów
 - **Wartości**: Liczba całkowita (>0)
 - **Kontrolka UI**: Spinner liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### sync_batchnorm
@@ -1334,8 +1352,8 @@
 - **Opis**: Czy synchronizować BatchNorm
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### precision
@@ -1343,8 +1361,8 @@
 - **Opis**: Precyzja obliczeń
 - **Wartości**: 16, 32, 64, "bf16", "mixed"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### amp_level
@@ -1352,8 +1370,8 @@
 - **Opis**: Poziom automatycznej mieszanej precyzji
 - **Wartości**: "O0", "O1", "O2", "O3"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_norm
@@ -1361,8 +1379,8 @@
 - **Opis**: Maksymalna norma gradientów
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_mode
@@ -1370,8 +1388,8 @@
 - **Opis**: Tryb przycinania gradientów
 - **Wartości**: "norm", "value", "agc"
 - **Kontrolka UI**: Dropdown
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc
@@ -1379,8 +1397,8 @@
 - **Opis**: Czy używać Adaptive Gradient Clipping
 - **Wartości**: true/false
 - **Kontrolka UI**: Przełącznik
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_clipping
@@ -1388,8 +1406,8 @@
 - **Opis**: Wartość przycinania dla AGC
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps
@@ -1397,8 +1415,8 @@
 - **Opis**: Epsilon dla AGC
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_inside
@@ -1406,8 +1424,8 @@
 - **Opis**: Epsilon wewnętrzny dla AGC
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_outside
@@ -1415,8 +1433,8 @@
 - **Opis**: Epsilon zewnętrzny dla AGC
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_inside_scale
@@ -1424,8 +1442,8 @@
 - **Opis**: Skala epsilon wewnętrznego dla AGC
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_outside_scale
@@ -1433,8 +1451,8 @@
 - **Opis**: Skala epsilon zewnętrznego dla AGC
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_inside_scale_min
@@ -1442,8 +1460,8 @@
 - **Opis**: Minimalna skala epsilon wewnętrznego dla AGC
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_outside_scale_min
@@ -1451,8 +1469,8 @@
 - **Opis**: Minimalna skala epsilon zewnętrznego dla AGC
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_inside_scale_max
@@ -1460,8 +1478,8 @@
 - **Opis**: Maksymalna skala epsilon wewnętrznego dla AGC
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
 
 ### gradient_clip_agc_eps_outside_scale_max
@@ -1469,6 +1487,6 @@
 - **Opis**: Maksymalna skala epsilon zewnętrznego dla AGC
 - **Wartości**: Liczba zmiennoprzecinkowa (>0)
 - **Kontrolka UI**: Slider liczbowy
-- **Status**: ✅ Zaimplementowane
-- **Do zrobienia**: Brak uwag
+- **Status**: ❌ Brak implementacji
+- **Do zrobienia**: Brak kontrolki UI, brak wczytywania z profilu, brak zapisu do zadania.
 - **Zakładka**: Zaawansowane
