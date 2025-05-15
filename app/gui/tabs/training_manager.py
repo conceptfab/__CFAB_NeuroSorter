@@ -552,32 +552,48 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
 
     def _training_task_started(self, task_name, task_type):
         """Obsługa rozpoczęcia zadania treningowego."""
-        # Logowanie
-        self.parent.logger.info(
-            f"DEBUG: _training_task_started wywołane dla zadania: "
-            f"{task_name}, typ: {task_type}"
-        )
-        self.parent.logger.info(
-            f"DEBUG: _training_task_started - Stan przycisku stop PRZED "
-            f"ustawieniem: {self.parent.stop_task_btn.isEnabled()}"
-        )
-        self.parent.current_task_info.setText(
-            f"Aktywne zadanie: {task_name} ({task_type})"
-        )
-        self.parent.task_progress_bar.setValue(0)  # Zresetuj pasek postępu
-        self.parent.stop_task_btn.setEnabled(True)  # Aktywuj przycisk zatrzymania
-        self.parent.logger.info(
-            f"DEBUG: _training_task_started - Stan przycisku stop PO "
-            f"ustawieniu na True: {self.parent.stop_task_btn.isEnabled()}"
-        )
+        try:
+            self.parent.logger.info(
+                f"DEBUG: _training_task_started - task_name: {task_name}, type: {type(task_name)}"
+            )
+            self.parent.logger.info(
+                f"DEBUG: _training_task_started - task_type: {task_type}, type: {type(task_type)}"
+            )
+            self.parent.logger.info(
+                f"DEBUG: _training_task_started wywołane dla zadania: "
+                f"{task_name}, typ: {task_type}"
+            )
+            self.parent.logger.info(
+                f"DEBUG: _training_task_started - Stan przycisku stop PRZED "
+                f"ustawieniem: {self.parent.stop_task_btn.isEnabled()}"
+            )
+            self.parent.current_task_info.setText(
+                f"Aktywne zadanie: {task_name} ({task_type})"
+            )
+            self.parent.task_progress_bar.setValue(0)  # Zresetuj pasek postępu
+            self.parent.stop_task_btn.setEnabled(True)  # Aktywuj przycisk zatrzymania
+            self.parent.logger.info(
+                f"DEBUG: _training_task_started - Stan przycisku stop PO "
+                f"ustawieniu na True: {self.parent.stop_task_btn.isEnabled()}"
+            )
 
-        # Wyczyść dane wizualizacji
-        if hasattr(self, "training_visualization") and self.training_visualization:
-            self.training_visualization.clear_data()
+            # Wyczyść dane wizualizacji
+            if hasattr(self, "training_visualization") and self.training_visualization:
+                self.training_visualization.clear_data()
+
+        except Exception as e:
+            self.parent.logger.error(f"Błąd w _training_task_started: {str(e)}")
+            self.parent.logger.error(f"Stack trace: {traceback.format_exc()}")
 
     def _training_task_progress(self, task_name, progress, details):
         """Obsługuje aktualizacje postępu trainingu."""
         try:
+            self.parent.logger.info(
+                f"DEBUG: _training_task_progress - task_name: {task_name}, type: {type(task_name)}"
+            )
+            self.parent.logger.info(
+                f"DEBUG: _training_task_progress - details: {details}, type: {type(details)}"
+            )
             # Pobierz dane z details i upewnij się, że mają prawidłowe wartości
             epoch = int(details.get("epoch", 0))
             total_epochs = int(details.get("total_epochs", 1))
@@ -662,14 +678,18 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
                         )
 
         except Exception as e:
-            import traceback
-
             self.parent.logger.error(f"Błąd w _training_task_progress: {e}")
-            self.parent.logger.error(traceback.format_exc())
+            self.parent.logger.error(f"Stack trace: {traceback.format_exc()}")
 
     def _training_task_completed(self, task_name, result):
         """Obsługuje zakończenie zadania treningowego."""
         try:
+            self.parent.logger.info(
+                f"DEBUG: _training_task_completed - task_name: {task_name}, type: {type(task_name)}"
+            )
+            self.parent.logger.info(
+                f"DEBUG: _training_task_completed - result: {result}, type: {type(result)}"
+            )
             self.parent.logger.info(
                 f"DEBUG: _training_task_completed wywołane dla zadania: {task_name}"
             )
@@ -797,10 +817,8 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             self.refresh()
 
         except Exception as e:
-            self.parent.logger.error(
-                f"Błąd podczas obsługi zakończenia zadania: {str(e)}"
-            )
-            self.parent.logger.error(f"TRACEBACK: {traceback.format_exc()}")
+            self.parent.logger.error(f"Błąd w _training_task_completed: {str(e)}")
+            self.parent.logger.error(f"Stack trace: {traceback.format_exc()}")
             QtWidgets.QMessageBox.critical(
                 self,
                 "Błąd",
@@ -833,35 +851,50 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
 
     def _training_task_error(self, task_name, error_message):
         """Obsługa błędu zadania treningowego."""
-        # Logowanie do konsoli
-        self.parent.logger.error(
-            f"DEBUG: _training_task_error wywołane dla zadania: {task_name}, błąd: {error_message}"
-        )
-        self.parent.logger.error(
-            f"DEBUG: _training_task_error - Stan przycisku stop PRZED "
-            f"ustawieniem na False: {self.parent.stop_task_btn.isEnabled()}"
-        )
-        print(f"\n[KRYTYCZNY BŁĄD] Zadanie: {task_name}")
-        print(f"Treść błędu: {error_message}")
-        print("-" * 80)
+        try:
+            self.parent.logger.info(
+                f"DEBUG: _training_task_error - task_name: {task_name}, type: {type(task_name)}"
+            )
+            self.parent.logger.info(
+                f"DEBUG: _training_task_error - error_message: {error_message}, type: {type(error_message)}"
+            )
+            self.parent.logger.error(
+                f"DEBUG: _training_task_error wywołane dla zadania: {task_name}, błąd: {error_message}"
+            )
+            self.parent.logger.error(
+                f"DEBUG: _training_task_error - Stan przycisku stop PRZED "
+                f"ustawieniem na False: {self.parent.stop_task_btn.isEnabled()}"
+            )
+            print(f"\n[KRYTYCZNY BŁĄD] Zadanie: {task_name}")
+            print(f"Treść błędu: {error_message}")
+            print("-" * 80)
 
-        self.parent.logger.error(f"Błąd zadania {task_name}: {error_message}")
+            self.parent.logger.error(f"Błąd zadania {task_name}: {error_message}")
 
-        # Pokaż komunikat o błędzie
-        QtWidgets.QMessageBox.critical(
-            self,
-            "Błąd treningu",
-            f"Wystąpił błąd w zadaniu {task_name}: {error_message}",
-        )
+            # Pokaż komunikat o błędzie
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Błąd treningu",
+                f"Wystąpił błąd w zadaniu {task_name}: {error_message}",
+            )
 
-        # Odświeżamy listę zadań
-        self.refresh()
-        # Dodatkowo upewnijmy się, że przycisk stop jest wyłączony
-        self.parent.stop_task_btn.setEnabled(False)
-        self.parent.logger.error(
-            f"DEBUG: _training_task_error - Stan przycisku stop PO "
-            f"ustawieniu na False: {self.parent.stop_task_btn.isEnabled()}"
-        )
+            # Odświeżamy listę zadań
+            self.refresh()
+            # Dodatkowo upewnijmy się, że przycisk stop jest wyłączony
+            self.parent.stop_task_btn.setEnabled(False)
+            self.parent.logger.error(
+                f"DEBUG: _training_task_error - Stan przycisku stop PO "
+                f"ustawieniu na False: {self.parent.stop_task_btn.isEnabled()}"
+            )
+
+        except Exception as e:
+            self.parent.logger.error(f"Błąd w _training_task_error: {str(e)}")
+            self.parent.logger.error(f"Stack trace: {traceback.format_exc()}")
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Błąd",
+                f"Nie udało się zakończyć zadania: {str(e)}",
+            )
 
     def update_settings(self, settings):
         """Aktualizuje ustawienia zakładki."""

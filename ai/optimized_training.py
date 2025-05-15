@@ -59,6 +59,7 @@ def train_model_optimized(
     freeze_backbone=False,
     lr_scheduler_type="plateau",
     early_stopping=True,
+    early_stopping_patience=5,
     mixup=True,
     label_smoothing=0.1,
     weight_decay=0.03,
@@ -166,7 +167,7 @@ def train_model_optimized(
     }
 
     # Parametry early stopping
-    patience = 5
+    patience = early_stopping_patience
     counter = 0
     best_val_loss = float("inf")
 

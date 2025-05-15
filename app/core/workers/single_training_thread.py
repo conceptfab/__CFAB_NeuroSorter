@@ -156,10 +156,14 @@ class SingleTrainingThread(QThread):
             epochs = training_config.get("epochs", 10)
             batch_size = training_config.get("batch_size", 32)
             learning_rate = training_config.get("learning_rate", 0.001)
-            optimizer_type = training_config.get("optimizer", "AdamW").lower()
+            optimizer_type = training_config.get("optimizer", "AdamW")
+            if isinstance(optimizer_type, str):
+                optimizer_type = optimizer_type.lower()
             scheduler_type = training_config.get(
                 "scheduler", "CosineAnnealingWarmRestarts"
-            ).lower()
+            )
+            if isinstance(scheduler_type, str):
+                scheduler_type = scheduler_type.lower()
             num_workers = training_config.get("num_workers", 0)
             freeze_base_model = training_config.get("freeze_base_model", False)
             mixed_precision = training_config.get("mixed_precision", False)

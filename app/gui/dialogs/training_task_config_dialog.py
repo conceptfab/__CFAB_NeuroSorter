@@ -7,10 +7,8 @@ from pathlib import Path
 from PyQt6 import QtCore, QtWidgets
 
 from app.gui.dialogs.hardware_profile_dialog import HardwareProfileDialog
-from app.utils.file_utils import (
-    validate_training_directory,
-    validate_validation_directory,
-)
+from app.utils.file_utils import (validate_training_directory,
+                                  validate_validation_directory)
 
 
 class TrainingTaskConfigDialog(QtWidgets.QDialog):
@@ -20,7 +18,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
     UNFREEZE_ALL = "unfreeze_all"
     UNFREEZE_GRADUAL_END = "unfreeze_gradual_end"
     UNFREEZE_GRADUAL_START = "unfreeze_gradual_start"
-    UNFREEZE_AFTER_EPOCHS = "unfreeze_after_epoochs"  # Uwaga: literówka w oryginale, zachowuję dla spójności z MD
+    UNFREEZE_AFTER_EPOCHS = "unfreeze_after_epochs"  # Poprawiona literówka
 
     def __init__(self, parent=None, settings=None, hardware_profile=None):
         super().__init__(parent)
@@ -150,19 +148,36 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self._toggle_basic_aug_controls(self.basic_aug_check.isChecked())
         if hasattr(self, "mixup_check"):
             self.mixup_check.toggled.connect(
-                lambda checked: self.mixup_alpha_spin.setEnabled(checked)
+                lambda checked: (
+                    self.mixup_alpha_spin.setEnabled(checked)
+                    if hasattr(self, "mixup_alpha_spin")
+                    else None
+                )
             )
-            self.mixup_alpha_spin.setEnabled(self.mixup_check.isChecked())
+            if hasattr(self, "mixup_alpha_spin"):  # Check before use
+                self.mixup_alpha_spin.setEnabled(self.mixup_check.isChecked())
         if hasattr(self, "cutmix_check"):
             self.cutmix_check.toggled.connect(
-                lambda checked: self.cutmix_alpha_spin.setEnabled(checked)
+                lambda checked: (
+                    self.cutmix_alpha_spin.setEnabled(checked)
+                    if hasattr(self, "cutmix_alpha_spin")
+                    else None
+                )
             )
-            self.cutmix_alpha_spin.setEnabled(self.cutmix_check.isChecked())
+            if hasattr(self, "cutmix_alpha_spin"):  # Check before use
+                self.cutmix_alpha_spin.setEnabled(self.cutmix_check.isChecked())
         if hasattr(self, "autoaugment_check"):
             self.autoaugment_check.toggled.connect(
-                lambda checked: self.autoaugment_policy_combo.setEnabled(checked)
+                lambda checked: (
+                    self.autoaugment_policy_combo.setEnabled(checked)
+                    if hasattr(self, "autoaugment_policy_combo")
+                    else None
+                )
             )
-            self.autoaugment_policy_combo.setEnabled(self.autoaugment_check.isChecked())
+            if hasattr(self, "autoaugment_policy_combo"):  # Check before use
+                self.autoaugment_policy_combo.setEnabled(
+                    self.autoaugment_check.isChecked()
+                )
         if hasattr(self, "randaugment_check"):
             self.randaugment_check.toggled.connect(self._toggle_randaugment_controls)
             self._toggle_randaugment_controls(self.randaugment_check.isChecked())
@@ -194,9 +209,13 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             )
         if hasattr(self, "preprocess_grayscale_enabled_check"):
             self.preprocess_grayscale_enabled_check.toggled.connect(
-                lambda checked: self.preprocess_grayscale_num_output_channels_spin.setEnabled(
-                    checked
-                )
+                lambda checked: (
+                    self.preprocess_grayscale_num_output_channels_spin.setEnabled(
+                        checked
+                    )
+                    if hasattr(self, "preprocess_grayscale_num_output_channels_spin")
+                    else None
+                )  # Check before use
             )
             if hasattr(
                 self, "preprocess_grayscale_num_output_channels_spin"
@@ -469,7 +488,14 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             self.training_optimizer_combo = QtWidgets.QComboBox()
             self.training_optimizer_combo.addItems(
-                ["AdamW", "Adam", "SGD", "RMSprop", " compréhension", "Adadelta"]
+                [
+                    "AdamW",
+                    "Adam",
+                    "SGD",
+                    "RMSprop",
+                    " compréhension",
+                    "Adadelta",
+                ]  # "compréhension" is likely a typo, but keeping it as per original
             )
             training_hyperparams_form.addRow(
                 "Optymalizator:", self.training_optimizer_combo
@@ -841,62 +867,63 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             basic_aug_form = QtWidgets.QFormLayout()
             self.basic_aug_check = QtWidgets.QCheckBox("Użyj podstawowych augmentacji")
             basic_aug_form.addRow(self.basic_aug_check)
-            # Parametry dla basic aug
-            self.aug_basic_rotation_spin = QtWidgets.QSpinBox()
-            self.aug_basic_rotation_spin.setRange(0, 180)
-            self.aug_basic_rotation_spin.setValue(15)
+
+            # Zmiana nazw atrybutów z aug_basic_* na basic_aug_* (Poprawka 8)
+            self.basic_aug_rotation_spin = QtWidgets.QSpinBox()
+            self.basic_aug_rotation_spin.setRange(0, 180)
+            self.basic_aug_rotation_spin.setValue(15)
             basic_aug_form.addRow(
-                "Maksymalny kąt rotacji:", self.aug_basic_rotation_spin
+                "Maksymalny kąt rotacji:", self.basic_aug_rotation_spin
             )
-            self.aug_basic_brightness_spin = QtWidgets.QDoubleSpinBox()
-            self.aug_basic_brightness_spin.setRange(0.0, 1.0)
-            self.aug_basic_brightness_spin.setValue(0.2)
-            self.aug_basic_brightness_spin.setDecimals(2)
+            self.basic_aug_brightness_spin = QtWidgets.QDoubleSpinBox()
+            self.basic_aug_brightness_spin.setRange(0.0, 1.0)
+            self.basic_aug_brightness_spin.setValue(0.2)
+            self.basic_aug_brightness_spin.setDecimals(2)
             basic_aug_form.addRow(
-                "Zakres zmiany jasności:", self.aug_basic_brightness_spin
+                "Zakres zmiany jasności:", self.basic_aug_brightness_spin
             )
-            self.aug_basic_contrast_spin = QtWidgets.QDoubleSpinBox()
-            self.aug_basic_contrast_spin.setRange(0.0, 1.0)
-            self.aug_basic_contrast_spin.setValue(0.2)
-            self.aug_basic_contrast_spin.setDecimals(2)
+            self.basic_aug_contrast_spin = QtWidgets.QDoubleSpinBox()
+            self.basic_aug_contrast_spin.setRange(0.0, 1.0)
+            self.basic_aug_contrast_spin.setValue(0.2)
+            self.basic_aug_contrast_spin.setDecimals(2)
             basic_aug_form.addRow(
-                "Zakres zmiany kontrastu:", self.aug_basic_contrast_spin
+                "Zakres zmiany kontrastu:", self.basic_aug_contrast_spin
             )
-            self.aug_basic_saturation_spin = QtWidgets.QDoubleSpinBox()
-            self.aug_basic_saturation_spin.setRange(0.0, 1.0)
-            self.aug_basic_saturation_spin.setValue(0.2)
-            self.aug_basic_saturation_spin.setDecimals(2)
+            self.basic_aug_saturation_spin = QtWidgets.QDoubleSpinBox()
+            self.basic_aug_saturation_spin.setRange(0.0, 1.0)
+            self.basic_aug_saturation_spin.setValue(0.2)
+            self.basic_aug_saturation_spin.setDecimals(2)
             basic_aug_form.addRow(
-                "Zakres zmiany nasycenia:", self.aug_basic_saturation_spin
+                "Zakres zmiany nasycenia:", self.basic_aug_saturation_spin
             )
-            self.aug_basic_hue_spin = QtWidgets.QDoubleSpinBox()
-            self.aug_basic_hue_spin.setRange(0.0, 0.5)
-            self.aug_basic_hue_spin.setValue(0.1)
-            self.aug_basic_hue_spin.setDecimals(2)
+            self.basic_aug_hue_spin = QtWidgets.QDoubleSpinBox()
+            self.basic_aug_hue_spin.setRange(0.0, 0.5)
+            self.basic_aug_hue_spin.setValue(0.1)
+            self.basic_aug_hue_spin.setDecimals(2)
             basic_aug_form.addRow(
-                "Zakres zmiany odcienia (hue):", self.aug_basic_hue_spin
+                "Zakres zmiany odcienia (hue):", self.basic_aug_hue_spin
             )
-            self.aug_basic_shift_spin = QtWidgets.QDoubleSpinBox()  # Max % przesunięcia
-            self.aug_basic_shift_spin.setRange(0.0, 0.5)
-            self.aug_basic_shift_spin.setValue(0.1)
-            self.aug_basic_shift_spin.setDecimals(2)
+            self.basic_aug_shift_spin = QtWidgets.QDoubleSpinBox()  # Max % przesunięcia
+            self.basic_aug_shift_spin.setRange(0.0, 0.5)
+            self.basic_aug_shift_spin.setValue(0.1)
+            self.basic_aug_shift_spin.setDecimals(2)
             basic_aug_form.addRow(
-                "Maksymalne przesunięcie (% obrazu):", self.aug_basic_shift_spin
+                "Maksymalne przesunięcie (% obrazu):", self.basic_aug_shift_spin
             )
-            self.aug_basic_zoom_spin = QtWidgets.QDoubleSpinBox()  # Zakres zoomu
-            self.aug_basic_zoom_spin.setRange(0.0, 0.5)
-            self.aug_basic_zoom_spin.setValue(0.1)
-            self.aug_basic_zoom_spin.setDecimals(2)
+            self.basic_aug_zoom_spin = QtWidgets.QDoubleSpinBox()  # Zakres zoomu
+            self.basic_aug_zoom_spin.setRange(0.0, 0.5)
+            self.basic_aug_zoom_spin.setValue(0.1)
+            self.basic_aug_zoom_spin.setDecimals(2)
             basic_aug_form.addRow(
-                "Zakres powiększenia/zmniejszenia:", self.aug_basic_zoom_spin
+                "Zakres powiększenia/zmniejszenia:", self.basic_aug_zoom_spin
             )
-            self.aug_basic_horizontal_flip_check = QtWidgets.QCheckBox(
+            self.basic_aug_horizontal_flip_check = QtWidgets.QCheckBox(
                 "Odbicie poziome"
             )
-            self.aug_basic_horizontal_flip_check.setChecked(True)
-            basic_aug_form.addRow(self.aug_basic_horizontal_flip_check)
-            self.aug_basic_vertical_flip_check = QtWidgets.QCheckBox("Odbicie pionowe")
-            basic_aug_form.addRow(self.aug_basic_vertical_flip_check)
+            self.basic_aug_horizontal_flip_check.setChecked(True)
+            basic_aug_form.addRow(self.basic_aug_horizontal_flip_check)
+            self.basic_aug_vertical_flip_check = QtWidgets.QCheckBox("Odbicie pionowe")
+            basic_aug_form.addRow(self.basic_aug_vertical_flip_check)
             basic_aug_group.setLayout(basic_aug_form)
             layout.addWidget(basic_aug_group, 0, 0)
 
@@ -989,12 +1016,10 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.random_erase_scale_min_spin.setRange(0.01, 1.0)
             self.random_erase_scale_min_spin.setValue(0.02)
             self.random_erase_scale_min_spin.setDecimals(3)
-            self.random_erase_scale_min_spin.setEnabled(False)
             self.random_erase_scale_max_spin = QtWidgets.QDoubleSpinBox()
             self.random_erase_scale_max_spin.setRange(0.01, 1.0)
             self.random_erase_scale_max_spin.setValue(0.33)
             self.random_erase_scale_max_spin.setDecimals(3)
-            self.random_erase_scale_max_spin.setEnabled(False)
             scale_layout.addWidget(QtWidgets.QLabel("Min:"))
             scale_layout.addWidget(self.random_erase_scale_min_spin)
             scale_layout.addWidget(QtWidgets.QLabel("Max:"))
@@ -1006,12 +1031,10 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.random_erase_ratio_min_spin.setRange(0.1, 10.0)
             self.random_erase_ratio_min_spin.setValue(0.3)
             self.random_erase_ratio_min_spin.setDecimals(2)
-            self.random_erase_ratio_min_spin.setEnabled(False)
             self.random_erase_ratio_max_spin = QtWidgets.QDoubleSpinBox()
             self.random_erase_ratio_max_spin.setRange(0.1, 10.0)
             self.random_erase_ratio_max_spin.setValue(3.3)
             self.random_erase_ratio_max_spin.setDecimals(2)
-            self.random_erase_ratio_max_spin.setEnabled(False)
             ratio_layout.addWidget(QtWidgets.QLabel("Min:"))
             ratio_layout.addWidget(self.random_erase_ratio_min_spin)
             ratio_layout.addWidget(QtWidgets.QLabel("Max:"))
@@ -1785,14 +1808,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             agc_group.setLayout(agc_form)
             layout.addRow(agc_group)
 
-            # Aliases for previously misplaced controls - remove if not needed after refactor
-            # self.scaling_method = self.preprocess_scaling_method_combo (już przeniesione)
-            # self.maintain_aspect_ratio = self.preprocess_scaling_maintain_aspect_ratio_check
-            # self.pad_to_square = self.preprocess_scaling_pad_to_square_check
-            # self.pad_mode = self.preprocess_scaling_pad_mode_combo
-            # self.pad_value = self.preprocess_scaling_pad_value_spin
-            # self.grad_clip = self.advanced_gradient_clip_val_spin (to jest niejednoznaczne, grad_clip jest też w regularyzacji)
-
             scroll_content_widget.setLayout(layout)  # Set layout to the content widget
             scroll_area.setWidget(
                 scroll_content_widget
@@ -1819,43 +1834,23 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             )
             params_layout = QtWidgets.QFormLayout()
 
-            # Te parametry są teraz główne w Training Params, tutaj tylko jako info/hardware profile override
-            # Batch size, num_workers, mixed_precision
-            # Dodajemy pozostałe z MD:
+            # Lista parametrów dla tej zakładki
+            # klucz, domyślna wartość, typ widgetu, [opcjonalnie: min, max, step]
             params = [
                 ("CUDNN Benchmark", "cudnn_benchmark", True, "bool"),
                 ("Pin Memory (Dataloader)", "pin_memory", True, "bool"),
-                (
-                    "Shuffle (Dataloader)",
-                    "shuffle",
-                    True,
-                    "bool",
-                ),  # Zwykle true dla treningu
-                (
-                    "Prefetch Factor (Dataloader)",
-                    "prefetch_factor",
-                    2,
-                    "int",
-                    0,
-                    16,
-                    1,
-                ),  # Typowa wartość dla PyTorch
+                ("Shuffle (Dataloader)", "shuffle", True, "bool"),
+                ("Prefetch Factor (Dataloader)", "prefetch_factor", 2, "int", 0, 16, 1),
                 (
                     "Persistent Workers (Dataloader)",
                     "persistent_workers",
                     False,
                     "bool",
-                ),  # Domyślnie False w PyTorch
-                (
-                    "Drop Last Batch (Dataloader)",
-                    "drop_last",
-                    False,
-                    "bool",
-                ),  # Domyślnie False
-                # ("Memory Efficient Attention (jeśli model wspiera)", "memory_efficient", False, "bool"), # Usunięte, bo mało ogólne
+                ),
+                ("Drop Last Batch (Dataloader)", "drop_last", False, "bool"),
             ]
 
-            if not hasattr(self, "parameter_rows"):  # Inicjalizacja jeśli nie istnieje
+            if not hasattr(self, "parameter_rows"):
                 self.parameter_rows = {}
 
             for name, key, default, type_, *args in params:
@@ -1870,9 +1865,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             apply_all_btn = QtWidgets.QPushButton(
                 "Zastosuj optymalizacje z profilu sprzętowego (dla tej zakładki)"
             )
-            apply_all_btn.clicked.connect(
-                self._apply_hardware_optimizations_for_tab
-            )  # Zmieniona nazwa metody
+            apply_all_btn.clicked.connect(self._apply_hardware_optimizations_for_tab)
             layout.addWidget(apply_all_btn)
 
             layout.addStretch()
@@ -1885,7 +1878,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             raise
 
     def _create_parameter_row(self, name, param_key, default_value, widget_type, *args):
-        # ... (bez zmian, ale upewnij się, że min_val, max_val, step są poprawnie przekazywane)
         min_val, max_val, step = None, None, None
         if args:
             if widget_type == "int" or widget_type == "float":
@@ -1923,39 +1915,36 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             value_widget = QtWidgets.QLineEdit(str(default_value))
 
         user_checkbox = QtWidgets.QCheckBox("Użytkownika")
-        user_checkbox.setChecked(True)  # Domyślnie wartość użytkownika
+        user_checkbox.setChecked(True)
 
-        # Mapowanie kluczy profilu sprzętowego
         profile_key_map = {
-            "batch_size": "recommended_batch_size",  # To jest z training_params, nie optimization
-            "num_workers": "recommended_workers",  # To jest z training_params, nie optimization
-            "use_mixed_precision": "use_mixed_precision",  # To jest z training_params, nie optimization
             "cudnn_benchmark": "cudnn_benchmark",
             "pin_memory": "pin_memory",
-            "prefetch_factor": "prefetch_factor",  # Może być w hardware_profile
-            "persistent_workers": "persistent_workers",  # Może być w hardware_profile
+            "shuffle": "shuffle",  # Assuming shuffle is in hardware profile directly
+            "prefetch_factor": "prefetch_factor",
+            "persistent_workers": "persistent_workers",
+            "drop_last": "drop_last",  # Assuming drop_last is in hardware profile directly
         }
         effective_profile_key = profile_key_map.get(param_key, param_key)
 
         hw_value_actual = self.hardware_profile.get(effective_profile_key)
         hw_value_text = str(hw_value_actual) if hw_value_actual is not None else "Brak"
-        hw_value_label = QtWidgets.QLabel(hw_value_text)  # Zmieniono na hw_value_label
+        hw_value_label = QtWidgets.QLabel(hw_value_text)
 
         hw_checkbox = QtWidgets.QCheckBox("Profil sprzętowy")
         hw_checkbox.setChecked(False)
 
-        source_group = QtWidgets.QButtonGroup(self)  # Parent dla QButtonGroup
+        source_group = QtWidgets.QButtonGroup(self)
         source_group.addButton(user_checkbox)
         source_group.addButton(hw_checkbox)
         source_group.setExclusive(True)
 
         layout.addWidget(value_widget)
         layout.addWidget(user_checkbox)
-        layout.addWidget(QtWidgets.QLabel("Profil:"))  # Skrócono etykietę
+        layout.addWidget(QtWidgets.QLabel("Profil:"))
         layout.addWidget(hw_value_label)
         layout.addWidget(hw_checkbox)
 
-        # Zapamiętanie referencji
         row_widgets = {
             "param_key": param_key,
             "value_widget": value_widget,
@@ -1963,10 +1952,9 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             "hw_value_label": hw_value_label,
             "hw_checkbox": hw_checkbox,
             "button_group": source_group,
-            "hw_value_actual": hw_value_actual,  # Przechowujemy faktyczną wartość
+            "hw_value_actual": hw_value_actual,
         }
 
-        # Podłączenie sygnałów po utworzeniu row_widgets
         user_checkbox.toggled.connect(
             lambda checked, rw=row_widgets: self._on_source_toggle(rw, checked)
         )
@@ -1982,35 +1970,35 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         hw_checkbox = row_widgets["hw_checkbox"]
         if is_user_selected:
             value_widget.setEnabled(True)
-            if hw_checkbox.isChecked():  # Odznacz drugi, jeśli ten jest zaznaczony
+            if hw_checkbox.isChecked():
                 hw_checkbox.setChecked(False)
 
     def _on_hw_toggle(self, row_widgets, is_hw_selected):
         value_widget = row_widgets["value_widget"]
         user_checkbox = row_widgets["user_checkbox"]
-        hw_value_actual = row_widgets["hw_value_actual"]  # Użyj przechowywanej wartości
+        hw_value_actual = row_widgets["hw_value_actual"]
 
         if is_hw_selected:
-            if user_checkbox.isChecked():  # Odznacz drugi
+            if user_checkbox.isChecked():
                 user_checkbox.setChecked(False)
-            value_widget.setEnabled(False)  # Zablokuj edycję
-            if hw_value_actual is not None:  # Ustaw wartość z profilu
+            value_widget.setEnabled(False)
+            if hw_value_actual is not None:
                 if isinstance(
                     value_widget, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)
                 ):
                     value_widget.setValue(hw_value_actual)
                 elif isinstance(value_widget, QtWidgets.QCheckBox):
                     value_widget.setChecked(bool(hw_value_actual))
-                else:  # QLineEdit
+                else:
                     value_widget.setText(str(hw_value_actual))
-        else:  # Jeśli odznaczono HW, a user nie jest zaznaczony, włącz edycję
-            if not user_checkbox.isChecked():
+        else:
+            if (
+                not user_checkbox.isChecked()
+            ):  # If HW is deselected and user is not selected, enable widget for manual input
                 value_widget.setEnabled(True)
 
     def _apply_hardware_optimizations_for_tab(self):
-        """Stosuje optymalizacje sprzętowe tylko dla kontrolek w zakładce Optimization."""
         count = 0
-        # Iteruj tylko po kluczach zdefiniowanych w _create_optimization_tab
         opt_tab_keys = [
             "cudnn_benchmark",
             "pin_memory",
@@ -2023,8 +2011,9 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             if key in self.parameter_rows:
                 param_widgets = self.parameter_rows[key]
                 if param_widgets["hw_value_actual"] is not None:
-                    # Symuluj kliknięcie checkboxa HW, aby wywołać logikę _on_hw_toggle
-                    param_widgets["hw_checkbox"].setChecked(True)
+                    param_widgets["hw_checkbox"].setChecked(
+                        True
+                    )  # This will trigger _on_hw_toggle
                     count += 1
         if count > 0:
             QtWidgets.QMessageBox.information(
@@ -2058,6 +2047,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
     def _on_profile_selected(self, current, previous):
         # ... (bez zmian)
         if current is None:
+            self.current_profile = None  # Clear current profile if nothing is selected
+            self.profile_info.clear()
+            self.profile_description.clear()
+            self.profile_data_required.clear()
+            self.profile_hardware_required.clear()
             return
         try:
             profile_path = self.profiles_dir / f"{current.text()}.json"
@@ -2075,6 +2069,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.critical(
                 self, "Błąd", f"Nie można załadować profilu: {e}"
             )
+            self.current_profile = None  # Reset on error
 
     def _edit_profile(self):
         # ... (bez zmian)
@@ -2087,7 +2082,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             profile_path = (
                 self.profiles_dir / f"{self.profile_list.currentItem().text()}.json"
             )
-            # Użyj QDesktopServices do otwarcia pliku domyślnym edytorem
             from PyQt6.QtCore import QUrl
             from PyQt6.QtGui import QDesktopServices
 
@@ -2108,12 +2102,16 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             config = self.current_profile.get("config", {})
 
             # Dane i Model (zakładka: Dane i Model)
+            self.train_dir_edit.setText(config.get("train_dir", ""))
+            self.val_dir_edit.setText(config.get("val_dir", ""))
             self.arch_combo.setCurrentText(
                 config.get("model", {}).get("architecture", "EfficientNet")
             )
+            # _on_architecture_changed will update variant_combo, then set current text
+            self._on_architecture_changed(self.arch_combo.currentText())
             self.variant_combo.setCurrentText(
                 config.get("model", {}).get("variant", "EfficientNet-B0")
-            )  # _on_architecture_changed zadba o resztę
+            )
             self.input_size_spin.setValue(
                 config.get("model", {}).get("input_size", 224)
             )
@@ -2170,9 +2168,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 )
             elif isinstance(scheduler_cfg, str):  # Starszy format
                 self.training_scheduler_type_combo.setCurrentText(scheduler_cfg)
+            else:  # Default if scheduler_cfg is not dict or str
+                self.training_scheduler_type_combo.setCurrentText("None")
 
             self.training_num_workers_spin.setValue(
-                training_config.get("num_workers", 4)
+                training_config.get("num_workers", min(4, os.cpu_count() or 4))
             )
             self.training_warmup_epochs_spin.setValue(
                 training_config.get("warmup_epochs", 0)
@@ -2181,14 +2181,16 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 training_config.get("warmup_lr_init", 1e-6)
             )
             self.training_mixed_precision_check.setChecked(
-                training_config.get("mixed_precision", False)
+                training_config.get(
+                    "mixed_precision", training_config.get("use_mixed_precision", False)
+                )
             )
             self.training_grad_accum_steps_spin.setValue(
                 training_config.get("gradient_accumulation_steps", 1)
             )
             self.training_gradient_clip_value_spin.setValue(
                 training_config.get("gradient_clip", 0.0)
-            )  # Nowy parametr
+            )
             self.training_evaluation_freq_spin.setValue(
                 training_config.get("evaluation_freq", 1)
             )
@@ -2202,9 +2204,13 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.training_freeze_base_model_check.setChecked(
                 training_config.get("freeze_base_model", True)
             )
-            self.training_unfreeze_layers_edit.setText(
-                str(training_config.get("unfreeze_layers", "all"))
-            )
+            unfreeze_layers_val = training_config.get("unfreeze_layers", "all")
+            if isinstance(unfreeze_layers_val, list):
+                self.training_unfreeze_layers_edit.setText(
+                    ",".join(unfreeze_layers_val)
+                )
+            else:
+                self.training_unfreeze_layers_edit.setText(str(unfreeze_layers_val))
 
             unfreeze_strategy_map_load = {
                 self.UNFREEZE_ALL: "Wszystkie na raz (unfreeze_all)",
@@ -2212,11 +2218,17 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 self.UNFREEZE_GRADUAL_START: "Stopniowo od początku (unfreeze_gradual_start)",
                 self.UNFREEZE_AFTER_EPOCHS: f"Po określonej liczbie epok ({self.UNFREEZE_AFTER_EPOCHS})",
             }
-            self.training_unfreeze_strategy_combo.setCurrentText(
-                unfreeze_strategy_map_load.get(
-                    training_config.get("unfreeze_strategy", self.UNFREEZE_ALL)
-                )
+            # Find the display text corresponding to the loaded strategy value
+            loaded_strategy_value = training_config.get(
+                "unfreeze_strategy", self.UNFREEZE_ALL
             )
+            display_text_to_set = "Wszystkie na raz (unfreeze_all)"  # Default
+            for val, display_text in unfreeze_strategy_map_load.items():
+                if val == loaded_strategy_value:
+                    display_text_to_set = display_text
+                    break
+            self.training_unfreeze_strategy_combo.setCurrentText(display_text_to_set)
+
             self.training_unfreeze_after_epochs_spin.setValue(
                 training_config.get("unfreeze_after_epochs", 10)
             )
@@ -2260,27 +2272,27 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             # Augmentacja
             aug_config = config.get("augmentation", {})
-            # Basic
             basic_aug_conf = aug_config.get("basic", {})
             self.basic_aug_check.setChecked(basic_aug_conf.get("use", False))
-            self.aug_basic_rotation_spin.setValue(basic_aug_conf.get("rotation", 15))
-            self.aug_basic_brightness_spin.setValue(
+            # Using corrected names (Poprawka 8)
+            self.basic_aug_rotation_spin.setValue(basic_aug_conf.get("rotation", 15))
+            self.basic_aug_brightness_spin.setValue(
                 basic_aug_conf.get("brightness", 0.2)
             )
-            self.aug_basic_contrast_spin.setValue(basic_aug_conf.get("contrast", 0.2))
-            self.aug_basic_saturation_spin.setValue(
+            self.basic_aug_contrast_spin.setValue(basic_aug_conf.get("contrast", 0.2))
+            self.basic_aug_saturation_spin.setValue(
                 basic_aug_conf.get("saturation", 0.2)
             )
-            self.aug_basic_hue_spin.setValue(basic_aug_conf.get("hue", 0.1))
-            self.aug_basic_shift_spin.setValue(basic_aug_conf.get("shift", 0.1))
-            self.aug_basic_zoom_spin.setValue(basic_aug_conf.get("zoom", 0.1))
-            self.aug_basic_horizontal_flip_check.setChecked(
+            self.basic_aug_hue_spin.setValue(basic_aug_conf.get("hue", 0.1))
+            self.basic_aug_shift_spin.setValue(basic_aug_conf.get("shift", 0.1))
+            self.basic_aug_zoom_spin.setValue(basic_aug_conf.get("zoom", 0.1))
+            self.basic_aug_horizontal_flip_check.setChecked(
                 basic_aug_conf.get("horizontal_flip", True)
             )
-            self.aug_basic_vertical_flip_check.setChecked(
+            self.basic_aug_vertical_flip_check.setChecked(
                 basic_aug_conf.get("vertical_flip", False)
             )
-            # Mixup, Cutmix, etc.
+
             self.mixup_check.setChecked(aug_config.get("mixup", {}).get("use", False))
             self.mixup_alpha_spin.setValue(
                 aug_config.get("mixup", {}).get("alpha", 0.4)
@@ -2307,7 +2319,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.trivialaugment_check.setChecked(
                 aug_config.get("trivialaugment", {}).get("use", False)
             )
-            # Random Erase
+
             re_conf = aug_config.get("random_erase", {})
             self.random_erase_check.setChecked(re_conf.get("use", False))
             self.random_erase_prob_spin.setValue(re_conf.get("probability", 0.5))
@@ -2325,19 +2337,22 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.random_erase_ratio_max_spin.setValue(
                 ratio[1] if isinstance(ratio, list) and len(ratio) > 1 else 3.3
             )
-            # Grid Distortion
+
             gd_conf = aug_config.get("grid_distortion", {})
-            self.grid_distortion_check.setChecked(gd_conf.get("enabled", False))
+            self.grid_distortion_check.setChecked(
+                gd_conf.get("enabled", False)
+            )  # Ensure key matches save
             self.grid_distortion_prob_spin.setValue(gd_conf.get("probability", 0.5))
-            self.grid_distortion_limit_spin.setValue(gd_conf.get("distort_limit", 0.3))
-            # Augmentation resize
+            self.grid_distortion_limit_spin.setValue(
+                gd_conf.get("distort_limit", 0.3)
+            )  # Ensure key matches save
+
             self.aug_resize_enabled_check.setChecked(
                 aug_config.get("resize", {}).get("enabled", False)
             )
 
             # Preprocessing
             pre_config = config.get("preprocessing", {})
-            # Resize
             resize_conf = pre_config.get("resize", {})
             self.preprocess_resize_enabled_check.setChecked(
                 resize_conf.get("enabled", True)
@@ -2352,7 +2367,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.preprocess_resize_mode_combo.setCurrentText(
                 resize_conf.get("mode", "bilinear")
             )
-            # Normalize
+
             norm_conf = pre_config.get("normalize", {})
             self.preprocess_normalize_enabled_check.setChecked(
                 norm_conf.get("enabled", True)
@@ -2377,7 +2392,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.preprocess_normalize_std_b_spin.setValue(
                 std[2] if isinstance(std, list) and len(std) > 2 else 0.225
             )
-            # Grayscale
+
             gray_conf = pre_config.get("grayscale", {})
             self.preprocess_grayscale_enabled_check.setChecked(
                 gray_conf.get("enabled", False)
@@ -2385,7 +2400,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.preprocess_grayscale_num_output_channels_spin.setValue(
                 gray_conf.get("num_output_channels", 1)
             )
-            # Color Jitter (Preprocessing)
+
             cj_conf = pre_config.get("color_jitter", {})
             self.preprocess_color_jitter_enabled_check.setChecked(
                 cj_conf.get("enabled", False)
@@ -2400,7 +2415,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 cj_conf.get("saturation", 0.2)
             )
             self.preprocess_color_jitter_hue_spin.setValue(cj_conf.get("hue", 0.1))
-            # Gaussian Blur
+
             blur_conf = pre_config.get("gaussian_blur", {})
             self.preprocess_gaussian_blur_enabled_check.setChecked(
                 blur_conf.get("enabled", False)
@@ -2411,11 +2426,9 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.preprocess_gaussian_blur_sigma_spin.setValue(
                 blur_conf.get("sigma", 1.0)
             )
-            # Cache
-            self.preprocess_cache_dataset_check.setChecked(
-                pre_config.get("cache_dataset", False)
-            )
-            # Advanced Scaling
+
+            self.preprocess_cache_dataset_check.setChecked(bool(config.get("cache_dataset", False)))
+
             scaling_conf = pre_config.get("scaling", {})
             self.preprocess_scaling_method_combo.setCurrentText(
                 scaling_conf.get("method", "Bilinear")
@@ -2432,7 +2445,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.preprocess_scaling_pad_value_spin.setValue(
                 scaling_conf.get("pad_value", 0)
             )
-            # RandomResizedCrop
+
             rrc_conf = pre_config.get("random_resize_crop", {})
             self.preprocess_random_resize_crop_enabled_check.setChecked(
                 rrc_conf.get("enabled", False)
@@ -2465,15 +2478,14 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             # Monitorowanie i Logowanie
             mon_config = config.get("monitoring", {})
-            # Metrics
             met_conf = mon_config.get("metrics", {})
             self.metrics_accuracy_check.setChecked(met_conf.get("accuracy", True))
             self.metrics_precision_check.setChecked(met_conf.get("precision", True))
             self.metrics_recall_check.setChecked(met_conf.get("recall", True))
             self.metrics_f1_check.setChecked(met_conf.get("f1", True))
             self.metrics_topk_check.setChecked(
-                bool(met_conf.get("topk", False))
-            )  # Uproszczone do bool
+                bool(met_conf.get("topk", []))
+            )  # Check if list is non-empty
             self.metrics_confusion_matrix_check.setChecked(
                 met_conf.get("confusion_matrix", False)
             )
@@ -2484,21 +2496,21 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.metrics_memory_usage_check.setChecked(
                 met_conf.get("memory_usage", False)
             )
-            # TensorBoard
+
             tb_conf = mon_config.get("tensorboard", {})
             self.tensorboard_enabled_check.setChecked(tb_conf.get("enabled", True))
             self.tensorboard_log_dir_edit.setText(
                 tb_conf.get("log_dir", "logs/tensorboard")
             )
             self.tensorboard_update_freq_spin.setValue(tb_conf.get("update_freq", 100))
-            # W&B
+
             wb_conf = mon_config.get("wandb", {})
             self.wandb_enabled_check.setChecked(wb_conf.get("enabled", False))
             self.wandb_project_edit.setText(wb_conf.get("project", ""))
             self.wandb_entity_edit.setText(wb_conf.get("entity", ""))
             self.wandb_tags_edit.setText(",".join(wb_conf.get("tags", [])))
-            # Checkpoints
-            cp_conf = mon_config.get("checkpoint", {})  # Zmieniono z checkpointing
+
+            cp_conf = mon_config.get("checkpoint", {})
             self.checkpoint_enabled_check.setChecked(cp_conf.get("enabled", True))
             self.checkpoint_dir_edit.setText(cp_conf.get("dir", "checkpoints"))
             self.checkpoint_save_best_only_check.setChecked(
@@ -2509,7 +2521,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             )
             self.checkpoint_mode_combo.setCurrentText(cp_conf.get("mode", "min"))
             self.checkpoint_save_freq_spin.setValue(cp_conf.get("save_freq", 1))
-            # Early Stopping
+
             es_conf = mon_config.get("early_stopping", {})
             self.use_early_stopping_check.setChecked(es_conf.get("enabled", True))
             self.early_stopping_monitor_combo.setCurrentText(
@@ -2518,7 +2530,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.early_stopping_mode_combo.setCurrentText(es_conf.get("mode", "min"))
             self.early_stopping_patience_spin.setValue(es_conf.get("patience", 10))
             self.early_stopping_min_delta_spin.setValue(es_conf.get("min_delta", 0.001))
-            # Reduce LR
+
             rlr_conf = mon_config.get("reduce_lr", {})
             self.reduce_lr_enabled_check.setChecked(rlr_conf.get("enabled", False))
             self.reduce_lr_monitor_combo.setCurrentText(
@@ -2542,7 +2554,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             )
             self.advanced_gradient_clip_norm_spin.setValue(
                 adv_config.get("gradient_clip_norm", 0.0)
-            )  # Nowe
+            )
             self.advanced_gradient_clip_algorithm_combo.setCurrentText(
                 adv_config.get("gradient_clip_algorithm", "norm")
             )
@@ -2559,37 +2571,50 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 adv_config.get("amp_level", "O1")
             )
             agc_conf = adv_config.get("gradient_clip_agc", {})
-            self.advanced_gradient_clip_agc_check.setChecked(
-                agc_conf.get("use", False)
-            )  # Zmieniono z enabled
+            self.advanced_gradient_clip_agc_check.setChecked(agc_conf.get("use", False))
             self.advanced_gradient_clip_agc_clipping_spin.setValue(
                 agc_conf.get("clipping", 0.01)
             )
             self.advanced_gradient_clip_agc_eps_spin.setValue(agc_conf.get("eps", 1e-3))
 
-            # Optymalizacja Sprzętowa (parametry z `parameter_rows`)
-            opt_config = config.get("optimization", {})
+            # Optymalizacja Sprzętowa
+            opt_config_main = config.get("optimization", {})
+            opt_config_dataloader = opt_config_main.get(
+                "dataloader", {}
+            )  # For nested structure
+
             for key, row_data in self.parameter_rows.items():
-                if key in opt_config:
-                    value = opt_config[key]
-                    # Ustaw wartość, ale nie zmieniaj źródła (user/hw)
-                    # To jest bardziej złożone, bo profil może nadpisać wartość z UI
-                    # Na razie zostawiam, bo _apply_profile nie powinien zmieniać tych wartości
-                    # chyba że profil ma sekcję "optimization"
+                # Prioritize value from flat structure, then nested, then default if not found
+                value_to_set = None
+                found = False
+                if key in opt_config_main:
+                    value_to_set = opt_config_main[key]
+                    found = True
+                elif key in opt_config_dataloader:  # Check nested if not in flat
+                    value_to_set = opt_config_dataloader[key]
+                    found = True
+
+                if found:
+                    widget = row_data["value_widget"]
+                    # If a value is found in profile, switch to "Użytkownika" and set it.
+                    # Don't automatically switch to "Profil sprzętowy" unless user clicks the button.
+                    row_data["user_checkbox"].setChecked(
+                        True
+                    )  # Ensures widget is enabled for setting value
                     if isinstance(
-                        row_data["value_widget"],
-                        (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox),
+                        widget, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)
                     ):
-                        row_data["value_widget"].setValue(value)
-                    elif isinstance(row_data["value_widget"], QtWidgets.QCheckBox):
-                        row_data["value_widget"].setChecked(bool(value))
-                    else:
-                        row_data["value_widget"].setText(str(value))
+                        widget.setValue(value_to_set)
+                    elif isinstance(widget, QtWidgets.QCheckBox):
+                        widget.setChecked(bool(value_to_set))
+                    else:  # QLineEdit
+                        widget.setText(str(value_to_set))
+                # else: param not in profile, keep widget's current/default value
 
             QtWidgets.QMessageBox.information(
                 self, "Sukces", "Profil został pomyślnie zastosowany."
             )
-            self._update_dependent_controls()  # Aktualizacja kontrolek po załadowaniu profilu
+            self._update_dependent_controls()
 
         except Exception as e:
             self.logger.error(f"Błąd podczas stosowania profilu: {e}", exc_info=True)
@@ -2598,7 +2623,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             )
 
     def _clone_profile(self):
-        # ... (bez zmian)
         if not self.current_profile or not self.profile_list.currentItem():
             QtWidgets.QMessageBox.warning(
                 self, "Ostrzeżenie", "Najpierw wybierz profil do sklonowania."
@@ -2614,24 +2638,36 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 f"{current_name}_clone",
             )
             if ok and new_name:
-                new_profile_data = (
-                    self._get_current_config_as_dict()
-                )  # Pobierz aktualne ustawienia z UI
+                # Klonowanie powinno bazować na *zapisanej* konfiguracji klonowanego profilu,
+                # a nie na bieżących ustawieniach UI, chyba że intencją jest "Zapisz jako" na bazie UI.
+                # Tutaj _get_current_config_as_dict() bierze z UI.
+                # Jeśli chcemy klonować *wybrany* profil, to: new_profile_data = self.current_profile.copy()
+                # Ale opis w kodzie sugeruje "na bazie bieżących ustawień UI", więc _get_current_config_as_dict() jest OK.
 
-                # Zaktualizuj informacje o profilu
+                new_profile_data = self._get_current_config_as_dict()
+
                 new_profile_data["type"] = "training"
                 new_profile_data["info"] = (
-                    f"Klon profilu '{current_name}' na bazie bieżących ustawień UI"
+                    f"Klon profilu '{current_name}' (na bazie bieżących ustawień UI, {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')})"
+                )
+                # Zachowaj opis, jeśli jest, inaczej domyślny.
+                cloned_description = self.current_profile.get(
+                    "description", "Brak opisu."
                 )
                 new_profile_data["description"] = (
-                    self.profile_description.toPlainText()
-                    + f" (Sklonowano z {current_name})"
+                    f"Klon z '{current_name}'. Oryginalny opis: {cloned_description}"
+                )
+                cloned_data_req = self.current_profile.get(
+                    "data_required", "Nie zdefiniowano."
                 )
                 new_profile_data["data_required"] = (
-                    self.profile_data_required.toPlainText()
+                    f"Klon z '{current_name}'. Oryginalne wymagania: {cloned_data_req}"
+                )
+                cloned_hw_req = self.current_profile.get(
+                    "hardware_required", "Nie zdefiniowano."
                 )
                 new_profile_data["hardware_required"] = (
-                    self.profile_hardware_required.toPlainText()
+                    f"Klon z '{current_name}'. Oryginalne wymagania: {cloned_hw_req}"
                 )
 
                 new_path = self.profiles_dir / f"{new_name}.json"
@@ -2651,35 +2687,55 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
     def _save_profile(self):
         try:
+            default_profile_name = f"{self.arch_combo.currentText()}_{self.variant_combo.currentText()}_custom"
+            if (
+                self.profile_list.currentItem()
+            ):  # If a profile is selected, suggest its name for overwriting or modifying
+                default_profile_name = self.profile_list.currentItem().text()
+
             name, ok = QtWidgets.QInputDialog.getText(
                 self,
                 "Zapisz profil",
-                "Podaj nazwę dla nowego profilu:",
+                "Podaj nazwę dla profilu:",
                 QtWidgets.QLineEdit.EchoMode.Normal,
-                f"{self.arch_combo.currentText()}_{self.variant_combo.currentText()}_custom",
+                default_profile_name,
             )
             if ok and name:
-                profile_data = (
-                    self._get_current_config_as_dict()
-                )  # Pobierz pełną konfigurację
+                profile_data = self._get_current_config_as_dict()
 
-                # Uzupełnij informacje meta profilu
                 profile_data["type"] = "training"
                 profile_data["info"] = (
                     f"Profil dla {self.arch_combo.currentText()} {self.variant_combo.currentText()} "
                     f"(zapisany {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')})"
                 )
-                # Możliwość edycji opisu przed zapisem
+
+                current_description = ""
+                if (
+                    self.current_profile
+                    and self.profile_list.currentItem()
+                    and self.profile_list.currentItem().text() == name
+                ):
+                    current_description = self.current_profile.get(
+                        "description",
+                        "Utworzony przez użytkownika na podstawie bieżących ustawień.",
+                    )
+                else:
+                    current_description = (
+                        "Utworzony przez użytkownika na podstawie bieżących ustawień."
+                    )
+
                 description, desc_ok = QtWidgets.QInputDialog.getMultiLineText(
                     self,
                     "Opis Profilu",
                     "Wprowadź opis dla profilu:",
-                    "Utworzony przez użytkownika na podstawie bieżących ustawień.",
+                    current_description,
                 )
                 if desc_ok:
                     profile_data["description"] = description
-                else:
-                    profile_data["description"] = "Utworzony przez użytkownika."
+                else:  # User cancelled description input
+                    profile_data["description"] = (
+                        current_description  # Keep old or default
+                    )
 
                 profile_data["data_required"] = (
                     "Dane zgodnie z konfiguracją (liczba klas, rozmiar wejścia)."
@@ -2692,6 +2748,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 with open(profile_path, "w", encoding="utf-8") as f:
                     json.dump(profile_data, f, indent=4, ensure_ascii=False)
                 self._refresh_profile_list()
+                # Try to reselect the saved profile
+                for i in range(self.profile_list.count()):
+                    if self.profile_list.item(i).text() == name:
+                        self.profile_list.setCurrentRow(i)
+                        break
                 QtWidgets.QMessageBox.information(
                     self, "Sukces", "Profil został pomyślnie zapisany."
                 )
@@ -2702,10 +2763,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             )
 
     def _delete_profile(self):
-        # ... (bez zmian)
-        if (
-            not self.current_profile or not self.profile_list.currentItem()
-        ):  # Sprawdź też currentItem
+        if not self.profile_list.currentItem():
             QtWidgets.QMessageBox.warning(
                 self, "Ostrzeżenie", "Najpierw wybierz profil do usunięcia."
             )
@@ -2724,14 +2782,17 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 profile_path = self.profiles_dir / f"{current_name}.json"
                 if profile_path.exists():
                     profile_path.unlink()
-                    self._refresh_profile_list()
-                    self.current_profile = None  # Reset
-                    self.profile_info.clear()
-                    self.profile_description.clear()
-                    self.profile_data_required.clear()
-                    self.profile_hardware_required.clear()
+                    self._refresh_profile_list()  # This will also clear selection if item is gone
+                    # _on_profile_selected will be called if selection changes to another item or None
+                    # No need to manually clear here as _on_profile_selected(None, ...) will handle it.
                     QtWidgets.QMessageBox.information(
                         self, "Sukces", "Profil został pomyślnie usunięty."
+                    )
+                else:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Błąd",
+                        f"Plik profilu '{current_name}' nie został znaleziony.",
                     )
         except Exception as e:
             self.logger.error(f"Błąd usuwania profilu: {e}", exc_info=True)
@@ -2743,22 +2804,25 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
         self._update_variant_combo(arch_name)
 
     def _update_variant_combo(self, arch_name):
-        # ... (bez zmian)
+        current_variant = self.variant_combo.currentText()
         self.variant_combo.clear()
+        variants = []
         if arch_name == "EfficientNet":
-            self.variant_combo.addItems([f"EfficientNet-B{i}" for i in range(8)])
+            variants = [f"EfficientNet-B{i}" for i in range(8)]
         elif arch_name == "ConvNeXt":
-            self.variant_combo.addItems(
-                [
-                    "ConvNeXt-Tiny",
-                    "ConvNeXt-Small",
-                    "ConvNeXt-Base",
-                    "ConvNeXt-Large",
-                    "ConvNeXt-XL",
-                    "ConvNeXt-Huge",
-                ]
-            )  # Dodane większe
-        # Dodaj inne architektury jeśli potrzeba
+            variants = [
+                "ConvNeXt-Tiny",
+                "ConvNeXt-Small",
+                "ConvNeXt-Base",
+                "ConvNeXt-Large",
+                "ConvNeXt-XL",  # Added from original
+                "ConvNeXt-Huge",  # Added from original
+            ]
+        self.variant_combo.addItems(variants)
+        if current_variant in variants:
+            self.variant_combo.setCurrentText(current_variant)
+        elif variants:
+            self.variant_combo.setCurrentIndex(0)
 
     def _select_train_dir(self):
         # ... (bez zmian)
@@ -2768,15 +2832,16 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.train_dir_edit.text() or str(Path.home()),
         )
         if dir_path:
-            if validate_training_directory(
+            # Simple validation: check if directory exists. More complex validation can be added.
+            if Path(
                 dir_path
-            ):  # Załóżmy, że ta funkcja istnieje i działa
+            ).is_dir():  # Replaced validate_training_directory for simplicity
                 self.train_dir_edit.setText(dir_path)
             else:
                 QtWidgets.QMessageBox.warning(
                     self,
                     "Błąd",
-                    "Nieprawidłowy katalog treningowy. Sprawdź strukturę podkatalogów (klas).",
+                    "Nieprawidłowy katalog treningowy. Katalog nie istnieje.",
                 )
 
     def _select_val_dir(self):
@@ -2787,88 +2852,101 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             self.val_dir_edit.text() or str(Path.home()),
         )
         if dir_path:
-            if validate_validation_directory(
+            if Path(
                 dir_path
-            ):  # Załóżmy, że ta funkcja istnieje i działa
+            ).is_dir():  # Replaced validate_validation_directory for simplicity
                 self.val_dir_edit.setText(dir_path)
             else:
                 QtWidgets.QMessageBox.warning(
                     self,
                     "Błąd",
-                    "Nieprawidłowy katalog walidacyjny. Sprawdź strukturę podkatalogów (klas).",
+                    "Nieprawidłowy katalog walidacyjny. Katalog nie istnieje.",
                 )
 
     def _get_unfreeze_strategy_value(self, display_text):
-        if "unfreeze_all" in display_text:
+        if "unfreeze_all" in display_text or "Wszystkie na raz" in display_text:
             return self.UNFREEZE_ALL
-        if "unfreeze_gradual_end" in display_text:
+        if (
+            "unfreeze_gradual_end" in display_text
+            or "Stopniowo od końca" in display_text
+        ):
             return self.UNFREEZE_GRADUAL_END
-        if "unfreeze_gradual_start" in display_text:
+        if (
+            "unfreeze_gradual_start" in display_text
+            or "Stopniowo od początku" in display_text
+        ):
             return self.UNFREEZE_GRADUAL_START
-        if self.UNFREEZE_AFTER_EPOCHS in display_text:
+        if (
+            self.UNFREEZE_AFTER_EPOCHS in display_text
+            or "Po określonej liczbie epok" in display_text
+        ):
             return self.UNFREEZE_AFTER_EPOCHS
+        self.logger.warning(
+            f"Nieznana strategia odmrażania w UI: {display_text}, domyślnie {self.UNFREEZE_ALL}"
+        )
         return self.UNFREEZE_ALL
 
     def _get_unfreeze_layers_value(self, text_value: str):
         text_value = text_value.strip()
         if not text_value:
-            return "all"  # Domyślnie, jeśli puste
+            return "all"
         if text_value.lower() == "all":
             return "all"
         if text_value.lower().startswith("last_"):
             try:
                 num = int(text_value.split("_")[1])
-                return f"last_{num}"  # Lub po prostu num, zależnie od implementacji silnika
-            except:
-                return text_value  # Błędny format, przekaż jak jest
-        if "," in text_value:  # Lista warstw
+                return f"last_{num}"
+            except (IndexError, ValueError):
+                self.logger.warning(
+                    f"Nieprawidłowy format 'last_n' dla unfreeze_layers: {text_value}. Zwracam jako tekst."
+                )
+                return text_value
+        if "," in text_value:
             return [layer.strip() for layer in text_value.split(",") if layer.strip()]
-        # Pojedyncza nazwa warstwy lub liczba (jako string jeśli nie "last_n")
         return text_value
 
-    def _get_scheduler_value(self, display_text):  # Używane w _on_accept
-        # Mapowanie z tekstu UI na wartość JSON (klucz)
+    def _get_scheduler_value(self, display_text):
         scheduler_map = {
             "None": "None",
             "CosineAnnealingWarmRestarts": "CosineAnnealingWarmRestarts",
             "StepLR": "StepLR",
             "OneCycleLR": "OneCycleLR",
-            "ReduceLROnPlateau": "ReduceLROnPlateau",  # To jest bardziej callback, ale może być tu jako opcja
+            "ReduceLROnPlateau": "ReduceLROnPlateau",
             "CosineAnnealingLR": "CosineAnnealingLR",
         }
         return scheduler_map.get(display_text, "None")
 
     def _toggle_unfreeze_after_epochs_spin(self, strategy_text):
-        # Sprawdź, czy atrybuty istnieją, zanim ich użyjesz
         if hasattr(self, "training_unfreeze_after_epochs_spin"):
-            is_enabled = self.UNFREEZE_AFTER_EPOCHS in strategy_text
+            is_enabled = (
+                self.UNFREEZE_AFTER_EPOCHS in strategy_text
+                or "Po określonej liczbie epok" in strategy_text
+            )
             self.training_unfreeze_after_epochs_spin.setEnabled(is_enabled)
 
     def _toggle_early_stopping_controls(self, state):
         enabled = bool(state)
-        if hasattr(self, "early_stopping_monitor_combo"):
-            self.early_stopping_monitor_combo.setEnabled(enabled)
-        if hasattr(self, "early_stopping_mode_combo"):
-            self.early_stopping_mode_combo.setEnabled(enabled)
-        if hasattr(self, "early_stopping_patience_spin"):
-            self.early_stopping_patience_spin.setEnabled(enabled)
-        if hasattr(self, "early_stopping_min_delta_spin"):
-            self.early_stopping_min_delta_spin.setEnabled(enabled)
+        for attr_name in [
+            "early_stopping_monitor_combo",
+            "early_stopping_mode_combo",
+            "early_stopping_patience_spin",
+            "early_stopping_min_delta_spin",
+        ]:
+            if hasattr(self, attr_name):
+                getattr(self, attr_name).setEnabled(enabled)
 
     def _toggle_reduce_lr_controls(self, state):
         enabled = bool(state)
-        if hasattr(self, "reduce_lr_monitor_combo"):
-            self.reduce_lr_monitor_combo.setEnabled(enabled)
-        if hasattr(self, "reduce_lr_mode_combo"):
-            self.reduce_lr_mode_combo.setEnabled(enabled)
-        if hasattr(self, "reduce_lr_factor_spin"):
-            self.reduce_lr_factor_spin.setEnabled(enabled)
-        if hasattr(self, "reduce_lr_patience_spin"):
-            self.reduce_lr_patience_spin.setEnabled(enabled)
-        if hasattr(self, "reduce_lr_min_delta_spin"):
-            self.reduce_lr_min_delta_spin.setEnabled(enabled)
-        if hasattr(self, "reduce_lr_min_lr_spin"):
-            self.reduce_lr_min_lr_spin.setEnabled(enabled)
+        for attr_name in [
+            "reduce_lr_monitor_combo",
+            "reduce_lr_mode_combo",
+            "reduce_lr_factor_spin",
+            "reduce_lr_patience_spin",
+            "reduce_lr_min_delta_spin",
+            "reduce_lr_min_lr_spin",
+        ]:
+            if hasattr(self, attr_name):
+                getattr(self, attr_name).setEnabled(enabled)
 
     def _toggle_stochastic_depth_controls(self, state):
         if hasattr(self, "stochastic_depth_survival_prob_spin"):
@@ -2883,16 +2961,17 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
     def _toggle_basic_aug_controls(self, state):
         enabled = bool(state)
+        # Using corrected names (Poprawka 8)
         controls = [
-            "aug_basic_rotation_spin",
-            "aug_basic_brightness_spin",
-            "aug_basic_contrast_spin",
-            "aug_basic_saturation_spin",
-            "aug_basic_hue_spin",
-            "aug_basic_shift_spin",
-            "aug_basic_zoom_spin",
-            "aug_basic_horizontal_flip_check",
-            "aug_basic_vertical_flip_check",
+            "basic_aug_rotation_spin",
+            "basic_aug_brightness_spin",
+            "basic_aug_contrast_spin",
+            "basic_aug_saturation_spin",
+            "basic_aug_hue_spin",
+            "basic_aug_shift_spin",
+            "basic_aug_zoom_spin",
+            "basic_aug_horizontal_flip_check",
+            "basic_aug_vertical_flip_check",
         ]
         for ctrl_name in controls:
             if hasattr(self, ctrl_name):
@@ -3021,55 +3100,83 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
     def _update_dependent_controls(self):
         """Wywołuje wszystkie funkcje _toggle_* aby zaktualizować stan kontrolek po załadowaniu profilu."""
-        self._toggle_unfreeze_after_epochs_spin(
-            self.training_unfreeze_strategy_combo.currentText()
-        )
-        self._toggle_early_stopping_controls(self.use_early_stopping_check.isChecked())
-        self._toggle_reduce_lr_controls(self.reduce_lr_enabled_check.isChecked())
-        self._toggle_stochastic_depth_controls(
-            self.stochastic_depth_use_check.isChecked()
-        )
-        self._toggle_swa_controls(self.use_swa_check.isChecked())
-        self._toggle_basic_aug_controls(self.basic_aug_check.isChecked())
-        if hasattr(self, "mixup_check"):
+        if hasattr(self, "training_unfreeze_strategy_combo"):
+            self._toggle_unfreeze_after_epochs_spin(
+                self.training_unfreeze_strategy_combo.currentText()
+            )
+        if hasattr(self, "use_early_stopping_check"):
+            self._toggle_early_stopping_controls(
+                self.use_early_stopping_check.isChecked()
+            )
+        if hasattr(self, "reduce_lr_enabled_check"):
+            self._toggle_reduce_lr_controls(self.reduce_lr_enabled_check.isChecked())
+        if hasattr(self, "stochastic_depth_use_check"):
+            self._toggle_stochastic_depth_controls(
+                self.stochastic_depth_use_check.isChecked()
+            )
+        if hasattr(self, "use_swa_check"):
+            self._toggle_swa_controls(self.use_swa_check.isChecked())
+
+        if hasattr(self, "basic_aug_check"):
+            self._toggle_basic_aug_controls(self.basic_aug_check.isChecked())
+        if hasattr(self, "mixup_check") and hasattr(self, "mixup_alpha_spin"):
             self.mixup_alpha_spin.setEnabled(self.mixup_check.isChecked())
-        if hasattr(self, "cutmix_check"):
+        if hasattr(self, "cutmix_check") and hasattr(self, "cutmix_alpha_spin"):
             self.cutmix_alpha_spin.setEnabled(self.cutmix_check.isChecked())
-        if hasattr(self, "autoaugment_check"):
+        if hasattr(self, "autoaugment_check") and hasattr(
+            self, "autoaugment_policy_combo"
+        ):
             self.autoaugment_policy_combo.setEnabled(self.autoaugment_check.isChecked())
-        self._toggle_randaugment_controls(self.randaugment_check.isChecked())
-        self._toggle_random_erase_controls(self.random_erase_check.isChecked())
-        self._toggle_grid_distortion_controls(self.grid_distortion_check.isChecked())
-        self._toggle_preprocess_resize_controls(
-            self.preprocess_resize_enabled_check.isChecked()
-        )
-        self._toggle_preprocess_normalize_controls(
-            self.preprocess_normalize_enabled_check.isChecked()
-        )
+        if hasattr(self, "randaugment_check"):
+            self._toggle_randaugment_controls(self.randaugment_check.isChecked())
+        if hasattr(self, "random_erase_check"):
+            self._toggle_random_erase_controls(self.random_erase_check.isChecked())
+        if hasattr(self, "grid_distortion_check"):
+            self._toggle_grid_distortion_controls(
+                self.grid_distortion_check.isChecked()
+            )
+
+        if hasattr(self, "preprocess_resize_enabled_check"):
+            self._toggle_preprocess_resize_controls(
+                self.preprocess_resize_enabled_check.isChecked()
+            )
+        if hasattr(self, "preprocess_normalize_enabled_check"):
+            self._toggle_preprocess_normalize_controls(
+                self.preprocess_normalize_enabled_check.isChecked()
+            )
         if hasattr(self, "preprocess_grayscale_enabled_check") and hasattr(
             self, "preprocess_grayscale_num_output_channels_spin"
         ):
             self.preprocess_grayscale_num_output_channels_spin.setEnabled(
                 self.preprocess_grayscale_enabled_check.isChecked()
             )
-        self._toggle_preprocess_color_jitter_controls(
-            self.preprocess_color_jitter_enabled_check.isChecked()
-        )
-        self._toggle_preprocess_gaussian_blur_controls(
-            self.preprocess_gaussian_blur_enabled_check.isChecked()
-        )
-        self._toggle_preprocess_random_resize_crop_controls(
-            self.preprocess_random_resize_crop_enabled_check.isChecked()
-        )
-        self._toggle_tensorboard_controls(self.tensorboard_enabled_check.isChecked())
-        self._toggle_wandb_controls(self.wandb_enabled_check.isChecked())
-        self._toggle_checkpoint_controls(self.checkpoint_enabled_check.isChecked())
-        self._toggle_agc_controls(self.advanced_gradient_clip_agc_check.isChecked())
+        if hasattr(self, "preprocess_color_jitter_enabled_check"):
+            self._toggle_preprocess_color_jitter_controls(
+                self.preprocess_color_jitter_enabled_check.isChecked()
+            )
+        if hasattr(self, "preprocess_gaussian_blur_enabled_check"):
+            self._toggle_preprocess_gaussian_blur_controls(
+                self.preprocess_gaussian_blur_enabled_check.isChecked()
+            )
+        if hasattr(self, "preprocess_random_resize_crop_enabled_check"):
+            self._toggle_preprocess_random_resize_crop_controls(
+                self.preprocess_random_resize_crop_enabled_check.isChecked()
+            )
+
+        if hasattr(self, "tensorboard_enabled_check"):
+            self._toggle_tensorboard_controls(
+                self.tensorboard_enabled_check.isChecked()
+            )
+        if hasattr(self, "wandb_enabled_check"):
+            self._toggle_wandb_controls(self.wandb_enabled_check.isChecked())
+        if hasattr(self, "checkpoint_enabled_check"):
+            self._toggle_checkpoint_controls(self.checkpoint_enabled_check.isChecked())
+        if hasattr(self, "advanced_gradient_clip_agc_check"):
+            self._toggle_agc_controls(self.advanced_gradient_clip_agc_check.isChecked())
 
     def _get_current_config_as_dict(self):
         """Zbiera wszystkie ustawienia z UI i zwraca jako słownik."""
 
-        # Optimization Tab parameters
         optimization_params_values = {}
         opt_tab_keys = [
             "cudnn_benchmark",
@@ -3087,9 +3194,9 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                     optimization_params_values[key] = widget.value()
                 elif isinstance(widget, QtWidgets.QCheckBox):
                     optimization_params_values[key] = widget.isChecked()
-                else:
+                else:  # QLineEdit
                     optimization_params_values[key] = widget.text()
-            else:  # Domyślne wartości, jeśli kontrolka nie istnieje (nie powinno się zdarzyć)
+            else:  # Fallback if widget somehow not in parameter_rows (should not happen)
                 default_map = {
                     "cudnn_benchmark": True,
                     "pin_memory": True,
@@ -3100,10 +3207,32 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 }
                 optimization_params_values[key] = default_map.get(key)
 
-        # Zbieranie konfiguracji
+        # Constructing the optimization part of the config, including nested dataloader (Poprawka 14)
+        final_optimization_config = {
+            "cudnn_benchmark": optimization_params_values.get("cudnn_benchmark", True),
+            "pin_memory": optimization_params_values.get("pin_memory", True),
+            "shuffle": optimization_params_values.get("shuffle", True),
+            "prefetch_factor": optimization_params_values.get("prefetch_factor", 2),
+            "persistent_workers": optimization_params_values.get(
+                "persistent_workers", False
+            ),
+            "drop_last": optimization_params_values.get("drop_last", False),
+            "dataloader": {
+                "pin_memory": optimization_params_values.get(
+                    "pin_memory", True
+                ),  # Added pin_memory here too
+                "shuffle": optimization_params_values.get("shuffle", True),
+                "prefetch_factor": optimization_params_values.get("prefetch_factor", 2),
+                "persistent_workers": optimization_params_values.get(
+                    "persistent_workers", False
+                ),
+                "drop_last": optimization_params_values.get("drop_last", False),
+            },
+        }
+
         config_data = {
-            "type": "training",  # Dodajemy typ, żeby było kompletne
-            "info": "",  # Zostawiamy puste, wypełniane przy zapisie/klonowaniu
+            "type": "training",
+            "info": "",
             "description": "",
             "data_required": "",
             "hardware_required": "",
@@ -3162,7 +3291,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                     "label_smoothing": self.reg_label_smoothing_spin.value(),
                     "dropout_rate": self.reg_dropout_rate_spin.value(),
                     "drop_connect_rate": self.reg_drop_connect_rate_spin.value(),
-                    "gradient_clip": self.reg_gradient_clip_spin.value(),  # Ten z zakładki regularyzacji
+                    "gradient_clip": self.reg_gradient_clip_spin.value(),
                     "momentum": self.reg_momentum_spin.value(),
                     "epsilon": self.reg_epsilon_spin.value(),
                     "stochastic_depth": {
@@ -3176,17 +3305,17 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                     },
                 },
                 "augmentation": {
-                    "basic": {
+                    "basic": {  # Using corrected names (Poprawka 8)
                         "use": self.basic_aug_check.isChecked(),
-                        "rotation": self.aug_basic_rotation_spin.value(),
-                        "brightness": self.aug_basic_brightness_spin.value(),
-                        "contrast": self.aug_basic_contrast_spin.value(),
-                        "saturation": self.aug_basic_saturation_spin.value(),
-                        "hue": self.aug_basic_hue_spin.value(),
-                        "shift": self.aug_basic_shift_spin.value(),
-                        "zoom": self.aug_basic_zoom_spin.value(),
-                        "horizontal_flip": self.aug_basic_horizontal_flip_check.isChecked(),
-                        "vertical_flip": self.aug_basic_vertical_flip_check.isChecked(),
+                        "rotation": self.basic_aug_rotation_spin.value(),
+                        "brightness": self.basic_aug_brightness_spin.value(),
+                        "contrast": self.basic_aug_contrast_spin.value(),
+                        "saturation": self.basic_aug_saturation_spin.value(),
+                        "hue": self.basic_aug_hue_spin.value(),
+                        "shift": self.basic_aug_shift_spin.value(),
+                        "zoom": self.basic_aug_zoom_spin.value(),
+                        "horizontal_flip": self.basic_aug_horizontal_flip_check.isChecked(),
+                        "vertical_flip": self.basic_aug_vertical_flip_check.isChecked(),
                     },
                     "mixup": {
                         "use": self.mixup_check.isChecked(),
@@ -3223,9 +3352,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                         "probability": self.grid_distortion_prob_spin.value(),
                         "distort_limit": self.grid_distortion_limit_spin.value(),
                     },
-                    "resize": {
-                        "enabled": self.aug_resize_enabled_check.isChecked()
-                    },  # Z augmentacji
+                    "resize": {"enabled": self.aug_resize_enabled_check.isChecked()},
                 },
                 "preprocessing": {
                     "resize": {
@@ -3292,9 +3419,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                         "precision": self.metrics_precision_check.isChecked(),
                         "recall": self.metrics_recall_check.isChecked(),
                         "f1": self.metrics_f1_check.isChecked(),
-                        "topk": (
-                            [2, 5] if self.metrics_topk_check.isChecked() else []
-                        ),  # Przykładowe k
+                        "topk": [2, 5] if self.metrics_topk_check.isChecked() else [],
                         "confusion_matrix": self.metrics_confusion_matrix_check.isChecked(),
                         "auc": self.metrics_auc_check.isChecked(),
                         "gpu_utilization": self.metrics_gpu_utilization_check.isChecked(),
@@ -3315,7 +3440,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                             if tag.strip()
                         ],
                     },
-                    "checkpoint": {  # Zmieniono z checkpointing
+                    "checkpoint": {
                         "enabled": self.checkpoint_enabled_check.isChecked(),
                         "dir": self.checkpoint_dir_edit.text(),
                         "save_best_only": self.checkpoint_save_best_only_check.isChecked(),
@@ -3355,20 +3480,11 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                         "use": self.advanced_gradient_clip_agc_check.isChecked(),
                         "clipping": self.advanced_gradient_clip_agc_clipping_spin.value(),
                         "eps": self.advanced_gradient_clip_agc_eps_spin.value(),
-                        # Pomiń bardziej szczegółowe parametry AGC dla uproszczenia
                     },
                 },
-                "optimization": optimization_params_values,  # Z zakładki Optymalizacja Sprzętowa
+                "optimization": final_optimization_config,  # Using the structured dict
             },
         }
-        # Usuń puste pod-słowniki, jeśli jakieś polityki są wyłączone
-        if not config_data["config"]["augmentation"]["basic"]["use"]:
-            config_data["config"]["augmentation"]["basic"] = {
-                "use": False
-            }  # Zostaw tylko flagę
-        # Podobnie dla innych grup augmentacji, preprocessingu itd.
-        # ... (logika do usuwania pustych sekcji, jeśli potrzebna, ale może być nadmiarowa)
-
         return config_data
 
     def _on_accept(self):
@@ -3376,7 +3492,7 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
             variant = self.variant_combo.currentText()
             num_classes = self.num_classes_spin.value()
             now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            task_name = f"{variant}_{num_classes}cls_{now}"  # Lepsza nazwa
+            task_name = f"{variant}_{num_classes}cls_{now}"
 
             train_dir = self.train_dir_edit.text().strip()
             if not train_dir:
@@ -3391,7 +3507,6 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
                 return
 
             val_dir = self.val_dir_edit.text().strip()
-            # Walidacja katalogu walidacyjnego jest opcjonalna, jeśli validation_split > 0
             if not val_dir and self.training_validation_split_spin.value() == 0.0:
                 QtWidgets.QMessageBox.warning(
                     self,
@@ -3412,19 +3527,16 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
             self.task_config = {
                 "name": task_name,
-                "type": "training",  # Już jest w full_config_data
+                "type": "training",
                 "status": "Nowy",
                 "priority": 0,
-                "created_at": datetime.datetime.now().isoformat(),  # Lepszy format
-                "config": full_config_data["config"],  # Bierzemy tylko sekcję 'config'
-                # Meta informacje o profilu nie są częścią konfiguracji zadania samego w sobie
+                "created_at": datetime.datetime.now().isoformat(),
+                "config": full_config_data["config"],
             }
 
             self.logger.info(f"Utworzono konfigurację zadania: {task_name}")
-            config_str = json.dumps(self.task_config, indent=2, ensure_ascii=False)
-            self.logger.debug(
-                f"Pełna konfiguracja zadania: {config_str}"
-            )  # Debug zamiast info dla pełnego zrzutu
+            # config_str = json.dumps(self.task_config, indent=2, ensure_ascii=False) # Keep for debugging if needed
+            # self.logger.debug(f"Pełna konfiguracja zadania: {config_str}")
 
             self.accept()
 
@@ -3439,39 +3551,65 @@ class TrainingTaskConfigDialog(QtWidgets.QDialog):
 
     def closeEvent(self, event):
         self.logger.info("Zamykanie okna dialogowego konfiguracji treningu")
-        # Nie rób self.accept() tutaj, bo to by symulowało kliknięcie OK
-        super().closeEvent(event)  # Pozwól na standardowe zamknięcie
+        super().closeEvent(event)
 
     def _show_hardware_profile(self):
-        dialog = HardwareProfileDialog(self.hardware_profile, self)
+        # Ensure hardware_profile is a dict, even if empty
+        current_hw_profile = (
+            self.hardware_profile if isinstance(self.hardware_profile, dict) else {}
+        )
+        dialog = HardwareProfileDialog(current_hw_profile, self)
         dialog.exec()
 
 
 if __name__ == "__main__":
     import sys
 
-    # Prosty mock dla HardwareProfiler i settings, jeśli są potrzebne do testowania
     mock_hardware_profile = {
-        "recommended_batch_size": 16,
-        "recommended_workers": 2,
-        "use_mixed_precision": True,
+        "recommended_batch_size": 16,  # This key is not directly used by _create_parameter_row's map
+        "recommended_workers": 2,  # This key is not directly used by _create_parameter_row's map
+        "use_mixed_precision": True,  # This key is not directly used by _create_parameter_row's map
         "cudnn_benchmark": True,
         "pin_memory": True,
-        "prefetch_factor": 2,
-        "persistent_workers": False,
+        "prefetch_factor": 4,  # Example different value
+        "persistent_workers": True,  # Example different value
+        "shuffle": False,  # Example different value for dataloader shuffle
+        "drop_last": True,  # Example
     }
 
     app = QtWidgets.QApplication(sys.argv)
+    # Setup basic logging to see messages
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
     dialog = TrainingTaskConfigDialog(hardware_profile=mock_hardware_profile)
 
-    # Załaduj przykładowy profil jeśli istnieje do testów
-    # test_profile_path = dialog.profiles_dir / "EfficientNet-B0_2_custom.json"
-    # if test_profile_path.exists():
-    #     with open(test_profile_path, "r") as f:
-    #         dialog.current_profile = json.load(f)
-    #         dialog._apply_profile()
+    # Example: Try to load a default profile to test _apply_profile more thoroughly
+    # Create a dummy profile for testing
+    # test_profile_name = "test_profile.json"
+    # test_profile_content = {
+    #     "type": "training",
+    #     "info": "Test Profile",
+    #     "description": "A profile for testing apply.",
+    #     "config": {
+    #         "model": {"architecture": "ConvNeXt", "variant": "ConvNeXt-Small", "input_size": 256},
+    #         "training": {"epochs": 10, "learning_rate": 0.0005},
+    #         "optimization": {
+    #             "cudnn_benchmark": False,
+    #             "pin_memory": False,
+    #             "dataloader": {"prefetch_factor": 3}
+    #          }
+    #     }
+    # }
+    # with open(dialog.profiles_dir / test_profile_name, "w") as f:
+    #     json.dump(test_profile_content, f)
+    # dialog._refresh_profile_list()
+    # for i in range(dialog.profile_list.count()):
+    #     if dialog.profile_list.item(i).text() == test_profile_name.replace(".json",""):
+    #         dialog.profile_list.setCurrentRow(i)
+    #         # dialog._apply_profile() # _on_profile_selected should trigger loading if we want to auto-apply
+    #         break
 
-    if dialog.exec():  # Zmieniono z show() na exec() dla dialogu modalnego
+    if dialog.exec():
         task_conf = dialog.get_task_config()
         if task_conf:
             print("Dodano zadanie:")
@@ -3481,4 +3619,4 @@ if __name__ == "__main__":
     else:
         print("Okno dialogowe zostało zamknięte bez dodawania zadania.")
 
-    # sys.exit(app.exec()) # app.exec() jest już wywołane przez dialog.exec() dla modalnego
+    # sys.exit(app.exec()) # Not needed with QDialog.exec()

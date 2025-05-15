@@ -1,15 +1,17 @@
 {
   "type": "training",
-  "info": "EfficientNet-B2 dla 30-50 kategorii",
+  "info": "EfficientNet-B2 Claude",
   "description": "Profil treningowy oparty o EfficientNet-B2 zoptymalizowany dla klasyfikacji obrazów z 30-50 kategoriami. Zbalansowane parametry dla wysokiej dokładności przy zachowaniu rozsądnego czasu treningu.",
   "data_required": "Zbiór 30-50 klas, minimum 150-200 obrazów treningowych i 30-50 walidacyjnych na klasę. Zalecany podział 80/20 między treningiem a walidacją.",
   "hardware_required": "GPU z min. 8GB VRAM (np. RTX 3060/2070 lub lepsze), CPU min. 8 rdzeni, RAM min. 32GB.",
   "config": {
+    "train_dir": "",
+    "val_dir": "",
     "model": {
       "architecture": "EfficientNet",
       "variant": "EfficientNet-B2",
       "input_size": 260,
-      "num_classes": 42,
+      "num_classes": 30,
       "pretrained": true,
       "pretrained_weights": "imagenet",
       "feature_extraction_only": false,
@@ -20,7 +22,7 @@
     },
     "training": {
       "epochs": 150,
-      "batch_size": 96,
+      "batch_size": 64,
       "learning_rate": 0.0005,
       "optimizer": "AdamW",
       "scheduler": {
@@ -32,16 +34,16 @@
       "num_workers": 12,
       "warmup_epochs": 5,
       "warmup_lr_init": 1e-6,
-      "use_mixed_precision": true,
-      "gradient_accumulation_steps": 2,
+      "mixed_precision": true,
+      "gradient_accumulation_steps": 3,
       "gradient_clip": 1.0,
       "evaluation_freq": 1,
       "use_ema": true,
       "ema_decay": 0.9998,
       "freeze_base_model": true,
-      "unfreeze_layers": "all",
+      "unfreeze_layers": "last_block",
       "unfreeze_strategy": "unfreeze_gradual_end",
-      "unfreeze_after_epochs": 15,
+      "unfreeze_after_epochs": 20,
       "frozen_lr": 1e-5,
       "unfrozen_lr": 0.0003,
       "validation_split": 0.2
@@ -60,8 +62,8 @@
       },
       "swa": {
         "use": true,
-        "start_epoch": 100,
-        "lr_swa": 5e-5
+        "start_epoch": 80,
+        "lr_swa": 1e-5
       }
     },
     "augmentation": {
@@ -115,7 +117,7 @@
     "preprocessing": {
       "resize": {
         "enabled": true,
-        "size": [286, 286],
+        "size": [260, 260],
         "mode": "bicubic"
       },
       "normalize": {
@@ -139,7 +141,7 @@
         "kernel_size": 3,
         "sigma": 1.0
       },
-      "cache_dataset": true,
+      "cache_dataset": "ram_limited",
       "scaling": {
         "method": "Bicubic",
         "maintain_aspect_ratio": true,
@@ -189,8 +191,8 @@
         "enabled": true,
         "monitor": "val_loss",
         "mode": "min",
-        "patience": 20,
-        "min_delta": 0.0001
+        "patience": 15,
+        "min_delta": 0.0005
       },
       "reduce_lr": {
         "enabled": false,
@@ -206,10 +208,10 @@
       "seed": 42,
       "deterministic": false,
       "benchmark": true,
-      "gradient_clip_val": 0.0,
-      "gradient_clip_norm": 0.0,
+      "gradient_clip_val": 1.0,
+      "gradient_clip_norm": 1.0,
       "gradient_clip_algorithm": "norm",
-      "accumulate_grad_batches": 2,
+      "accumulate_grad_batches": 3,
       "sync_batchnorm": false,
       "precision": "16-mixed",
       "amp_level": "O1",
@@ -227,6 +229,7 @@
       "persistent_workers": true,
       "drop_last": false,
       "dataloader": {
+        "pin_memory": true,
         "shuffle": true,
         "prefetch_factor": 4,
         "persistent_workers": true,
