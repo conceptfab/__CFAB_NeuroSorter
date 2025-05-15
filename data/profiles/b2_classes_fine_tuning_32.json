@@ -1,7 +1,7 @@
 {
   "type": "fine_tuning",
   "info": "Profil dla klasyfikacji wieloklasowej (32)-FIXED",
-  "description": "Profil dostosowany do klasyfikacji około 32 różnych klas-FIXED",https://claude.ai/chat/b73d9726-dbf8-44c1-a0c5-89daef844090
+  "description": "Profil dostosowany do klasyfikacji około 32 różnych klas-FIXED",
   "data_required": "Zestaw danych zawierający przykłady z około 32 różnych klas-FIXED",
   "hardware_required": "Standardowy sprzęt",
   "config": {

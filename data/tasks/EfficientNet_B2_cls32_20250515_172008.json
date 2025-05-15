@@ -1,0 +1,257 @@
+{
+    "name": "EfficientNet_B2_cls32_20250515_172008",
+    "type": "training",
+    "status": "Nowy",
+    "priority": 0,
+    "created_at": "2025-05-15 17:20:08",
+    "train_dir": "F:/_set_DATA_B2/train",
+    "val_dir": "F:/_set_DATA_B2/valid",
+    "config": {
+        "model": {
+            "architecture": "EfficientNet",
+            "variant": "EfficientNet-B2",
+            "input_size": 260,
+            "num_classes": 32,
+            "pretrained": true,
+            "pretrained_weights": "imagenet",
+            "feature_extraction_only": false,
+            "activation": "swish",
+            "dropout_at_inference": false,
+            "global_pool": "avg",
+            "last_layer_activation": "softmax"
+        },
+        "training": {
+            "epochs": 120,
+            "batch_size": 96,
+            "learning_rate": 0.0002,
+            "optimizer": "AdamW",
+            "scheduler": {
+                "type": "CosineAnnealingWarmRestarts",
+                "T_0": 10,
+                "T_mult": 2,
+                "eta_min": 1e-07
+            },
+            "num_workers": 12,
+            "warmup_epochs": 8,
+            "warmup_lr_init": 1e-06,
+            "mixed_precision": true,
+            "gradient_accumulation_steps": 2,
+            "evaluation_freq": 1,
+            "use_ema": true,
+            "ema_decay": 0.9999,
+            "freeze_base_model": true,
+            "unfreeze_layers": "all",
+            "unfreeze_strategy": "unfreeze_all",
+            "unfreeze_after_epochs": 10,
+            "frozen_lr": 1e-05,
+            "unfrozen_lr": 0.0005,
+            "validation_split": 0.2
+        },
+        "regularization": {
+            "weight_decay": 0.0001,
+            "gradient_clip": 1.0,
+            "label_smoothing": 0.1,
+            "drop_connect_rate": 0.15,
+            "dropout_rate": 0.3,
+            "momentum": 0.9,
+            "epsilon": 1e-06,
+            "swa": {
+                "use": true,
+                "start_epoch": 90,
+                "lr_swa": 5e-05
+            },
+            "stochastic_depth": {
+                "use": true,
+                "survival_probability": 0.75
+            }
+        },
+        "augmentation": {
+            "basic": {
+                "use": true,
+                "rotation": 20,
+                "brightness": 0.25,
+                "contrast": 0.25,
+                "saturation": 0.15,
+                "hue": 0.05,
+                "shift": 0.1,
+                "zoom": 0.2,
+                "horizontal_flip": true,
+                "vertical_flip": false
+            },
+            "mixup": {
+                "use": true,
+                "alpha": 0.25
+            },
+            "cutmix": {
+                "use": true,
+                "alpha": 1.0
+            },
+            "autoaugment": {
+                "use": true,
+                "policy": "imagenet"
+            },
+            "randaugment": {
+                "use": true,
+                "n": 2,
+                "m": 10
+            },
+            "trivialaugment": {
+                "use": false
+            },
+            "random_erase": {
+                "use": true,
+                "probability": 0.3,
+                "scale": [
+                    0.02,
+                    0.33
+                ],
+                "ratio": [
+                    0.3,
+                    3.3
+                ]
+            },
+            "grid_distortion": {
+                "enabled": true,
+                "probability": 0.2,
+                "distort_limit": 0.1
+            }
+        },
+        "preprocessing": {
+            "normalization": {
+                "color_order": "RGB",
+                "mean": [
+                    0.48,
+                    0.46,
+                    0.41
+                ],
+                "std": [
+                    0.23,
+                    0.22,
+                    0.23
+                ]
+            },
+            "resize_mode": "Bilinear",
+            "cache_dataset": true,
+            "scaling": {
+                "method": "Bilinear",
+                "maintain_aspect_ratio": true,
+                "pad_to_square": true,
+                "pad_mode": "constant",
+                "pad_value": 0
+            },
+            "random_resize_crop": {
+                "enabled": true,
+                "size": 260,
+                "scale": [
+                    0.85,
+                    1.0
+                ],
+                "ratio": [
+                    0.75,
+                    1.33
+                ]
+            }
+        },
+        "monitoring": {
+            "metrics": {
+                "accuracy": true,
+                "precision": true,
+                "recall": true,
+                "f1": true,
+                "topk": [
+                    3,
+                    5
+                ],
+                "confusion_matrix": true,
+                "auc": true,
+                "gpu_utilization": true,
+                "memory_usage": true
+            },
+            "logging": {
+                "use_tensorboard": true,
+                "tensorboard_log_dir": "logs/EfficientNet-B2_42cat_profile",
+                "use_wandb": false,
+                "wandb_project": "",
+                "wandb_entity": "",
+                "save_to_csv": true,
+                "logging_freq": "epoch"
+            },
+            "visualization": {
+                "use_gradcam": false,
+                "use_feature_maps": false,
+                "use_pred_samples": true,
+                "num_samples": 10
+            },
+            "early_stopping": {
+                "enabled": true,
+                "monitor": "val_loss",
+                "patience": 20,
+                "min_delta": 0.0001,
+                "mode": "min"
+            },
+            "checkpointing": {
+                "use": true,
+                "save_dir": "checkpoints/EfficientNet-B2_42cat_profile",
+                "filename": "best_model_epoch_{epoch:03d}_valloss_{val_loss:.4f}.pt",
+                "monitor": "val_loss",
+                "save_best_only": true,
+                "mode": "min",
+                "save_frequency": 1,
+                "top_k": 3
+            }
+        },
+        "advanced": {
+            "seed": 42,
+            "deterministic": false,
+            "class_weights": "balanced",
+            "sampler": "weighted_random",
+            "image_channels": 3,
+            "tta": {
+                "use": true,
+                "num_augmentations": 5
+            },
+            "cross_validation": {
+                "use": false,
+                "k_folds": 5
+            },
+            "distributed": {
+                "use": false,
+                "backend": "nccl",
+                "world_size": 1,
+                "rank": 0
+            },
+            "export_onnx": false,
+            "quantization": {
+                "use": false,
+                "precision": "int8"
+            },
+            "catastrophic_forgetting_prevention": {
+                "enable": false
+            },
+            "scheduler_params": {
+                "patience": 10,
+                "factor": 0.1,
+                "min_lr": 1e-07,
+                "cooldown": 0
+            },
+            "weights_init": "kaiming_normal",
+            "freeze_cnn_layers": false,
+            "online_validation": {
+                "use": false,
+                "frequency": 100
+            }
+        },
+        "optimization": {
+            "batch_size": 96,
+            "num_workers": 12,
+            "use_mixed_precision": true,
+            "memory_efficient": true,
+            "cudnn_benchmark": true,
+            "pin_memory": true,
+            "dataloader_shuffle": true,
+            "dataloader_prefetch_factor": 4,
+            "dataloader_persistent_workers": true,
+            "dataloader_drop_last": true
+        }
+    }
+}

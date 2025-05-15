@@ -1,5 +1,8 @@
 TODO 0.4
 
+
+- dodac CONNNEXT i warianty
+
 - porównywark modeli - klasyfikacji
 
 - data spliterr przenoszenie danych
