@@ -485,6 +485,9 @@ class TrainingManager(QtWidgets.QWidget, TabInterface):
             else:
                 raise ValueError(f"Nieznany typ zadania: {task_type}")
 
+            # Utwórz katalogi dla zadań, jeśli nie istnieją
+            os.makedirs(os.path.join("data", "tasks"), exist_ok=True)
+
             result = dialog.exec()
             if result == QtWidgets.QDialog.DialogCode.Accepted:
                 task_config = dialog.get_task_config()
