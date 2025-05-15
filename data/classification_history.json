@@ -1,1 +1,26 @@
-[]
+[
+    {
+        "class_name": "animal",
+        "confidence": 0.27880859375,
+        "date": "2025-05-15T09:06:14.880499",
+        "image_path": "F:/______training_database_V3/animal/73204.5304fbb771471.jpg"
+    },
+    {
+        "class_name": "clothing_accessories",
+        "confidence": 0.1734619140625,
+        "date": "2025-05-15T09:07:17.239093",
+        "image_path": "F:/______training_database_V3/animal/73204.5304fbb771471.jpg"
+    },
+    {
+        "class_name": "flower",
+        "confidence": 0.1728515625,
+        "date": "2025-05-15T09:07:28.048553",
+        "image_path": "F:/______training_database_V3/animal/46033.527955c1ce54b.jpg"
+    },
+    {
+        "date": "2025-05-15T09:07:52.949028",
+        "image_path": "F:/______training_database_V3/animal/73204.5304fbb771471.jpg",
+        "class_name": "animal",
+        "confidence": 0.2435302734375
+    }
+]

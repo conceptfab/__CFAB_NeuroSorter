@@ -1005,30 +1005,79 @@ def train_from_json_config(json_config_path):
 
     with open(json_config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
+
     # Wyodrębnij parametry z JSON
     training_config = config.get("config", {})
     model_config = training_config.get("model", {})
+    training_params = training_config.get("training", {})
+    regularization_params = training_config.get("regularization", {})
+    augmentation_params = training_config.get("augmentation", {})
+    optimization_params = training_config.get("optimization", {})
+    monitoring_params = training_config.get("monitoring", {})
+
     # Pobierz input_size
     input_size = model_config.get("input_size", 224)
     if isinstance(input_size, int):
         input_size = (input_size, input_size)
-    # Inne parametry...
+
+    # Inne parametry modelu
     architecture = model_config.get("architecture", "EfficientNet")
     variant = model_config.get("variant", "EfficientNet-B0")
     num_classes = model_config.get("num_classes", 10)
-    # ... pobieranie innych parametrów z JSONa ...
-    # Tworzenie modelu z odpowiednim input_size
+
+    # Parametry treningu
+    epochs = training_params.get("epochs", 120)
+    batch_size = training_params.get("batch_size", 32)
+    learning_rate = training_params.get("learning_rate", 0.0001)
+    optimizer = training_params.get("optimizer", "AdamW")
+    scheduler = training_params.get("scheduler", "CosineAnnealingWarmRestarts")
+    mixed_precision = training_params.get("mixed_precision", True)
+    freeze_base_model = training_params.get("freeze_base_model", False)
+    warmup_epochs = training_params.get("warmup_epochs", 5)
+
+    # Parametry regularyzacji
+    weight_decay = regularization_params.get("weight_decay", 0.0001)
+    gradient_clip = regularization_params.get("gradient_clip", 1.0)
+    label_smoothing = regularization_params.get("label_smoothing", 0.1)
+    dropout_rate = regularization_params.get("dropout_rate", 0.4)
+
+    # Parametry monitorowania
+    early_stopping = monitoring_params.get("early_stopping", {})
+    early_stopping_patience = (
+        early_stopping.get("patience", 20) if early_stopping.get("enabled", True) else 0
+    )
+
+    # Tworzenie modelu z odpowiednim input_size i dropout_rate
     model = get_model(
         model_arch=variant.replace("EfficientNet-", "").lower(),
         num_classes=num_classes,
         input_size=input_size,
+        dropout_rate=dropout_rate,
     )
-    # Przekaż input_size do funkcji trenującej
+
+    # Przekaż wszystkie istotne parametry do funkcji trenującej
     result = train_model_optimized(
         model=model,
         train_dir=training_config.get("train_dir"),
         val_dir=training_config.get("val_dir"),
         input_size=input_size,
-        # ... inne parametry ...
+        num_epochs=epochs,
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        optimizer_type=optimizer.lower(),
+        lr_scheduler_type=scheduler.lower().replace(
+            "cosineannealingwarmrestarts", "cosine"
+        ),
+        label_smoothing=label_smoothing,
+        weight_decay=weight_decay,
+        use_mixed_precision=mixed_precision,
+        freeze_backbone=freeze_base_model,
+        early_stopping_patience=early_stopping_patience,
+        warmup_epochs=warmup_epochs,
+        augmentation_params=(
+            augmentation_params.get("basic", {}) if augmentation_params else None
+        ),
+        gradient_clip=gradient_clip,
     )
+
     return result

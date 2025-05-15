@@ -1,7 +1,7 @@
 {
     "name": "EfficientNet-B4_42_2025-05-14_21-33-28",
     "type": "training",
-    "status": "Nowy",
+    "status": "Zakończony",
     "priority": 0,
     "created_at": "2025-05-14 21:33:28",
     "config": {
@@ -91,5 +91,12 @@
             "resize_mode": "bilinear",
             "cache_dataset": false
         }
-    }
+    },
+    "training_time": 12134.76,
+    "training_time_str": "3:22:14",
+    "train_acc": 0.74609375,
+    "train_loss": 1.500407725572586,
+    "val_acc": 0.7473958333333334,
+    "val_loss": 1.5102890729904175,
+    "plot_path": "data\\plots\\EfficientNet-B4_42_2025-05-14_21-33-28_2025-05-15_08-59.png"
 }

@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Union, Tuple
+from typing import Callable, Optional, Tuple, Union
 
 import torch.nn as nn
 from torchvision import models
@@ -10,7 +10,7 @@ def get_model(
     logger: Optional[Callable] = None,
     drop_connect_rate: float = 0.2,
     dropout_rate: float = 0.3,
-    input_size: Optional[Union[int, Tuple[int, int]]] = None
+    input_size: Optional[Union[int, Tuple[int, int]]] = None,
 ) -> nn.Module:
     """
     Tworzy model o podanej architekturze.
@@ -34,6 +34,8 @@ def get_model(
         if model_arch.startswith("b"):
             logger(f"- Drop connect rate: {drop_connect_rate}")
             logger(f"- Dropout rate: {dropout_rate}")
+        if input_size:
+            logger(f"- Input size: {input_size}")
 
     # Normalizacja nazwy architektury
     model_arch = model_arch.lower()

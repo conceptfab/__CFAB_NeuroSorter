@@ -75,6 +75,10 @@ def train_model_optimized(
     output_dir=None,
     model_save_path=None,
     input_size=None,
+    warmup_epochs=1,
+    gradient_clip=None,
+    use_swa=False,
+    swa_start_epoch=90,
 ):
     """
     Trenuje model na podanym zbiorze danych z wykorzystaniem optymalnych parametrów sprzętowych.
@@ -280,6 +284,17 @@ def train_model_optimized(
 
     # Konfiguracja schedulera
     scheduler = configure_scheduler(optimizer, lr_scheduler_type, num_epochs, patience)
+
+    # Konfiguracja SWA
+    swa_model = None
+    swa_scheduler = None
+    if use_swa and torch.cuda.is_available():
+        from torch.optim.swa_utils import SWALR, AveragedModel
+
+        swa_model = AveragedModel(model)
+        swa_scheduler = SWALR(
+            optimizer, anneal_strategy="cos", anneal_epochs=5, swa_lr=learning_rate / 10
+        )
 
     # print("\n=== ROZPOCZYNAM TRENING ===")
 
@@ -544,6 +559,22 @@ def train_model_optimized(
                 print(
                     f"GPU memory: allocated={memory_allocated:.2f}MB, reserved={memory_reserved:.2f}MB"
                 )
+
+        # W pętli treningu, po epoce:
+        if use_swa and epoch >= swa_start_epoch:
+            swa_model.update_parameters(model)
+            swa_scheduler.step()
+
+    # Po zakończeniu treningu:
+    if use_swa:
+        # Aktualizacja statystyk batch norm
+        torch.optim.swa_utils.update_bn(train_loader, swa_model)
+        # Zapisz model SWA zamiast zwykłego
+        model = swa_model
+
+    # Dodaj obsługę gradient_clip jeśli podany
+    if gradient_clip is not None and gradient_clip > 0:
+        torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clip)
 
     print(
         f"DEBUG optimized_training: Zakończono pętlę po epokach (naturalnie lub przez break). Ostatnia przetworzona epoka (0-indexed): {epoch if 'epoch' in locals() else 'nie zdefiniowano'}"

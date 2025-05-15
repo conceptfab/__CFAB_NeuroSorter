@@ -296,7 +296,10 @@ class ModelManager(QWidget, TabInterface):
                         # Czas treningu
                         train_time_val = metadata.get("training_time", 0)
                         if isinstance(train_time_val, (int, float)):
-                            training_time = f"{float(train_time_val):.1f}s"
+                            hours = int(train_time_val // 3600)
+                            minutes = int((train_time_val % 3600) // 60)
+                            seconds = int(train_time_val % 60)
+                            training_time = f"{hours}:{minutes:02d}:{seconds:02d}"
                         elif isinstance(train_time_val, str):
                             training_time = train_time_val  # Jeśli już jest stringiem
 
