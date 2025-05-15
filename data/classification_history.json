@@ -1,1 +1,8 @@
-[]
+[
+    {
+        "date": "2025-05-15T21:49:50.180385",
+        "image_path": "F:/_set_DATA_B3/train/animal/3020274.5f56a0609cfb4.jpg",
+        "class_name": "animal",
+        "confidence": 0.2844860851764679
+    }
+]
